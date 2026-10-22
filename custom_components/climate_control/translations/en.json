@@ -29,7 +29,7 @@
           },
           "help_p_max_w": {
             "name": "Help: Pmax (largest power)",
-            "description": "Largest electrical power of the outdoor unit. Upper limit for power stage 1; stage 2 = Pmax − stage 1.",
+            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max charge power' passes it to the planner as the maximum of the connection house → air conditioner.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -77,7 +77,7 @@
           },
           "help_p_max_w": {
             "name": "Help: Pmax (largest power)",
-            "description": "Largest electrical power of the outdoor unit. Upper limit for power stage 1; stage 2 = Pmax − stage 1.",
+            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max charge power' passes it to the planner as the maximum of the connection house → air conditioner.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

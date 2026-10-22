@@ -29,7 +29,7 @@
           },
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
-            "description": "Größte elektrische Leistung des Außengeräts. Obergrenze für Leistungsstufe 1; Stufe 2 = Pmax − Stufe 1.",
+            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Maximale Leistung“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -77,7 +77,7 @@
           },
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
-            "description": "Größte elektrische Leistung des Außengeräts. Obergrenze für Leistungsstufe 1; Stufe 2 = Pmax − Stufe 1.",
+            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Maximale Leistung“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
