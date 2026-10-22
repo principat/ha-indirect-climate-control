@@ -1,0 +1,11 @@
+.storage/
+*.db*
+*.log*
+.cloud/
+.HA_VERSION
+secrets.yaml
+.ha_run.lock
+blueprints/
+automations.yaml
+scripts.yaml
+scenes.yaml

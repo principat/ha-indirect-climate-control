@@ -1,0 +1,10 @@
+{
+  "domain": "climate_control_sim",
+  "name": "Climate Control Simulator (e2e only)",
+  "codeowners": [],
+  "dependencies": [],
+  "documentation": "https://github.com/principat/ha-indirect-climate-control",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.0.0"
+}

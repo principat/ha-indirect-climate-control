@@ -1,0 +1,18 @@
+# Configuration of the throw-away Home Assistant used for e2e tests (devcontainer service "homeassistant").
+default_config:
+logger:
+  default: info
+  logs:
+    custom_components.climate_control: debug
+
+# Simulated reference case (tests/e2e/simulator): seven indoor units, outdoor power, planner output.
+# Unit names follow config/reference-case.yaml.
+climate_control_sim:
+  units:
+    klima_wohnen: {name: Klima Wohnen}
+    klima_keller: {name: Klima Keller}
+    klima_schlafen: {name: Klima Schlafen}
+    klima_isi: {name: Klima Isi}
+    klima_celle: {name: Klima Celle}
+    klima_jelle: {name: Klima Jelle}
+    klima_bad: {name: Klima Bad}

@@ -1,0 +1,220 @@
+"""e2e: checks against a real Home Assistant instance with the simulated reference case (NF-CFG-01)."""
+
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from typing import Any
+
+import aiohttp
+import pytest
+import requests
+import yaml
+
+DOMAIN = "climate_control"
+SIM = "climate_control_sim"
+PLAN = "sensor.sim_planner_power"
+REFERENCE = yaml.safe_load(Path("config/reference-case.yaml").read_text(encoding="utf-8"))
+UNITS = [r["indoor_unit"] for r in REFERENCE["rooms"]]
+SETPOINT = 21.0  # reference case has no setpoints yet (TODO in config/)
+DEFAULT_CLASS = "standard"  # power classes not yet defined in config/
+
+
+def _url(ha: requests.Session, path: str) -> str:
+    return f"{ha.base_url}{path}"  # type: ignore[attr-defined]
+
+
+def _post(ha: requests.Session, path: str, payload: dict[str, Any] | None = None) -> Any:
+    r = ha.post(_url(ha, path), json=payload or {}, timeout=60)
+    r.raise_for_status()
+    return r.json()
+
+
+def _state(ha: requests.Session, entity_id: str) -> dict[str, Any]:
+    r = ha.get(_url(ha, f"/api/states/{entity_id}"), timeout=30)
+    r.raise_for_status()
+    return dict(r.json())
+
+
+def _service(ha: requests.Session, domain: str, service: str, **data: Any) -> None:
+    _post(ha, f"/api/services/{domain}/{service}", data)
+
+
+def _cycle(ha: requests.Session) -> None:
+    _service(ha, DOMAIN, "run_cycle")
+
+
+@pytest.fixture(scope="module")
+def entry(ha: requests.Session) -> dict[str, Any]:
+    """Configure the integration for the reference case through the real config flow."""
+    for old in ha.get(_url(ha, "/api/config/config_entries/entry"), timeout=30).json():
+        if old["domain"] == DOMAIN:
+            ha.delete(_url(ha, f"/api/config/config_entries/entry/{old['entry_id']}"), timeout=30)
+    _service(ha, SIM, "reset")
+    _service(ha, SIM, "set_plan", power_kw=0)
+    inst = REFERENCE["installation"]
+    flow = _post(ha, "/api/config/config_entries/flow", {"handler": DOMAIN})
+    assert flow["type"] == "form" and flow["step_id"] == "user"
+    flow = _post(
+        ha,
+        f"/api/config/config_entries/flow/{flow['flow_id']}",
+        {
+            "name": "Climate Control",
+            "plan_entity": [PLAN],
+            "p_min_w": inst["pmin_w"],
+            "p_max_w": inst["pmax_w"],
+            "stage1_w": inst["stage1_w"],
+            "capacity_kwh_per_k": 3.5,
+        },
+    )
+    assert flow["type"] == "create_entry", flow
+    result = dict(flow["result"])
+    for room in REFERENCE["rooms"]:
+        _add_room(ha, result["entry_id"], room)
+    return result
+
+
+def _room_input(room: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": room["id"],
+        "setpoint_c": SETPOINT,
+        "power_class": room["power_class"] or DEFAULT_CLASS,
+        "nominal_power_w": 500,
+        "area_m2": room["area_m2"],
+    }
+
+
+def _add_room(ha: requests.Session, entry_id: str, room: dict[str, Any]) -> None:
+    """FR-CFG-01: one indoor unit at a time."""
+    flow = _post(ha, "/api/config/config_entries/subentries/flow", {"handler": [entry_id, "room"]})
+    assert flow["type"] == "form" and flow["step_id"] == "user", flow
+    flow = _post(
+        ha,
+        f"/api/config/config_entries/subentries/flow/{flow['flow_id']}",
+        {"entity_id": room["indoor_unit"], **_room_input(room)},
+    )
+    assert flow["type"] == "create_entry", flow
+
+
+def _ws(ha: requests.Session, message: dict[str, Any]) -> Any:
+    """One websocket command (subentry list/delete have no REST endpoint)."""
+
+    async def run() -> Any:
+        url = f"{ha.base_url}/api/websocket".replace("http", "ws", 1)  # type: ignore[attr-defined]
+        token = ha.headers["Authorization"].split(" ", 1)[1]
+        async with aiohttp.ClientSession() as session, session.ws_connect(url) as ws:
+            await ws.receive_json()
+            await ws.send_json({"type": "auth", "access_token": token})
+            assert (await ws.receive_json())["type"] == "auth_ok"
+            await ws.send_json({"id": 1, **message})
+            reply = await ws.receive_json()
+            assert reply["success"], reply
+            return reply["result"]
+
+    return asyncio.run(run())
+
+
+@pytest.fixture
+def sim(ha: requests.Session, entry: dict[str, Any]) -> requests.Session:
+    """Fresh simulated devices (all fan, 20 degC) and a zero plan before each test."""
+    _service(ha, SIM, "reset")
+    _service(ha, SIM, "set_plan", power_kw=0)
+    _cycle(ha)
+    return ha
+
+
+@pytest.mark.req("NF-CFG-01")
+def test_instance_configuration_is_valid(ha: requests.Session) -> None:
+    result = _post(ha, "/api/config/core/check_config")
+    assert result["result"] == "valid", result
+
+
+@pytest.mark.req("NF-CFG-01")
+@pytest.mark.req("FR-GEN-01")
+def test_reference_case_loads_with_all_rooms(ha: requests.Session, entry: dict[str, Any]) -> None:
+    entries = ha.get(_url(ha, "/api/config/config_entries/entry"), timeout=30).json()
+    assert any(e["entry_id"] == entry["entry_id"] and e["state"] == "loaded" for e in entries)
+    for entity_id in (
+        "sensor.climate_control_state_of_charge",
+        "sensor.climate_control_planned_power",
+        "sensor.climate_control_min_charge",
+        "binary_sensor.climate_control_running",
+        "binary_sensor.climate_control_fallback",
+    ):
+        assert _state(ha, entity_id)["state"] not in ("unavailable", "unknown"), entity_id
+    assert len(UNITS) == 7
+
+
+@pytest.mark.req("FR-PLAN-01")
+def test_plan_now_and_ahead_is_read(sim: requests.Session) -> None:
+    _service(sim, SIM, "set_plan", power_kw=2.0, hours=6)
+    _cycle(sim)
+    planned = _state(sim, "sensor.climate_control_planned_power")
+    assert float(planned["state"]) == 2000
+    assert [p["value"] for p in planned["attributes"]["forecast"]] == [2000.0] * 6
+    assert _state(sim, "binary_sensor.climate_control_running")["state"] == "on"
+
+
+@pytest.mark.req("FR-MODE-02")
+def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> None:
+    _service(sim, SIM, "set_plan", power_kw=2.0)
+    _cycle(sim)
+    heating = [u for u in UNITS if _state(sim, u)["state"] == "heat"]
+    assert heating, "plan of 2 kW must start units"
+    for unit in heating:
+        # The simulated unit restores its remembered 18 degC; the integration sets 20 + 1 K again.
+        assert _state(sim, unit)["attributes"]["temperature"] == 21.0
+
+
+@pytest.mark.req("FR-SAFE-04")
+def test_planner_failure_falls_back_to_heating(sim: requests.Session) -> None:
+    _service(sim, SIM, "set_plan", power_kw=0, available=False)
+    _cycle(sim)
+    assert _state(sim, "binary_sensor.climate_control_fallback")["state"] == "on"
+    for unit in UNITS:
+        state = _state(sim, unit)
+        assert state["state"] == "heat" and state["attributes"]["temperature"] == SETPOINT
+
+
+@pytest.mark.req("FR-SAFE-04")
+def test_expired_plan_falls_back_to_heating(sim: requests.Session) -> None:
+    _service(sim, SIM, "set_plan", power_kw=2.0, hours=2, offset_h=-5)
+    _cycle(sim)
+    assert _state(sim, "binary_sensor.climate_control_fallback")["state"] == "on"
+    assert {_state(sim, u)["state"] for u in UNITS} == {"heat"}
+
+
+@pytest.mark.req("FR-CFG-01")
+def test_indoor_units_are_changed_and_removed_one_by_one(ha: requests.Session, entry: dict[str, Any]) -> None:
+    entry_id = entry["entry_id"]
+    subentries = _ws(ha, {"type": "config_entries/subentries/list", "entry_id": entry_id})
+    assert [s["unique_id"] for s in subentries] == UNITS
+    last = subentries[-1]
+    room = REFERENCE["rooms"][-1]
+
+    flow = _post(
+        ha,
+        "/api/config/config_entries/subentries/flow",
+        {"handler": [entry_id, "room"], "subentry_id": last["subentry_id"]},
+    )
+    assert flow["step_id"] == "reconfigure", flow
+    flow = _post(
+        ha,
+        f"/api/config/config_entries/subentries/flow/{flow['flow_id']}",
+        {**_room_input(room), "name": "Bad neu"},
+    )
+    assert flow["type"] == "abort" and flow["reason"] == "reconfigure_successful", flow
+
+    _ws(
+        ha,
+        {
+            "type": "config_entries/subentries/delete",
+            "entry_id": entry_id,
+            "subentry_id": last["subentry_id"],
+        },
+    )
+    remaining = _ws(ha, {"type": "config_entries/subentries/list", "entry_id": entry_id})
+    assert [s["unique_id"] for s in remaining] == UNITS[:-1]
+    _add_room(ha, entry_id, room)
+    titles = [s["title"] for s in _ws(ha, {"type": "config_entries/subentries/list", "entry_id": entry_id})]
+    assert titles[-1] == room["id"] and len(titles) == len(UNITS)
