@@ -1,3 +1,13 @@
+## [0.2.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.1.1...v0.2.0) (2026-10-22)
+
+### Features
+
+* setup without planner sensor and simpler installation form ([29da07b](https://github.com/principat/ha-indirect-climate-control/commit/29da07b375fb4fd190daf45cc9a006e2617c52b2))
+
+### Bug Fixes
+
+* describe Pmax as the normal maximum power without power stages ([3724420](https://github.com/principat/ha-indirect-climate-control/commit/372442021e2fff873ac1155a0a88713ff517989a))
+
 ## [0.1.1](https://github.com/principat/ha-indirect-climate-control/compare/v0.1.0...v0.1.1) (2026-10-22)
 
 ### Bug Fixes
