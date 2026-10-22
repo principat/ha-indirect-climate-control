@@ -1,0 +1,552 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Installation",
+        "data": {
+          "name": "Name",
+          "plan_entity": "Planned power (planner outputs)",
+          "p_min_w": "Pmin (smallest continuous power)",
+          "p_max_w": "Pmax (largest power)",
+          "stage1_w": "Power stage 1",
+          "capacity_kwh_per_k": "Buffer capacity per kelvin"
+        },
+        "description": "Planner output and outdoor unit. Indoor units are added one by one afterwards (“Add indoor unit”).",
+        "sections": {
+          "help_plan_entity": {
+            "name": "Help: Planned power (planner outputs)",
+            "description": "One or more sensors of the energy planner with the planned electrical power of the air conditioner. Usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); with two power stages both connections, which are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. If one sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies: all indoor units heat to their standard setpoint.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_p_min_w": {
+            "name": "Help: Pmin (smallest continuous power)",
+            "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_p_max_w": {
+            "name": "Help: Pmax (largest power)",
+            "description": "Largest electrical power of the outdoor unit. Upper limit for power stage 1; stage 2 = Pmax − stage 1.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_stage1_w": {
+            "name": "Help: Power stage 1",
+            "description": "Limit of the first power stage in the planner model. Up to this power the planner plans without surcharge; the second stage (Pmax − stage 1) carries the stage 2 surcharge (options) because the unit works less efficiently there. Only needed for the optional HAEO extension with two power stages; with a single connection the limit is Pmax.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_capacity_kwh_per_k": {
+            "name": "Help: Buffer capacity per kelvin",
+            "description": "Heat storage capacity of the building as electrical energy per kelvin of room temperature (kWh_el/K). The buffer capacity given to the planner is this value times the width of the SOC scale (default 15 K). Rough estimate: thermal capacity of the building divided by the heat pump's coefficient of performance.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Installation",
+        "data": {
+          "name": "Name",
+          "plan_entity": "Planned power (planner outputs)",
+          "p_min_w": "Pmin (smallest continuous power)",
+          "p_max_w": "Pmax (largest power)",
+          "stage1_w": "Power stage 1",
+          "capacity_kwh_per_k": "Buffer capacity per kelvin"
+        },
+        "sections": {
+          "help_plan_entity": {
+            "name": "Help: Planned power (planner outputs)",
+            "description": "One or more sensors of the energy planner with the planned electrical power of the air conditioner. Usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); with two power stages both connections, which are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. If one sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies: all indoor units heat to their standard setpoint.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_p_min_w": {
+            "name": "Help: Pmin (smallest continuous power)",
+            "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_p_max_w": {
+            "name": "Help: Pmax (largest power)",
+            "description": "Largest electrical power of the outdoor unit. Upper limit for power stage 1; stage 2 = Pmax − stage 1.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_stage1_w": {
+            "name": "Help: Power stage 1",
+            "description": "Limit of the first power stage in the planner model. Up to this power the planner plans without surcharge; the second stage (Pmax − stage 1) carries the stage 2 surcharge (options) because the unit works less efficiently there. Only needed for the optional HAEO extension with two power stages; with a single connection the limit is Pmax.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_capacity_kwh_per_k": {
+            "name": "Help: Buffer capacity per kelvin",
+            "description": "Heat storage capacity of the building as electrical energy per kelvin of room temperature (kWh_el/K). The buffer capacity given to the planner is this value times the width of the SOC scale (default 15 K). Rough estimate: thermal capacity of the building divided by the heat pump's coefficient of performance.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "no_plan": "Select at least one planner sensor.",
+      "pmin_pmax": "0 < Pmin <= Pmax required.",
+      "stage1": "0 < stage 1 <= Pmax required."
+    },
+    "abort": {
+      "reconfigure_successful": "Installation updated."
+    }
+  },
+  "config_subentries": {
+    "room": {
+      "entry_type": "Indoor unit",
+      "initiate_flow": {
+        "user": "Add indoor unit"
+      },
+      "step": {
+        "user": {
+          "title": "Indoor unit",
+          "data": {
+            "entity_id": "Indoor unit",
+            "name": "Room name",
+            "setpoint_c": "Setpoint (fixed or substitute value)",
+            "setpoint_entity": "Setpoint entity (optional)",
+            "power_class": "Power class",
+            "nominal_power_w": "Nominal power",
+            "area_m2": "Area",
+            "window_entity": "Window contact"
+          },
+          "sections": {
+            "help_entity_id": {
+              "name": "Help: Indoor unit",
+              "description": "The air conditioner of this room. Only the temperature reported by this unit counts as room temperature (whole degrees); room sensors are not used. Each indoor unit can be configured only once per installation.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_setpoint_c": {
+              "name": "Help: Setpoint (fixed or substitute value)",
+              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_setpoint_entity": {
+              "name": "Help: Setpoint entity (optional)",
+              "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_power_class": {
+              "name": "Help: Power class",
+              "description": "Free name for units with the same nominal power, e.g. 'small' or 'large'. When deviations are tied, units are grouped by power class and switched on group by group so that the load rises evenly. Order of the classes = order in which they first appear among the indoor units.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_nominal_power_w": {
+              "name": "Help: Nominal power",
+              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_area_m2": {
+              "name": "Help: Area",
+              "description": "Weight of the room in the lower bounds for the planner: the lower bound is the area-weighted mean of the setpoints, so large rooms count more.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_window_entity": {
+              "name": "Help: Window contact",
+              "description": "Optional window contact (on = open). While the window is open the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            }
+          }
+        },
+        "reconfigure": {
+          "title": "Indoor unit {entity_id}",
+          "data": {
+            "name": "Room name",
+            "setpoint_c": "Setpoint (fixed or substitute value)",
+            "setpoint_entity": "Setpoint entity (optional)",
+            "power_class": "Power class",
+            "nominal_power_w": "Nominal power",
+            "area_m2": "Area",
+            "window_entity": "Window contact"
+          },
+          "sections": {
+            "help_setpoint_c": {
+              "name": "Help: Setpoint (fixed or substitute value)",
+              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_setpoint_entity": {
+              "name": "Help: Setpoint entity (optional)",
+              "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_power_class": {
+              "name": "Help: Power class",
+              "description": "Free name for units with the same nominal power, e.g. 'small' or 'large'. When deviations are tied, units are grouped by power class and switched on group by group so that the load rises evenly. Order of the classes = order in which they first appear among the indoor units.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_nominal_power_w": {
+              "name": "Help: Nominal power",
+              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_area_m2": {
+              "name": "Help: Area",
+              "description": "Weight of the room in the lower bounds for the planner: the lower bound is the area-weighted mean of the setpoints, so large rooms count more.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_window_entity": {
+              "name": "Help: Window contact",
+              "description": "Optional window contact (on = open). While the window is open the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            }
+          }
+        }
+      },
+      "error": {
+        "already_configured": "This indoor unit is already configured."
+      },
+      "abort": {
+        "reconfigure_successful": "Indoor unit updated."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Parameters",
+        "data": {
+          "start_ratio": "Start threshold (share of Pmin)",
+          "stop_ratio": "Stop threshold (share of Pmin)",
+          "tie_band_k": "Tie band (K)",
+          "heat_offset_k": "Heating offset above device temperature (K)",
+          "soc_smoothing_s": "SOC smoothing (s)",
+          "outlier_k": "Outlier limit per cycle (K)",
+          "overheat_k": "Overheating above setpoint (K)",
+          "overheat_s": "Overheating duration (s)",
+          "hard_min_below_k": "Hard minimum below setpoint (K)",
+          "overload_max_c": "Overload limit (°C)",
+          "comfort_max_c": "Upper bound without surcharge (°C)",
+          "soc_min_c": "SOC scale 0 % (°C)",
+          "soc_max_c": "SOC scale 100 % (°C)",
+          "efficiency_pct": "Buffer efficiency (%)",
+          "discharge_limit_w": "Buffer discharge limit (W)",
+          "night_start_h": "Night setback start (hour)",
+          "night_end_h": "Night setback end (hour)",
+          "night_setback_k": "Night setback of lower bounds (K)",
+          "late_charge_surcharge": "Late charge surcharge (per kWh)",
+          "undercharge_cost": "Penalty between setpoint and hard minimum (per kWh)",
+          "overcharge_cost": "Overload surcharge (per kWh)",
+          "stage2_surcharge": "Power stage 2 surcharge (per kWh)",
+          "planner_horizon_h": "Planner forecast horizon (h)",
+          "plan_max_age_s": "Maximum plan age (s)",
+          "neutral_mode": "Neutral mode",
+          "cycle_s": "Control cycle (s)"
+        },
+        "sections": {
+          "help_start_ratio": {
+            "name": "Help: Start threshold (share of Pmin)",
+            "description": "A stopped outdoor unit starts only when the plan shows at least this share of Pmin. Below, the plan is ignored and all units stay neutral. Default 0.8 (80 %).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_stop_ratio": {
+            "name": "Help: Stop threshold (share of Pmin)",
+            "description": "A running outdoor unit keeps running until the plan falls below this share of Pmin; there is no pulse operation in between. Must not be larger than the start threshold. Default 0.5 (50 %).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_tie_band_k": {
+            "name": "Help: Tie band (K)",
+            "description": "Deviations (setpoint − device temperature) less than this apart count as equal. Equal rooms are served together, grouped by power class. Default 1 K (resolution of the units).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_heat_offset_k": {
+            "name": "Help: Heating offset above device temperature (K)",
+            "description": "A served unit gets its device temperature plus this offset as setpoint (at most the overload limit). A larger offset means more power per unit. Default 1 K.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_soc_smoothing_s": {
+            "name": "Help: SOC smoothing (s)",
+            "description": "Time window for smoothing the SOC (median of the values within the window). Default 900 s (15 min).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_outlier_k": {
+            "name": "Help: Outlier limit per cycle (K)",
+            "description": "If a device temperature jumps by more than this within one cycle, the value is discarded. If the next cycle confirms the new value, it is accepted. Default 2 K.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_overheat_k": {
+            "name": "Help: Overheating above setpoint (K)",
+            "description": "A room at least this much above its setpoint counts as overheated. Default 3 K.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_overheat_s": {
+            "name": "Help: Overheating duration (s)",
+            "description": "How long a room must be overheated before it is cooled. Cooling only happens while no unit heats. Default 3600 s (1 h).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_hard_min_below_k": {
+            "name": "Help: Hard minimum below setpoint (K)",
+            "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_overload_max_c": {
+            "name": "Help: Overload limit (°C)",
+            "description": "Highest room temperature up to which the buffer may be charged (overload with surcharge). Units at or above it are no longer served, setpoints are capped to it. Default 28 °C.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_comfort_max_c": {
+            "name": "Help: Upper bound without surcharge (°C)",
+            "description": "Upper bound without surcharge in the planner model. Between this value and the overload limit the planner applies the overload surcharge. Must lie between SOC scale 0 % and the overload limit. Default 24 °C (assumption, not fixed in the functional spec).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_soc_min_c": {
+            "name": "Help: SOC scale 0 % (°C)",
+            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_soc_max_c": {
+            "name": "Help: SOC scale 100 % (°C)",
+            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_efficiency_pct": {
+            "name": "Help: Buffer efficiency (%)",
+            "description": "Efficiency of the climate buffer in the planner model (losses while storing heat). Default 92 %.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_discharge_limit_w": {
+            "name": "Help: Buffer discharge limit (W)",
+            "description": "Highest discharge power of the buffer in the planner model, i.e. how fast the house loses heat. Default 3500 W.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_night_start_h": {
+            "name": "Help: Night setback start (hour)",
+            "description": "Full hour (local time) at which the night setback starts. Only the lower bounds for the planner are lowered. Default 21.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_night_end_h": {
+            "name": "Help: Night setback end (hour)",
+            "description": "Full hour (local time) at which the night setback ends. Default 6.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_night_setback_k": {
+            "name": "Help: Night setback of lower bounds (K)",
+            "description": "Lower bound and hard minimum for the planner are lowered by this much at night. The protection of the hard minimum in the room stays unchanged. Default 1 K (assumption, not fixed in the functional spec).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_late_charge_surcharge": {
+            "name": "Help: Late charge surcharge (per kWh)",
+            "description": "Small amount per kWh that falls linearly to 0 over the forecast horizon. It only decides between equally priced time windows: then the planner charges later (less storage loss). Default 0.001.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_undercharge_cost": {
+            "name": "Help: Penalty between setpoint and hard minimum (per kWh)",
+            "description": "Penalty per kWh when the planner discharges the buffer between setpoint and hard minimum. Default 0.003 (slightly below that of the car charging).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_overcharge_cost": {
+            "name": "Help: Overload surcharge (per kWh)",
+            "description": "Surcharge per kWh for charging between the upper bound without surcharge and the overload limit. Default 0.003 (assumption, not fixed in the functional spec).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_stage2_surcharge": {
+            "name": "Help: Power stage 2 surcharge (per kWh)",
+            "description": "Surcharge per kWh for power above stage 1. Default 0.001 (assumption, not fixed in the functional spec).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_planner_horizon_h": {
+            "name": "Help: Planner forecast horizon (h)",
+            "description": "Number of hours in the forecasts of the planner values. Should be at least the planner's horizon. Default 24.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_plan_max_age_s": {
+            "name": "Help: Maximum plan age (s)",
+            "description": "If the plan has not been updated for longer than this, it counts as outdated and the fallback applies (all units heat to their standard setpoint). Default 1800 s.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_neutral_mode": {
+            "name": "Help: Neutral mode",
+            "description": "Mode of units that are not served; it separates heating and cooling. Fan (default) keeps the device temperature meaningful, off saves the fan power (about 85 W for seven units).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_cycle_s": {
+            "name": "Help: Control cycle (s)",
+            "description": "Interval between control cycles. Each cycle reads plan and device temperatures, decides and sends only changed commands to the indoor units. Shorter intervals react faster but send more commands. Default 60 s.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_parameters": "The parameters are inconsistent."
+    }
+  },
+  "selector": {
+    "neutral_mode": {
+      "options": {
+        "fan_only": "Fan",
+        "off": "Off"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "running": {
+        "name": "Running"
+      },
+      "fallback": {
+        "name": "Fallback"
+      }
+    },
+    "sensor": {
+      "soc": {
+        "name": "State of charge"
+      },
+      "planned_power": {
+        "name": "Planned power"
+      },
+      "requested_power": {
+        "name": "Requested power"
+      },
+      "capacity": {
+        "name": "Capacity"
+      },
+      "min_charge": {
+        "name": "Min charge"
+      },
+      "undercharge": {
+        "name": "Undercharge"
+      },
+      "max_charge": {
+        "name": "Max charge"
+      },
+      "overcharge": {
+        "name": "Overcharge"
+      },
+      "undercharge_cost": {
+        "name": "Undercharge cost"
+      },
+      "overcharge_cost": {
+        "name": "Overcharge cost"
+      },
+      "efficiency": {
+        "name": "Efficiency"
+      },
+      "max_discharge_power": {
+        "name": "Max discharge power"
+      },
+      "max_charge_power": {
+        "name": "Max charge power"
+      },
+      "stage1_power": {
+        "name": "Stage 1 power"
+      },
+      "stage2_power": {
+        "name": "Stage 2 power"
+      },
+      "stage2_surcharge": {
+        "name": "Stage 2 surcharge"
+      },
+      "charge_cost": {
+        "name": "Charge cost"
+      }
+    }
+  },
+  "services": {
+    "run_cycle": {
+      "name": "Run cycle",
+      "description": "Runs a control cycle now.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Only this installation. Empty = all installations."
+        }
+      }
+    }
+  }
+}

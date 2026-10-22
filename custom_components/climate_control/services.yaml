@@ -1,0 +1,7 @@
+run_cycle:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: climate_control

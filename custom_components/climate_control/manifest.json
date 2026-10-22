@@ -1,0 +1,13 @@
+{
+  "domain": "climate_control",
+  "name": "Climate Control",
+  "codeowners": ["@principat"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/principat/ha-indirect-climate-control",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/principat/ha-indirect-climate-control/issues",
+  "requirements": [],
+  "version": "0.0.0"
+}
