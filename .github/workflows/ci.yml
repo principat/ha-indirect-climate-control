@@ -19,6 +19,7 @@ jobs:
       - run: mypy custom_components
       - run: python scripts/check_spec_separation.py
       - run: pytest tests/unit tests/integration --cov
+      - run: pytest tests/performance -s
       - run: python scripts/check_traceability.py
 
   commitlint:
