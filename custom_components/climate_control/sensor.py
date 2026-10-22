@@ -100,19 +100,6 @@ SENSORS: tuple[CCSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
     ),
     CCSensorDescription(
-        key="stage1_power",
-        value=lambda d: d.planner.stage1_kw,
-        unit=UnitOfPower.KILO_WATT,
-        device_class=SensorDeviceClass.POWER,
-    ),
-    CCSensorDescription(
-        key="stage2_power",
-        value=lambda d: d.planner.stage2_kw,
-        unit=UnitOfPower.KILO_WATT,
-        device_class=SensorDeviceClass.POWER,
-    ),
-    CCSensorDescription(key="stage2_surcharge", value=lambda d: d.planner.stage2_surcharge, unit=COST),
-    CCSensorDescription(
         key="charge_cost",
         value=lambda d: d.planner.charge_cost,
         unit=COST,

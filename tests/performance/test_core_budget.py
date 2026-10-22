@@ -45,7 +45,6 @@ def _installation(rooms: int) -> object:
     return config.InstallationConfig(
         p_min_w=1300,
         p_max_w=3300,
-        stage1_w=1500,
         capacity_kwh_per_k=3.5,
         rooms=tuple(
             config.RoomConfig(f"r{i}", f"R{i}", 21.0, classes[i % 2], 400.0 + 200 * (i % 2), 12.0)

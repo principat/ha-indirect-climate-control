@@ -63,8 +63,6 @@ def entry(ha: requests.Session) -> dict[str, Any]:
             "plan_entity": [PLAN],
             "p_min_w": inst["pmin_w"],
             "p_max_w": inst["pmax_w"],
-            "stage1_w": inst["stage1_w"],
-            "capacity_kwh_per_k": 3.5,
         },
     )
     assert flow["type"] == "create_entry", flow

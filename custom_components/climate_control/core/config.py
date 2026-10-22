@@ -60,7 +60,6 @@ class Parameters:
     late_charge_surcharge: float = 0.001
     undercharge_cost: float = 0.003
     overcharge_cost: float = 0.003
-    stage2_surcharge: float = 0.001
     planner_horizon_h: int = 24
     plan_max_age_s: float = 1800.0
     neutral_mode: Mode = Mode.FAN
@@ -93,7 +92,6 @@ class Parameters:
 class InstallationConfig:
     p_min_w: float
     p_max_w: float
-    stage1_w: float
     capacity_kwh_per_k: float
     rooms: tuple[RoomConfig, ...]
     params: Parameters = field(default_factory=Parameters)
@@ -106,8 +104,6 @@ class InstallationConfig:
             raise ConfigError("room ids must be unique")
         if not 0 < self.p_min_w <= self.p_max_w:
             raise ConfigError("0 < Pmin <= Pmax required")
-        if not 0 < self.stage1_w <= self.p_max_w:
-            raise ConfigError("0 < stage 1 <= Pmax required")
         if self.capacity_kwh_per_k <= 0:
             raise ConfigError("capacity must be positive")
         self.params.validate()

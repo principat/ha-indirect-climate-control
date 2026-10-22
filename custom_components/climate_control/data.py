@@ -9,7 +9,7 @@ from .const import (
     CONF_CAPACITY,
     CONF_P_MAX,
     CONF_P_MIN,
-    CONF_STAGE1,
+    DEFAULT_CAPACITY_KWH_PER_K,
     ROOM_AREA,
     ROOM_CLASS,
     ROOM_ENTITY,
@@ -50,8 +50,7 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
     return InstallationConfig(
         p_min_w=float(data[CONF_P_MIN]),
         p_max_w=float(data[CONF_P_MAX]),
-        stage1_w=float(data[CONF_STAGE1]),
-        capacity_kwh_per_k=float(data[CONF_CAPACITY]),
+        capacity_kwh_per_k=float(data.get(CONF_CAPACITY, DEFAULT_CAPACITY_KWH_PER_K)),
         rooms=rooms,
         params=params,
     )

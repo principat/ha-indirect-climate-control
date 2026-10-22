@@ -24,11 +24,9 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_CAPACITY,
     CONF_P_MAX,
     CONF_P_MIN,
     CONF_PLAN_ENTITY,
-    CONF_STAGE1,
     DOMAIN,
     ROOM_AREA,
     ROOM_CLASS,
@@ -78,13 +76,12 @@ def _with_help(items: dict[Any, Any], help_fields: tuple[str, ...], expanded: bo
 def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     return {
         vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "Climate Control")): str,
-        vol.Required(CONF_PLAN_ENTITY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", multiple=True)
-        ),
         vol.Required(CONF_P_MIN): _number("W"),
         vol.Required(CONF_P_MAX): _number("W"),
-        vol.Required(CONF_STAGE1): _number("W"),
-        vol.Required(CONF_CAPACITY): _number("kWh/K", step=0.1),
+        # Optional: the planner output only exists once the planner uses this integration's sensors.
+        vol.Optional(CONF_PLAN_ENTITY): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", multiple=True)
+        ),
     }
 
 
@@ -113,12 +110,8 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
 
 
 def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
-    if not values.get(CONF_PLAN_ENTITY):
-        return {CONF_PLAN_ENTITY: "no_plan"}
     if not 0 < values[CONF_P_MIN] <= values[CONF_P_MAX]:
         return {"base": "pmin_pmax"}
-    if not 0 < values[CONF_STAGE1] <= values[CONF_P_MAX]:
-        return {"base": "stage1"}
     return {}
 
 

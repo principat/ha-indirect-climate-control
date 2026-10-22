@@ -23,7 +23,6 @@ def installation(*rooms: RoomConfig, **params: object) -> InstallationConfig:
     return InstallationConfig(
         p_min_w=1300,
         p_max_w=3300,
-        stage1_w=1500,
         capacity_kwh_per_k=3.5,
         rooms=rooms or (room("a"), room("b"), room("c")),
         params=Parameters(**params),  # type: ignore[arg-type]

@@ -26,7 +26,6 @@ def test_core_has_no_plant_defaults() -> None:
         {"rooms": ()},
         {"rooms": (room("a"), room("a"))},
         {"p_min_w": 4000},
-        {"stage1_w": 0},
         {"capacity_kwh_per_k": 0},
         {"params": Parameters(stop_ratio=0.9)},
         {"params": Parameters(comfort_max_c=29)},
@@ -37,7 +36,6 @@ def test_inconsistent_configuration_is_rejected(kwargs: dict[str, object]) -> No
     base: dict[str, object] = {
         "p_min_w": 1300,
         "p_max_w": 3300,
-        "stage1_w": 1500,
         "capacity_kwh_per_k": 3.5,
         "rooms": (room("a"),),
     }

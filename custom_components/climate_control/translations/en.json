@@ -5,21 +5,12 @@
         "title": "Installation",
         "data": {
           "name": "Name",
-          "plan_entity": "Planned power (planner outputs)",
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
-          "stage1_w": "Power stage 1",
-          "capacity_kwh_per_k": "Buffer capacity per kelvin"
+          "plan_entity": "Planned power (planner outputs, optional at first)"
         },
-        "description": "Planner output and outdoor unit. Indoor units are added one by one afterwards (“Add indoor unit”).",
+        "description": "Outdoor unit, planner output optional. Indoor units are added one by one afterwards (“Add indoor unit”).",
         "sections": {
-          "help_plan_entity": {
-            "name": "Help: Planned power (planner outputs)",
-            "description": "One or more sensors of the energy planner with the planned electrical power of the air conditioner. Usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); with two power stages both connections, which are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. If one sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies: all indoor units heat to their standard setpoint.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
           "help_p_min_w": {
             "name": "Help: Pmin (smallest continuous power)",
             "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
@@ -34,16 +25,9 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_stage1_w": {
-            "name": "Help: Power stage 1",
-            "description": "Limit of the first power stage in the planner model. Up to this power the planner plans without surcharge; the second stage (Pmax − stage 1) carries the stage 2 surcharge (options) because the unit works less efficiently there. Only needed for the optional HAEO extension with two power stages; with a single connection the limit is Pmax.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_capacity_kwh_per_k": {
-            "name": "Help: Buffer capacity per kelvin",
-            "description": "Heat storage capacity of the building as electrical energy per kelvin of room temperature (kWh_el/K). The buffer capacity given to the planner is this value times the width of the SOC scale (default 15 K). Rough estimate: thermal capacity of the building divided by the heat pump's coefficient of performance.",
+          "help_plan_entity": {
+            "name": "Help: Planned power (planner outputs, optional at first)",
+            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -54,20 +38,11 @@
         "title": "Installation",
         "data": {
           "name": "Name",
-          "plan_entity": "Planned power (planner outputs)",
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
-          "stage1_w": "Power stage 1",
-          "capacity_kwh_per_k": "Buffer capacity per kelvin"
+          "plan_entity": "Planned power (planner outputs, optional at first)"
         },
         "sections": {
-          "help_plan_entity": {
-            "name": "Help: Planned power (planner outputs)",
-            "description": "One or more sensors of the energy planner with the planned electrical power of the air conditioner. Usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); with two power stages both connections, which are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. If one sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies: all indoor units heat to their standard setpoint.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
           "help_p_min_w": {
             "name": "Help: Pmin (smallest continuous power)",
             "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
@@ -82,16 +57,9 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_stage1_w": {
-            "name": "Help: Power stage 1",
-            "description": "Limit of the first power stage in the planner model. Up to this power the planner plans without surcharge; the second stage (Pmax − stage 1) carries the stage 2 surcharge (options) because the unit works less efficiently there. Only needed for the optional HAEO extension with two power stages; with a single connection the limit is Pmax.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_capacity_kwh_per_k": {
-            "name": "Help: Buffer capacity per kelvin",
-            "description": "Heat storage capacity of the building as electrical energy per kelvin of room temperature (kWh_el/K). The buffer capacity given to the planner is this value times the width of the SOC scale (default 15 K). Rough estimate: thermal capacity of the building divided by the heat pump's coefficient of performance.",
+          "help_plan_entity": {
+            "name": "Help: Planned power (planner outputs, optional at first)",
+            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -100,9 +68,7 @@
       }
     },
     "error": {
-      "no_plan": "Select at least one planner sensor.",
-      "pmin_pmax": "0 < Pmin <= Pmax required.",
-      "stage1": "0 < stage 1 <= Pmax required."
+      "pmin_pmax": "0 < Pmin <= Pmax required."
     },
     "abort": {
       "reconfigure_successful": "Installation updated."
@@ -270,7 +236,6 @@
           "late_charge_surcharge": "Late charge surcharge (per kWh)",
           "undercharge_cost": "Penalty between setpoint and hard minimum (per kWh)",
           "overcharge_cost": "Overload surcharge (per kWh)",
-          "stage2_surcharge": "Power stage 2 surcharge (per kWh)",
           "planner_horizon_h": "Planner forecast horizon (h)",
           "plan_max_age_s": "Maximum plan age (s)",
           "neutral_mode": "Neutral mode",
@@ -424,13 +389,6 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_stage2_surcharge": {
-            "name": "Help: Power stage 2 surcharge (per kWh)",
-            "description": "Surcharge per kWh for power above stage 1. Default 0.001 (assumption, not fixed in the functional spec).",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
           "help_planner_horizon_h": {
             "name": "Help: Planner forecast horizon (h)",
             "description": "Number of hours in the forecasts of the planner values. Should be at least the planner's horizon. Default 24.",
@@ -522,15 +480,6 @@
       },
       "max_charge_power": {
         "name": "Max charge power"
-      },
-      "stage1_power": {
-        "name": "Stage 1 power"
-      },
-      "stage2_power": {
-        "name": "Stage 2 power"
-      },
-      "stage2_surcharge": {
-        "name": "Stage 2 surcharge"
       },
       "charge_cost": {
         "name": "Charge cost"

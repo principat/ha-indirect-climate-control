@@ -15,7 +15,7 @@ HELP_PREFIX = "help_"
 OPTION_HELP = "help_expanded"
 
 # Fields with help, per form. Everything except names is considered non-trivial.
-USER_HELP = ("plan_entity", "p_min_w", "p_max_w", "stage1_w", "capacity_kwh_per_k")
+USER_HELP = ("plan_entity", "p_min_w", "p_max_w")
 ROOM_HELP = (
     "entity_id",
     "setpoint_c",

@@ -119,7 +119,7 @@ async def test_installation_can_be_reconfigured(hass: HomeAssistant, units: Fake
 @pytest.mark.req("FR-GEN-01")
 @pytest.mark.parametrize(
     ("override", "error"),
-    [({"p_min_w": 4000}, {"base": "pmin_pmax"}), ({"stage1_w": 5000}, {"base": "stage1"})],
+    [({"p_min_w": 4000}, {"base": "pmin_pmax"}), ({"p_max_w": 0}, {"base": "pmin_pmax"})],
 )
 async def test_config_flow_rejects_inconsistent_installation(
     hass: HomeAssistant, override: dict[str, object], error: dict[str, str]
@@ -238,3 +238,31 @@ async def test_new_installation_stores_help_switch(hass: HomeAssistant) -> None:
         result["flow_id"], {**USER_INPUT, "plan_entity": [PLAN], "help_p_min_w": {"help_expanded": True}}
     )
     assert result["result"].options == {"help_expanded": True}
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_without_planner_output_nothing_is_controlled(hass: HomeAssistant, units: FakeUnits) -> None:
+    """Setup order: the planner output only exists after the planner uses this integration's sensors."""
+    units.set(ROOMS[0], "fan_only", 15)  # far below the hard minimum: would heat if controlled
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    installation = {k: v for k, v in USER_INPUT.items() if k != "plan_entity"}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], installation)
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    entry = result["result"]
+    await hass.async_block_till_done()
+    for entity_id in ROOMS:
+        await _add_room(hass, entry, entity_id)
+    await run_cycle(hass)
+    assert units.calls == []
+    assert hass.states.get("sensor.klima_state_of_charge").state != "unavailable"  # type: ignore[union-attr]
+    assert hass.states.get("sensor.klima_capacity").state == "105.0"  # type: ignore[union-attr]
+    assert hass.states.get("binary_sensor.klima_fallback").state == "off"  # type: ignore[union-attr]
+
+    set_plan(hass, 0)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], dict(USER_INPUT))
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert units.mode(ROOMS[0]) == "heat"  # now controlled: hard minimum protection

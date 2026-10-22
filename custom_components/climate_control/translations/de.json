@@ -5,21 +5,12 @@
         "title": "Anlage",
         "data": {
           "name": "Name",
-          "plan_entity": "Geplante Leistung (Planer-Ausgaben)",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
-          "stage1_w": "Leistungsstufe 1",
-          "capacity_kwh_per_k": "Pufferkapazität je Kelvin"
+          "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
-        "description": "Planer-Ausgabe und Außengerät. Innengeräte werden danach einzeln hinzugefügt („Innengerät hinzufügen“).",
+        "description": "Außengerät, Planer-Ausgabe optional. Innengeräte werden danach einzeln hinzugefügt („Innengerät hinzufügen“).",
         "sections": {
-          "help_plan_entity": {
-            "name": "Hilfe: Geplante Leistung (Planer-Ausgaben)",
-            "description": "Ein oder mehrere Sensoren des Energie-Planers mit der geplanten elektrischen Leistung der Klimaanlage. Üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); bei zwei Leistungsstufen beide Verbindungen, sie werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
           "help_p_min_w": {
             "name": "Hilfe: Pmin (kleinste Dauerleistung)",
             "description": "Kleinste elektrische Leistung, die das Außengerät dauerhaft ohne Takten halten kann. Im Betrieb wird mindestens Pmin angefordert, ein Überschuss gegenüber dem Plan geht in den Puffer. Start- und Abschaltschwelle sind Anteile von Pmin (Standard 80 % und 50 %). Beispiel: Pmin 1300 W → Start ab 1040 W Plan, Abschalten unter 650 W.",
@@ -34,16 +25,9 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_stage1_w": {
-            "name": "Hilfe: Leistungsstufe 1",
-            "description": "Grenze der ersten Leistungsstufe im Planer-Modell. Bis zu dieser Leistung plant der Planer ohne Aufschlag; die zweite Stufe (Pmax − Stufe 1) trägt den Aufschlag für Stufe 2 (Optionen), weil die Anlage dort weniger effizient arbeitet. Nur für die optionale HAEO-Erweiterung mit zwei Leistungsstufen nötig; mit einer einzigen Verbindung gilt Pmax als Grenze.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_capacity_kwh_per_k": {
-            "name": "Hilfe: Pufferkapazität je Kelvin",
-            "description": "Wärmespeicherfähigkeit des Hauses als elektrische Energie je Kelvin Raumtemperatur (kWh_el/K). Die Pufferkapazität für den Planer ist dieser Wert mal die Breite der SOC-Skala (Standard 15 K). Grobe Schätzung: Wärmekapazität des Gebäudes geteilt durch die Leistungszahl der Wärmepumpe.",
+          "help_plan_entity": {
+            "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
+            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -54,20 +38,11 @@
         "title": "Anlage",
         "data": {
           "name": "Name",
-          "plan_entity": "Geplante Leistung (Planer-Ausgaben)",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
-          "stage1_w": "Leistungsstufe 1",
-          "capacity_kwh_per_k": "Pufferkapazität je Kelvin"
+          "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "sections": {
-          "help_plan_entity": {
-            "name": "Hilfe: Geplante Leistung (Planer-Ausgaben)",
-            "description": "Ein oder mehrere Sensoren des Energie-Planers mit der geplanten elektrischen Leistung der Klimaanlage. Üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); bei zwei Leistungsstufen beide Verbindungen, sie werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
           "help_p_min_w": {
             "name": "Hilfe: Pmin (kleinste Dauerleistung)",
             "description": "Kleinste elektrische Leistung, die das Außengerät dauerhaft ohne Takten halten kann. Im Betrieb wird mindestens Pmin angefordert, ein Überschuss gegenüber dem Plan geht in den Puffer. Start- und Abschaltschwelle sind Anteile von Pmin (Standard 80 % und 50 %). Beispiel: Pmin 1300 W → Start ab 1040 W Plan, Abschalten unter 650 W.",
@@ -82,16 +57,9 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_stage1_w": {
-            "name": "Hilfe: Leistungsstufe 1",
-            "description": "Grenze der ersten Leistungsstufe im Planer-Modell. Bis zu dieser Leistung plant der Planer ohne Aufschlag; die zweite Stufe (Pmax − Stufe 1) trägt den Aufschlag für Stufe 2 (Optionen), weil die Anlage dort weniger effizient arbeitet. Nur für die optionale HAEO-Erweiterung mit zwei Leistungsstufen nötig; mit einer einzigen Verbindung gilt Pmax als Grenze.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_capacity_kwh_per_k": {
-            "name": "Hilfe: Pufferkapazität je Kelvin",
-            "description": "Wärmespeicherfähigkeit des Hauses als elektrische Energie je Kelvin Raumtemperatur (kWh_el/K). Die Pufferkapazität für den Planer ist dieser Wert mal die Breite der SOC-Skala (Standard 15 K). Grobe Schätzung: Wärmekapazität des Gebäudes geteilt durch die Leistungszahl der Wärmepumpe.",
+          "help_plan_entity": {
+            "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
+            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -100,9 +68,7 @@
       }
     },
     "error": {
-      "no_plan": "Mindestens einen Planer-Sensor auswählen.",
-      "pmin_pmax": "0 < Pmin <= Pmax erforderlich.",
-      "stage1": "0 < Stufe 1 <= Pmax erforderlich."
+      "pmin_pmax": "0 < Pmin <= Pmax erforderlich."
     },
     "abort": {
       "reconfigure_successful": "Anlage aktualisiert."
@@ -270,7 +236,6 @@
           "late_charge_surcharge": "Aufschlag Spätladen (je kWh)",
           "undercharge_cost": "Strafwert Sollwert bis hartes Minimum (je kWh)",
           "overcharge_cost": "Aufschlag Überlast (je kWh)",
-          "stage2_surcharge": "Aufschlag Leistungsstufe 2 (je kWh)",
           "planner_horizon_h": "Prognosehorizont für den Planer (h)",
           "plan_max_age_s": "Maximales Planalter (s)",
           "neutral_mode": "Neutraler Modus",
@@ -424,13 +389,6 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_stage2_surcharge": {
-            "name": "Hilfe: Aufschlag Leistungsstufe 2 (je kWh)",
-            "description": "Aufschlag je kWh für Leistung über Stufe 1. Standard 0,001 (Annahme, in der Fachspec nicht festgelegt).",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
           "help_planner_horizon_h": {
             "name": "Hilfe: Prognosehorizont für den Planer (h)",
             "description": "Anzahl Stunden in den Prognosen der Planer-Vorgaben. Sollte mindestens dem Horizont des Planers entsprechen. Standard 24.",
@@ -522,15 +480,6 @@
       },
       "max_charge_power": {
         "name": "Maximale Leistung"
-      },
-      "stage1_power": {
-        "name": "Leistungsstufe 1"
-      },
-      "stage2_power": {
-        "name": "Leistungsstufe 2"
-      },
-      "stage2_surcharge": {
-        "name": "Aufschlag Stufe 2"
       },
       "charge_cost": {
         "name": "Aufschlag Spätladen"

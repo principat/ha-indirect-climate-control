@@ -23,35 +23,40 @@ Status: all decided requirements implemented and tested (unit, integration, e2e 
 2026.10.2). Functional specification: `docs/spec/functional/`, technical: `docs/spec/technical/`.
 Way of working: `AGENTS.md`.
 
-## Setup
+## Setup order
 
-1. Install via HACS (button above), restart Home Assistant.
-2. **Settings → Devices & services → Add integration → Climate Control** (or the second button above).
-   Create the installation: name, planner sensor(s) for the planned power, Pmin, Pmax, power stage 1,
-   buffer capacity per kelvin.
-3. In the installation, **"Add indoor unit"** once per indoor unit: climate entity, room name, setpoint
-   (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
-   power class, nominal power, area, optional window contact. Indoor units can be changed or removed one by one.
-4. **Configure** opens all parameters (thresholds, SOC, safety, planner model).
+Climate Control needs the plan from the planner, and the planner needs the sensors of Climate Control.
+Therefore set up in this order:
+
+1. **Install** via HACS (first button above), restart Home Assistant.
+2. **Create the installation** – *Settings → Devices & services → Add integration → Climate Control*
+   (or the second button above): name, Pmin, Pmax. **Leave the planner sensor empty.**
+   Without a planner sensor the installation is in commissioning mode: it publishes all sensors but sends
+   **no command to the indoor units** (no fallback either).
+3. **Add indoor units** – in the installation, *"Add indoor unit"* once per unit: climate entity, room name,
+   setpoint (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
+   power class, nominal power, area, optional window contact. Units can be changed or removed one by one.
+4. **Set up HAEO** with the sensors of Climate Control, see [Connecting HAEO](#connecting-haeo).
+5. **Connect the plan** – *Reconfigure* the installation and select the HAEO sensor with the planned power
+   (`sensor.klima_power_source_target`). From now on Climate Control follows the plan.
+6. Optional: **Configure** opens all parameters (thresholds, SOC, safety, planner model).
 
 Above every non-trivial field there is a collapsible **"Help: …"** section explaining the field. The switch
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
-As long as no indoor unit is configured, the installation controls nothing and its sensors are unavailable.
+The buffer capacity is not a setting. It starts at 7 kWh_el/K; learning it from operating data is planned
+(concept in `docs/spec/technical/50-capacity-learning.md`).
 
 ## Connecting HAEO
 
-The integration does not configure HAEO. It reads the plan from HAEO sensors and provides sensors that the
-HAEO elements refer to. HAEO is set up by hand.
+The integration does not configure HAEO. It provides sensors that the HAEO elements refer to and reads the
+plan back from HAEO. HAEO is set up by hand.
 
 > Based on the HAEO documentation haeo.io/latest, checked on 22 Oct 2026. Field names may differ in older
 > HAEO versions (not checked for versions before 0.5).
 
 ### Target topology
-
-Basic variant with one connection. Dashed: optional extension with two power stages that replaces the
-single connection.
 
 ```mermaid
 flowchart LR
@@ -62,13 +67,12 @@ flowchart LR
         battery["House battery"] --- house
         consumption["House load, car"] --- house
         house -- "Connection Klima<br/>only house → Klima, max. Pmax<br/>price: late charge surcharge" --> klima(("Node Klima"))
-        house -. "optional instead:<br/>Klima Stufe 1 (max. stage 1 power)<br/>+ Klima Stufe 2 (max. stage 2 power,<br/>price + stage 2 surcharge)" .-> klima
         klima --- buffer[("Battery Klima-Puffer")]
         klima --> heat["Load Wärmebedarf<br/>(heat demand forecast)"]
     end
     subgraph cc["Climate Control"]
         direction TB
-        values["Model sensors<br/>state of charge, capacity, limits,<br/>costs, efficiency, power"]
+        values["Model sensors<br/>state of charge, capacity, limits,<br/>costs, efficiency, max. power"]
         control["Control"]
     end
     values -. "values" .-> buffer
@@ -76,8 +80,6 @@ flowchart LR
     klima -. "plan = flow house → Klima" .-> control
     control --> units["Indoor units"]
 ```
-
-In words:
 
 - The **battery Klima-Puffer** is the virtual heat store; its state of charge is the SOC of the worst room.
 - The **load Wärmebedarf** represents the rooms cooling down. Its forecast (electrical equivalent of the heat
@@ -87,14 +89,9 @@ In words:
 - Battery and load hang on their own **node Klima**. Power only flows from the house to Klima (reverse 0).
   The battery can discharge into the load but cannot feed power into the house, which is physically impossible.
 - **Plan:** Climate Control reads the planned **flow house → Klima**. It covers both charging the buffer and
-  heating directly into the load. The battery's charge power alone is not enough because HAEO can also send
-  power from the house directly into the load.
-- **Basic variant:** one **connection Klima** up to Pmax.
-- **Extension with two power stages (optional):** two connections instead of one, stage 1 without and stage 2
-  with surcharge. HAEO then uses the upper, less efficient power range only when it pays off. Climate Control
-  adds up the planned flows of both connections.
+  heating directly into the load; the battery's charge power alone would miss the direct part.
 
-### Steps in HAEO (basic variant)
+### Steps in HAEO
 
 1. Enable **Advanced Mode** in the HAEO hub (needed for connections).
 2. Create a **number helper** (`input_number`) for each fixed value: `0` (reverse direction) and `100`
@@ -106,21 +103,13 @@ In words:
 6. Create **connection** `Klima`: source = house node, target = `Klima`.
    Max power source→target = sensor *Max charge power*, target→source = helper `0`,
    price source→target = sensor *Charge cost*.
-7. In Climate Control select `sensor.klima_power_source_target` as planned power.
+7. Continue with step 5 of the [setup order](#setup-order).
 
-### Extension: two power stages (optional)
-
-Instead of steps 6 and 7:
-
-6. **Connection** `Klima Stufe 1`: source = house node, target = `Klima`.
-   Max power source→target = sensor *Stage 1 power*, target→source = helper `0`,
-   price source→target = sensor *Charge cost*.
-   **Connection** `Klima Stufe 2`: like stage 1, but max power source→target = sensor *Stage 2 power*,
-   price source→target = sensors *Stage 2 surcharge* and *Charge cost* (HAEO adds several sensors).
-7. In Climate Control (**Reconfigure** the installation) select both sensors as planned power:
-   `sensor.klima_stufe_1_power_source_target` and `sensor.klima_stufe_2_power_source_target`.
-
-When switching from the basic variant, delete connection `Klima` and replace the planner sensor in Climate Control.
+**Optional, two power stages:** if HAEO should use the upper, less efficient power range only when it pays off,
+replace connection `Klima` by two connections from the house node to `Klima`, e.g. `Klima Stufe 1` and
+`Klima Stufe 2`. Their limits and the surcharge of stage 2 are pure HAEO settings (number helpers); Climate
+Control does not care which stage the power comes from. Select both connection sensors as planned power in
+Climate Control, they are added up.
 
 ### Sensor mapping
 
@@ -142,12 +131,8 @@ instance language (English names below, German in brackets).
 | Battery: Max Discharge Power | Max discharge power (Entladegrenze) |
 | Battery: Max Charge Power | leave empty (limited by the connection) |
 | Connection Klima: Max Power Source→Target | Max charge power (Maximale Leistung) |
+| Connection Klima: Max Power Target→Source | helper `0` |
 | Connection Klima: Price Source→Target | Charge cost (Aufschlag Spätladen) – falls over the horizon, with forecast |
-| *Extension* connection stage 1: Max Power Source→Target | Stage 1 power (Leistungsstufe 1) |
-| *Extension* connection stage 1: Price Source→Target | Charge cost (Aufschlag Spätladen) |
-| *Extension* connection stage 2: Max Power Source→Target | Stage 2 power (Leistungsstufe 2) |
-| *Extension* connection stage 2: Price Source→Target | Stage 2 surcharge (Aufschlag Stufe 2) + Charge cost (Aufschlag Spätladen) |
-| all connections house → Klima: Max Power Target→Source | helper `0` |
 
 The efficiency parameter (default 92 %) is used as charge efficiency here; the discharge efficiency stays at
 100 % so that the overall efficiency equals the parameter.
@@ -164,19 +149,23 @@ The sensors *Min charge*, *Undercharge* and *Charge cost* carry a `forecast` att
 - HAEO averages between forecast points; the step of the night setback is therefore slightly smoothed.
 - *Current Charge Percentage* only uses the current value (scalar field in HAEO).
 
+The forecasts are part of the current state that HAEO reads; they are only excluded from the recorder
+database (history) to keep it small.
+
 ### Still to check
 
 - Whether the output sensors of HAEO connections use exactly this format. Climate Control also reads
   `start_time` and time→value mappings.
 - Whether HAEO accepts the currency unit of the cost sensors (`<currency>/kWh`); the unit must match the field.
-- After setup: the Climate Control sensor *Planned power* shows the planned flow house → Klima (with two stages
-  the sum) and the coming hours in its `forecast` attribute; binary sensor *Fallback* is off.
+- After step 5: the Climate Control sensor *Planned power* shows the planned flow house → Klima and the coming
+  hours in its `forecast` attribute; binary sensor *Fallback* is off.
 
 ## Development
 
 1. Open the folder in VS Code, choose "Reopen in Container" (Docker required).
 2. `docker compose -f .devcontainer/docker-compose.yml up -d homeassistant` (the dev container does this itself).
-3. `pytest tests/unit tests/integration`, `pytest tests/e2e`, then `python scripts/check_traceability.py`.
+3. `pytest tests/unit tests/integration`, `pytest tests/performance -s`, `pytest tests/e2e`,
+   then `python scripts/check_traceability.py`.
 4. Regenerate: `docs/REGENERATION.md`.
 
 ---
@@ -201,36 +190,41 @@ Status: alle beschlossenen Anforderungen umgesetzt und getestet (unit, integrati
 2026.10.2). Fachliche Spezifikation: `docs/spec/functional/`, technische: `docs/spec/technical/`.
 Arbeitsweise: `AGENTS.md`.
 
-## Einrichtung
+## Reihenfolge der Einrichtung
 
-1. Über HACS installieren (Schaltfläche oben), Home Assistant neu starten.
-2. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Climate Control** (oder zweite Schaltfläche oben).
-   Anlage anlegen: Name, Planer-Sensor(en) für die geplante Leistung, Pmin, Pmax, Leistungsstufe 1,
-   Pufferkapazität je Kelvin.
-3. In der Anlage **„Innengerät hinzufügen“** – je Innengerät einmal: Klimagerät, Raumname, Sollwert
-   (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der Ersatzwert),
-   Leistungsklasse, Nennleistung, Fläche, optional Fensterkontakt. Innengeräte lassen sich später einzeln
-   ändern oder löschen.
-4. **Konfigurieren** öffnet alle Parameter (Schwellen, SOC, Sicherheit, Planer-Modell).
+Climate Control braucht den Plan aus dem Planer, und der Planer braucht die Sensoren von Climate Control.
+Deshalb in dieser Reihenfolge einrichten:
+
+1. **Installieren** über HACS (erste Schaltfläche oben), Home Assistant neu starten.
+2. **Anlage anlegen** – *Einstellungen → Geräte & Dienste → Integration hinzufügen → Climate Control*
+   (oder zweite Schaltfläche oben): Name, Pmin, Pmax. **Planer-Sensor leer lassen.**
+   Ohne Planer-Sensor ist die Anlage in Inbetriebnahme: Sie stellt alle Sensoren bereit, schickt aber
+   **keinen Befehl an die Innengeräte** (auch keinen Rückfall).
+3. **Innengeräte hinzufügen** – in der Anlage *„Innengerät hinzufügen“*, je Gerät einmal: Klimagerät,
+   Raumname, Sollwert (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der
+   Ersatzwert), Leistungsklasse, Nennleistung, Fläche, optional Fensterkontakt. Innengeräte lassen sich später
+   einzeln ändern oder löschen.
+4. **HAEO einrichten** mit den Sensoren von Climate Control, siehe [HAEO anbinden](#haeo-anbinden).
+5. **Plan verbinden** – Anlage *neu konfigurieren* und den HAEO-Sensor mit der geplanten Leistung wählen
+   (`sensor.klima_power_source_target`). Ab jetzt folgt Climate Control dem Plan.
+6. Optional: **Konfigurieren** öffnet alle Parameter (Schwellen, SOC, Sicherheit, Planer-Modell).
 
 Über jedem nicht trivialen Feld steht ein einklappbarer Abschnitt **„Hilfe: …“** mit der Erklärung des
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
-Solange kein Innengerät erfasst ist, regelt die Anlage nichts und ihre Sensoren sind nicht verfügbar.
+Die Pufferkapazität ist keine Einstellung. Sie startet mit 7 kWh_el/K; das Lernen aus Betriebsdaten ist
+geplant (Konzept in `docs/spec/technical/50-capacity-learning.md`).
 
 ## HAEO anbinden
 
-Die Integration konfiguriert HAEO nicht selbst. Sie liest den Plan aus HAEO-Sensoren und stellt Sensoren
-bereit, auf die die HAEO-Elemente verweisen. Die Einrichtung in HAEO erfolgt von Hand.
+Die Integration konfiguriert HAEO nicht selbst. Sie stellt Sensoren bereit, auf die die HAEO-Elemente
+verweisen, und liest den Plan aus HAEO zurück. Die Einrichtung in HAEO erfolgt von Hand.
 
 > Stand: HAEO-Dokumentation haeo.io/latest, geprüft am 22.10.2026. Feldnamen können in älteren
 > HAEO-Versionen abweichen (ungeprüft für Versionen vor 0.5).
 
 ### Zielbild der Topologie
-
-Grundvariante mit einer Verbindung. Gestrichelt: optionale Erweiterung mit zwei Leistungsstufen, die die
-eine Verbindung ersetzt.
 
 ```mermaid
 flowchart LR
@@ -241,13 +235,12 @@ flowchart LR
         akku["Hausbatterie"] --- haus
         verbrauch["Hausverbrauch, Auto"] --- haus
         haus -- "Verbindung Klima<br/>nur Haus → Klima, max. Pmax<br/>Preis: Aufschlag Spätladen" --> klima(("Knoten Klima"))
-        haus -. "optional statt dessen:<br/>Klima Stufe 1 (max. Leistungsstufe 1)<br/>+ Klima Stufe 2 (max. Leistungsstufe 2,<br/>Preis + Aufschlag Stufe 2)" .-> klima
         klima --- puffer[("Batterie Klima-Puffer")]
         klima --> waerme["Last Wärmebedarf<br/>(Prognose Heizlast)"]
     end
     subgraph cc["Climate Control"]
         direction TB
-        vorgaben["Vorgabe-Sensoren<br/>Füllstand, Kapazität, Grenzen,<br/>Kosten, Wirkungsgrad, Leistung"]
+        vorgaben["Vorgabe-Sensoren<br/>Füllstand, Kapazität, Grenzen,<br/>Kosten, Wirkungsgrad, max. Leistung"]
         regelung["Regelung"]
     end
     vorgaben -. "Werte" .-> puffer
@@ -255,8 +248,6 @@ flowchart LR
     klima -. "Plan = Fluss Haus → Klima" .-> regelung
     regelung --> geraete["Innengeräte"]
 ```
-
-In Worten:
 
 - Die **Batterie Klima-Puffer** ist der virtuelle Wärmespeicher; ihr Füllstand ist der SOC aus dem
   schlechtesten Raum.
@@ -267,15 +258,10 @@ In Worten:
 - Batterie und Last hängen am eigenen **Knoten Klima**. Strom fließt nur vom Haus zum Klima (Rückrichtung 0).
   Die Batterie kann sich so in die Last entladen, aber keinen Strom ins Haus speisen, was physikalisch auch
   nicht geht.
-- **Plan:** Climate Control liest den geplanten **Fluss Haus → Klima**. Er umfasst beides: Laden des Puffers
-  und direktes Heizen in die Last. Die Ladeleistung der Batterie allein reicht nicht, weil HAEO Strom auch
-  direkt aus dem Haus in die Last schicken kann.
-- **Grundvariante:** eine **Verbindung Klima** bis Pmax.
-- **Erweiterung zwei Leistungsstufen (optional):** statt der einen Verbindung zwei Verbindungen,
-  Stufe 1 ohne und Stufe 2 mit Aufschlag. So nutzt HAEO den oberen, weniger effizienten Leistungsbereich nur,
-  wenn es sich lohnt. Climate Control addiert die geplanten Flüsse beider Verbindungen.
+- **Plan:** Climate Control liest den geplanten **Fluss Haus → Klima**. Er umfasst Laden des Puffers und
+  direktes Heizen in die Last; die Ladeleistung der Batterie allein würde den direkten Anteil nicht enthalten.
 
-### Schritte in HAEO (Grundvariante)
+### Schritte in HAEO
 
 1. Im HAEO-Hub den **Advanced Mode** einschalten (nötig für Verbindungen).
 2. Für feste Werte je einen **Helfer „Zahl“** (`input_number`) anlegen: `0` (Rückrichtung) und `100`
@@ -288,22 +274,13 @@ In Worten:
 6. **Verbindung** `Klima`: Quelle = Hausknoten, Ziel = `Klima`.
    Max. Leistung Quelle→Ziel = Sensor *Maximale Leistung*, Ziel→Quelle = Helfer `0`,
    Preis Quelle→Ziel = Sensor *Aufschlag Spätladen*.
-7. In Climate Control als geplante Leistung `sensor.klima_power_source_target` wählen.
+7. Weiter mit Schritt 5 der [Reihenfolge der Einrichtung](#reihenfolge-der-einrichtung).
 
-### Erweiterung: zwei Leistungsstufen (optional)
-
-Statt Schritt 6 und 7:
-
-6. **Verbindung** `Klima Stufe 1`: Quelle = Hausknoten, Ziel = `Klima`.
-   Max. Leistung Quelle→Ziel = Sensor *Leistungsstufe 1*, Ziel→Quelle = Helfer `0`,
-   Preis Quelle→Ziel = Sensor *Aufschlag Spätladen*.
-   **Verbindung** `Klima Stufe 2`: wie Stufe 1, aber Max. Leistung Quelle→Ziel = Sensor *Leistungsstufe 2*,
-   Preis Quelle→Ziel = Sensoren *Aufschlag Stufe 2* und *Aufschlag Spätladen* (HAEO addiert mehrere Sensoren).
-7. In Climate Control (**Anlage neu konfigurieren**) als geplante Leistung beide Sensoren wählen:
-   `sensor.klima_stufe_1_power_source_target` und `sensor.klima_stufe_2_power_source_target`.
-
-Wer von der Grundvariante wechselt, löscht die Verbindung `Klima` und ersetzt in Climate Control den
-Planer-Sensor.
+**Optional, zwei Leistungsstufen:** Soll HAEO den oberen, weniger effizienten Leistungsbereich nur nutzen,
+wenn es sich lohnt, die Verbindung `Klima` durch zwei Verbindungen vom Hausknoten zu `Klima` ersetzen, z. B.
+`Klima Stufe 1` und `Klima Stufe 2`. Deren Grenzen und der Aufschlag der Stufe 2 sind reine HAEO-Einstellungen
+(Zahl-Helfer); Climate Control ist egal, aus welcher Stufe die Leistung kommt. In Climate Control beide
+Verbindungssensoren als geplante Leistung wählen, sie werden addiert.
 
 ### Zuordnung der Sensoren
 
@@ -325,12 +302,8 @@ Sprache der Instanz (unten deutscher Name, in Klammern der englische).
 | Batterie: Max Discharge Power | Entladegrenze (Max discharge power) |
 | Batterie: Max Charge Power | leer lassen (begrenzt durch die Verbindung) |
 | Verbindung Klima: Max Power Source→Target | Maximale Leistung (Max charge power) |
+| Verbindung Klima: Max Power Target→Source | Helfer `0` |
 | Verbindung Klima: Price Source→Target | Aufschlag Spätladen (Charge cost) – fällt über den Horizont, mit Prognose |
-| *Erweiterung* Verbindung Stufe 1: Max Power Source→Target | Leistungsstufe 1 (Stage 1 power) |
-| *Erweiterung* Verbindung Stufe 1: Price Source→Target | Aufschlag Spätladen (Charge cost) |
-| *Erweiterung* Verbindung Stufe 2: Max Power Source→Target | Leistungsstufe 2 (Stage 2 power) |
-| *Erweiterung* Verbindung Stufe 2: Price Source→Target | Aufschlag Stufe 2 (Stage 2 surcharge) + Aufschlag Spätladen (Charge cost) |
-| alle Verbindungen Haus → Klima: Max Power Target→Source | Helfer `0` |
 
 Der Wirkungsgrad aus den Parametern (Standard 92 %) gilt hier als Lade-Wirkungsgrad, der Entlade-Wirkungsgrad
 bleibt bei 100 %, damit der Gesamtwirkungsgrad dem Parameter entspricht.
@@ -347,18 +320,21 @@ dokumentierte eigene Format (das z. B. auch Template-Forecasts verwenden). Hinwe
 - HAEO mittelt zwischen den Prognosepunkten; der Sprung der Nachtabsenkung wird dadurch leicht geglättet.
 - *Current Charge Percentage* verwendet nur den aktuellen Wert (skalares Feld in HAEO).
 
+Die Prognosen gehören zum aktuellen Zustand, den HAEO liest; nur in der Recorder-Datenbank (Verlauf) werden sie
+nicht gespeichert, damit diese klein bleibt.
+
 ### Noch zu prüfen
 
 - Ob die Ausgabesensoren der HAEO-Verbindungen genau dieses Format haben. Climate Control liest auch
   `start_time` und Zeit→Wert-Abbildungen.
 - Ob HAEO die Währungseinheit der Kostensensoren (`<Währung>/kWh`) akzeptiert; die Einheit muss zum Feld passen.
-- Prüfen nach der Einrichtung: Sensor *Geplante Leistung* von Climate Control zeigt den geplanten Fluss
-  Haus → Klima (bei zwei Stufen die Summe) und im Attribut `forecast` die kommenden Stunden; Binärsensor
-  *Rückfall* ist aus.
+- Nach Schritt 5: Sensor *Geplante Leistung* von Climate Control zeigt den geplanten Fluss Haus → Klima und
+  im Attribut `forecast` die kommenden Stunden; Binärsensor *Rückfall* ist aus.
 
 ## Entwicklung
 
 1. Ordner in VS Code öffnen, „Reopen in Container“ wählen (Docker nötig).
 2. `docker compose -f .devcontainer/docker-compose.yml up -d homeassistant` (startet der Devcontainer selbst).
-3. `pytest tests/unit tests/integration`, `pytest tests/e2e`, danach `python scripts/check_traceability.py`.
+3. `pytest tests/unit tests/integration`, `pytest tests/performance -s`, `pytest tests/e2e`,
+   danach `python scripts/check_traceability.py`.
 4. Neu generieren: `docs/REGENERATION.md`.

@@ -32,10 +32,9 @@ def test_static_buffer_values() -> None:
 
 
 @pytest.mark.req("FR-PLNR-01")
-def test_two_power_stages() -> None:
+def test_max_power_for_the_connection() -> None:
     inp = planner_inputs(CFG, NOON)
-    assert inp.stage1_kw == 1.5 and inp.stage2_kw == 1.8 and inp.stage2_surcharge > 0
-    assert inp.max_charge_kw == 3.3  # single connection without stages: Pmax
+    assert inp.max_charge_kw == 3.3  # Pmax
 
 
 @pytest.mark.req("FR-PLNR-01")

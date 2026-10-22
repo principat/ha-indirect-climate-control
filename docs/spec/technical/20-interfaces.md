@@ -4,7 +4,7 @@
 
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
-| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Planer-Sensor, Pmin, Pmax, Stufe 1, Kapazität je K | `entry.data`, Titel |
+| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Planer-Sensor(en) optional | `entry.data`, Titel |
 | Innengerät | Subentry-Typ `room` („Innengerät hinzufügen"), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Leistungsklasse, Nennleistung, Fläche, Fensterkontakt | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow mit allen Feldern aus `Parameters` | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
@@ -13,6 +13,9 @@
   Entitäts-IDs folgen dem Anlagennamen (`sensor.<name>_state_of_charge`).
 - Reihenfolge der Innengeräte = Anlagereihenfolge der Subentries; Reihenfolge der Leistungsklassen = erstes Vorkommen.
 - Ohne Innengerät läuft die Anlage leer, alle Entitäten sind `unavailable`.
+- Ohne Planer-Sensor (Inbetriebnahme): SOC und Planer-Vorgaben werden berechnet und veröffentlicht, es gehen
+  keine Befehle an die Innengeräte, `running` und `fallback` sind aus. Grund: Der Planer braucht zuerst die
+  Sensoren dieser Integration, bevor es seine Ausgabe gibt (Reihenfolge in `README.md`).
 - Neu geladen wird nur bei Änderungen, die die Regelung betreffen (Daten, wirksame Parameter, Innengeräte),
   nicht beim Hilfeschalter.
 
@@ -32,7 +35,7 @@ Texte: `strings.json`, `translations/en.json`, `translations/de.json` (gleiche S
 ### Eingang: Plan (FR-PLAN-01)
 
 Ein oder mehrere Sensoren (konfigurierbar). Referenz: der geplante Fluss der HAEO-Verbindung Haus → Knoten
-Klima (`sensor.klima_power_source_target`), bei zwei Leistungsstufen beide Verbindungen. Nicht die
+Klima (`sensor.klima_power_source_target`), bei zwei HAEO-Verbindungen beide. Nicht die
 Ladeleistung der Batterie: Am Knoten Klima hängt auch die Last Wärmebedarf, die HAEO direkt versorgen kann
 (Topologie in `README.md`). Mehrere Sensoren werden je Zeitpunkt addiert
 (`core.plan.combine`); der Summenplan ist so alt wie sein ältester Teil und endet mit dem kürzesten.
@@ -55,7 +58,7 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 | Sensor (Schlüssel) | Einheit | Bedeutung, Zuordnung HAEO-Batterie |
 | --- | --- | --- |
 | `soc` | % | Current Charge Percentage, Attribut `worst_room` |
-| `capacity` | kWh | Capacity = Kapazität je K × Skalenbreite |
+| `capacity` | kWh | Capacity = Kapazität je K (Startwert 7) × Skalenbreite |
 | `min_charge` | % | Min Charge Percentage (flächengewichteter Sollwert, nachts abgesenkt), mit Prognose |
 | `undercharge` | % | Undercharge Percentage (hartes Minimum, nachts abgesenkt), mit Prognose |
 | `max_charge` | % | Max Charge Percentage (Obergrenze ohne Aufschlag) |
@@ -64,7 +67,6 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 | `efficiency` | % | Charge/Discharge efficiency |
 | `max_discharge_power` | kW | Max Discharge Power |
 | `max_charge_power` | kW | Max Power der einen Verbindung Haus → Klima (Grundvariante, = Pmax) |
-| `stage1_power`, `stage2_power`, `stage2_surcharge` | kW, kW, Währung/kWh | optionale Erweiterung: zwei Verbindungen als Leistungsstufen |
 | `charge_cost` | Währung/kWh | Aufschlag Spätladen, mit fallender Prognose |
 
 ### Status

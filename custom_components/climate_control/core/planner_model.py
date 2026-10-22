@@ -23,9 +23,6 @@ class PlannerInputs:
     efficiency_pct: float
     max_discharge_kw: float
     max_charge_kw: float
-    stage1_kw: float
-    stage2_kw: float
-    stage2_surcharge: float
     charge_cost: float
     min_charge_forecast: Series
     undercharge_forecast: Series
@@ -63,7 +60,6 @@ def planner_inputs(cfg: InstallationConfig, now: datetime) -> PlannerInputs:
     def soc(c: float) -> float:
         return round(temperature_to_soc(c, p), 2)
 
-    stage2_w = cfg.p_max_w - cfg.stage1_w
     return PlannerInputs(
         capacity_kwh=round(cfg.capacity_kwh_per_k * (p.soc_max_c - p.soc_min_c), 3),
         min_charge_pct=soc(lowered(now, lower_c)),
@@ -75,9 +71,6 @@ def planner_inputs(cfg: InstallationConfig, now: datetime) -> PlannerInputs:
         efficiency_pct=p.efficiency_pct,
         max_discharge_kw=p.discharge_limit_w / 1000,
         max_charge_kw=cfg.p_max_w / 1000,
-        stage1_kw=cfg.stage1_w / 1000,
-        stage2_kw=stage2_w / 1000,
-        stage2_surcharge=p.stage2_surcharge,
         charge_cost=surcharge(0),
         min_charge_forecast=tuple((t, soc(lowered(t, lower_c))) for t in hours),
         undercharge_forecast=tuple((t, soc(lowered(t, hard_c))) for t in hours),

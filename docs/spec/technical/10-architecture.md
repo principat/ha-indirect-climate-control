@@ -15,7 +15,7 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 | Modul | Anforderungen | Aufgabe |
 | --- | --- | --- |
 | `model.py` | – | `Mode` (Werte = HVAC-Modi), Klassen Kühl/Neutral, `RoomState`, `Command` |
-| `config.py` | FR-GEN-01 | `RoomConfig`, `Parameters` (Startwerte aus Abschnitt 4), `InstallationConfig` mit Prüfung. Anlagenwerte (Pmin, Pmax, Stufe 1, Kapazität, Räume) ohne Standardwert |
+| `config.py` | FR-GEN-01 | `RoomConfig`, `Parameters` (Startwerte aus Abschnitt 4), `InstallationConfig` mit Prüfung. Anlagenwerte (Pmin, Pmax, Kapazität, Räume) ohne Standardwert; den Startwert der Kapazität (7 kWh/K) setzt der Adapter |
 | `plan.py` | FR-PLAN-01, FR-SAFE-04 | `Plan` aus Prognosepunkten, Leistung zu einem Zeitpunkt, Horizont, Gültigkeit; `plan_from_forecast` liest die Planer-Ausgabe |
 | `threshold.py` | FR-PLAN-02, FR-PLAN-03 | Start-/Abschaltschwelle mit Hysterese, mindestens Pmin |
 | `soc.py` | FR-SOC-01, FR-SOC-02 | Skala, schlechtester Raum, Ausreißerfilter, Median-Glättung |
@@ -54,7 +54,8 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |
 | Nachtabsenkung | senkt Untergrenze und hartes Minimum für den Planer um 1 K; Raumschutz unverändert | `night_setback_k` |
 | Obergrenze ohne Aufschlag | 24 °C | `comfort_max_c` |
-| Aufschläge Überlast / Stufe 2 | 0,003 / 0,001 je kWh | `overcharge_cost`, `stage2_surcharge` |
+| Aufschlag Überlast | 0,003 je kWh | `overcharge_cost` |
+| Pufferkapazität | Startwert 7 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
 | Aufschlag Spätladen „fällt mit der Zeit" | linear vom Startwert auf 0 über den Horizont, damit bei gleichem Preis später geladen wird | `late_charge_surcharge` |
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 

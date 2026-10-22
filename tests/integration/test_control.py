@@ -171,13 +171,10 @@ async def test_planner_model_values_are_published(hass: HomeAssistant, units: Fa
             "efficiency",
             "max_discharge_power",
             "max_charge_power",
-            "stage_1_power",
-            "stage_2_power",
-            "stage_2_surcharge",
             "charge_cost",
         )
     }
-    assert float(values["capacity"].state) == 52.5
+    assert float(values["capacity"].state) == 105.0  # default 7 kWh/K x 15 K
     assert float(values["efficiency"].state) == 92.0
     assert float(values["max_discharge_power"].state) == 3.5
     assert float(values["min_charge"].state) <= 40.0
@@ -188,7 +185,7 @@ async def test_planner_model_values_are_published(hass: HomeAssistant, units: Fa
 
 
 @pytest.mark.req("FR-PLAN-01")
-async def test_two_power_stages_are_summed(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
+async def test_several_planner_outputs_are_summed(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
     set_plan(hass, 1.5)
     hass.states.async_set("sensor.stage2", "0.3", {"unit_of_measurement": "kW"})
     entry = await setup_entry()

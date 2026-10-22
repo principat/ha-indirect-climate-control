@@ -92,7 +92,7 @@ def plan_from_forecast(state: object, unit: str | None, forecast: object, receiv
 
 
 def combine(plans: Sequence[Plan | None]) -> Plan | None:
-    """Sum of several planner outputs, e.g. the flows of two power stages.
+    """Sum of several planner outputs, e.g. the flows of two connections.
 
     Missing output (None) makes the whole plan missing (planner failure). The combined plan
     is as old as its oldest part and ends with the shortest part.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 
 from homeassistant.components.climate.const import (
@@ -60,7 +60,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             update_interval=timedelta(seconds=params.cycle_s),
         )
         self.controller = Controller(self.cfg) if self.cfg else None
-        plan_entities = entry.data[CONF_PLAN_ENTITY]
+        plan_entities = entry.data.get(CONF_PLAN_ENTITY) or []
         self._plan_entities: list[str] = (
             [plan_entities] if isinstance(plan_entities, str) else list(plan_entities)
         )
@@ -68,6 +68,11 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._setpoint_entities: dict[str, str] = {
             r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY] for r in room_data(entry) if r.get(ROOM_SETPOINT_ENTITY)
         }
+
+    @property
+    def commissioning(self) -> bool:
+        """True until a planner output is configured (setup order: integration first, then planner)."""
+        return not self._plan_entities
 
     async def _async_update_data(self) -> CycleData | None:
         if self.cfg is None or self.controller is None:
@@ -77,6 +82,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         rooms = {r.id: self._room_state(r.id) for r in self.cfg.rooms}
         setpoints = self._read_setpoints()
         result = self.controller.step(now, plan, rooms, setpoints)
+        if self.commissioning:
+            # No planner output configured yet: publish SOC and planner values, never touch the units.
+            result = replace(result, commands={}, running=False, fallback=False, requested_w=0.0, served=())
         for entity_id, command in result.commands.items():
             await self._apply(entity_id, command)
         planner = planner_inputs(self.cfg.with_setpoints(setpoints), dt_util.as_local(now))
