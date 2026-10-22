@@ -6,7 +6,6 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | --- | --- | --- |
 | Pmin | 1,3 kW | Mindestleistung im Dauerbetrieb |
 | Pmax | 3,3 kW | Höchstleistung |
-| Stufe 1 | 1,5 kW | erste Leistungsstufe, Stufe 2 = Pmax minus Stufe 1 mit Aufschlag |
 | Startschwelle | 80 % von Pmin | Plan darunter wird ignoriert |
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (Auflösung der Geräte) |
