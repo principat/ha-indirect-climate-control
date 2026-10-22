@@ -11,3 +11,4 @@ node_modules/
 
 # Rahmenbedingungen der Instanz des Nutzers (nur lokal)
 docs/environment/
+*.egg-info/
