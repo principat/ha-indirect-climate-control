@@ -1,0 +1,81 @@
+# 20 Schnittstellen
+
+## Konfiguration (FR-GEN-01, FR-CFG-01..03)
+
+| Ebene | Ablauf | Gespeichert in |
+| --- | --- | --- |
+| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Planer-Sensor, Pmin, Pmax, Stufe 1, Kapazität je K | `entry.data`, Titel |
+| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen"), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Leistungsklasse, Nennleistung, Fläche, Fensterkontakt | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
+| Parameter | Options Flow mit allen Feldern aus `Parameters` | `entry.options` |
+| Hilfeschalter | `help_expanded` | `entry.options` |
+
+- Mehrere Anlagen: beliebig viele Config Entries, keine Einschränkung auf eine Instanz (FR-CFG-02).
+  Entitäts-IDs folgen dem Anlagennamen (`sensor.<name>_state_of_charge`).
+- Reihenfolge der Innengeräte = Anlagereihenfolge der Subentries; Reihenfolge der Leistungsklassen = erstes Vorkommen.
+- Ohne Innengerät läuft die Anlage leer, alle Entitäten sind `unavailable`.
+- Neu geladen wird nur bei Änderungen, die die Regelung betreffen (Daten, wirksame Parameter, Innengeräte),
+  nicht beim Hilfeschalter.
+
+### Erklärtexte (FR-CFG-03)
+
+Über jedem nicht trivialen Feld (alle außer Namen) steht ein einklappbarer Abschnitt `help_<feld>`.
+Titel „Hilfe: <Feld>", Beschreibung = Erklärtext aus den Übersetzungen (`sections.help_<feld>.description`),
+Inhalt = Hilfsschalter `help_expanded` („Hilfetexte beim Öffnen aufgeklappt"). Der Abschnitt ist eingeklappt,
+wenn der gespeicherte Schalter aus ist. Weicht ein Schalter im abgeschickten Formular vom gespeicherten Wert ab,
+wird der neue Wert gespeichert und gilt für alle Formulare der Anlage. Grund für diese Form: Home-Assistant-Formulare
+kennen keinen einklappbaren Text ohne Feld, ein Abschnitt braucht mindestens ein Feld.
+
+Texte: `strings.json`, `translations/en.json`, `translations/de.json` (gleiche Struktur, Test `test_help.py`).
+
+## Schnittstelle zum Planer
+
+### Eingang: Plan (FR-PLAN-01)
+
+Ein oder mehrere Sensoren (konfigurierbar). Referenz: der geplante Fluss der HAEO-Verbindung Haus → Knoten
+Klima (`sensor.klima_power_source_target`), bei zwei Leistungsstufen beide Verbindungen. Nicht die
+Ladeleistung der Batterie: Am Knoten Klima hängt auch die Last Wärmebedarf, die HAEO direkt versorgen kann
+(Topologie in `README.md`). Mehrere Sensoren werden je Zeitpunkt addiert
+(`core.plan.combine`); der Summenplan ist so alt wie sein ältester Teil und endet mit dem kürzesten.
+Fällt ein Sensor aus, gilt der Plan als fehlend. Zielbild der HAEO-Topologie: `README.md`.
+
+- Zustand: Leistung jetzt, Einheit aus `unit_of_measurement` (`kW` → ×1000, sonst W).
+- Attribut `forecast`: Liste von `{time|start_time, value}` oder Abbildung Zeit → Wert. Zeiten ISO 8601,
+  ohne Zeitzone = Zeitzone des Empfangs.
+- Ohne `forecast` gilt der Zustand allein als Plan ab Empfang.
+- Empfangszeit = max(`last_updated`, `last_reported`).
+- `unavailable`/`unknown` = Planer ausgefallen → Rückfall.
+
+Ungeprüfte Annahme: Das Ausgabeformat von HAEO-Sensoren entspricht dieser Form. Belegt ist nur, dass HAEO
+Eingänge mit `forecast: [{time, value}]` liest (haeo.io, Stand 21.10.2026).
+
+### Ausgang: Vorgaben für den Planer (FR-PLNR-01)
+
+Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlich, `planner_horizon_h`).
+
+| Sensor (Schlüssel) | Einheit | Bedeutung, Zuordnung HAEO-Batterie |
+| --- | --- | --- |
+| `soc` | % | Current Charge Percentage, Attribut `worst_room` |
+| `capacity` | kWh | Capacity = Kapazität je K × Skalenbreite |
+| `min_charge` | % | Min Charge Percentage (flächengewichteter Sollwert, nachts abgesenkt), mit Prognose |
+| `undercharge` | % | Undercharge Percentage (hartes Minimum, nachts abgesenkt), mit Prognose |
+| `max_charge` | % | Max Charge Percentage (Obergrenze ohne Aufschlag) |
+| `overcharge` | % | Overcharge Percentage (Überlastgrenze) |
+| `undercharge_cost` / `overcharge_cost` | Währung/kWh | Undercharge/Overcharge Cost |
+| `efficiency` | % | Charge/Discharge efficiency |
+| `max_discharge_power` | kW | Max Discharge Power |
+| `max_charge_power` | kW | Max Power der einen Verbindung Haus → Klima (Grundvariante, = Pmax) |
+| `stage1_power`, `stage2_power`, `stage2_surcharge` | kW, kW, Währung/kWh | optionale Erweiterung: zwei Verbindungen als Leistungsstufen |
+| `charge_cost` | Währung/kWh | Aufschlag Spätladen, mit fallender Prognose |
+
+### Status
+
+`planned_power` (W, Prognose), `requested_power` (W, Attribut `served_rooms`), `binary_sensor` `running`, `fallback`.
+
+## Dienst
+
+`climate_control.run_cycle` – führt sofort einen Zyklus aus; optional `config_entry_id` für eine Anlage.
+
+## Geräte
+
+Aufrufe `climate.set_hvac_mode` und `climate.set_temperature` (blocking). Gelesen werden Zustand (Modus),
+`current_temperature` und `temperature`.
