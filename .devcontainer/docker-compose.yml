@@ -1,0 +1,30 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/python:1-3.14-bookworm   # match the Python of the pinned HA version
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/climate-control:cached
+      - ${USERPROFILE:-${HOME}}/.claude:/home/vscode/.claude-host:ro   # personal Claude Code settings
+      - claude-config:/home/vscode/.claude                              # container login/history
+    environment:
+      HA_URL: http://homeassistant:8123
+      CLAUDE_CONFIG_DIR: /home/vscode/.claude
+    depends_on:
+      - homeassistant
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:${HA_IMAGE_TAG:-stable}   # pin in .devcontainer/.env
+    volumes:
+      - ../tests/e2e/ha_config:/config
+      - ../custom_components/climate_control:/config/custom_components/climate_control:ro
+      - ../tests/e2e/simulator/custom_components/climate_control_sim:/config/custom_components/climate_control_sim:ro
+    ports:
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8123/api/onboarding"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+volumes:
+  claude-config:

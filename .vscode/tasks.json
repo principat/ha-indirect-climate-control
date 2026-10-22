@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "test: unit", "type": "shell", "command": "pytest tests/unit --cov", "group": "test" },
+    { "label": "test: integration", "type": "shell", "command": "pytest tests/integration", "group": "test" },
+    { "label": "test: e2e (real HA)", "type": "shell", "command": "pytest tests/e2e", "group": "test" },
+    { "label": "check: spec separation", "type": "shell", "command": "python scripts/check_spec_separation.py" },
+    { "label": "check: traceability", "type": "shell", "command": "python scripts/check_traceability.py" }
+  ]
+}

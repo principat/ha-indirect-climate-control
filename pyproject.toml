@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "climate-control"
+version = "0.0.0"  # wird von semantic-release gesetzt (scripts/set_version.py)
+description = "Home Assistant integration: plan-following control of a multi-split air conditioner"
+requires-python = ">=3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "pytest-homeassistant-custom-component==0.13.373",  # pins homeassistant 2026.10.2 (= HA_IMAGE_TAG)
+  "ruff",
+  "mypy",
+  "pyyaml",
+  "types-PyYAML",
+  "requests",
+  "types-requests",
+  "pre-commit",
+]
+
+[tool.setuptools]
+# Development environment only; the integration ships via HACS from custom_components/.
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers"
+markers = ["req(id): fachliche Anforderung, die der Test abdeckt (z. B. FR-PLAN-02)"]
+
+[tool.coverage.run]
+source = ["custom_components/climate_control/core"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true

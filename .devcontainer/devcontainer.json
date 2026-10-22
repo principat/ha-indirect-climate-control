@@ -1,0 +1,29 @@
+{
+  "name": "climate-control",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/climate-control",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+  "forwardPorts": [8123],
+  "postCreateCommand": "bash .devcontainer/link-claude-config.sh && pip install -e '.[dev]' && npm install && pre-commit install --install-hooks -t pre-commit -t commit-msg",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "EditorConfig.EditorConfig",
+        "Anthropic.claude-code"
+      ],
+      "settings": {
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests/unit", "tests/integration"]
+      }
+    }
+  }
+}

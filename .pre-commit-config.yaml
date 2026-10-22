@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0   # pin to current on first install: pre-commit autoupdate
+    hooks:
+      - id: ruff
+      - id: ruff-format
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0   # pin to current on first install: pre-commit autoupdate
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  - repo: local
+    hooks:
+      - id: spec-separation
+        name: functional spec is technology-free
+        entry: python scripts/check_spec_separation.py
+        language: system
+        pass_filenames: false
+        files: ^docs/spec/functional/

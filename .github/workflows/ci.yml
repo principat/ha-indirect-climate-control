@@ -1,0 +1,78 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14" }
+      - run: pip install -e ".[dev]"
+      - run: ruff check . && ruff format --check .
+      - run: mypy custom_components
+      - run: python scripts/check_spec_separation.py
+      - run: pytest tests/unit tests/integration --cov
+      - run: python scripts/check_traceability.py
+
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: lts/* }
+      - run: npm install
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+      - uses: hacs/action@main
+        with: { category: integration, ignore: brands }
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14" }
+      - run: pip install -e ".[dev]"
+      - name: Start real Home Assistant
+        run: |
+          cp .devcontainer/.env.example .devcontainer/.env
+          docker compose --env-file .devcontainer/.env -f .devcontainer/docker-compose.yml up -d homeassistant
+      - name: Run e2e tests against it
+        env:
+          HA_URL: http://localhost:8123
+        run: pytest tests/e2e
+      - if: always()
+        run: docker compose -f .devcontainer/docker-compose.yml logs homeassistant | tail -200
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, validate, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: lts/* }
+      - run: npm install
+      - name: semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

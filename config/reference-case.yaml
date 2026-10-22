@@ -1,0 +1,15 @@
+# Instanzdaten des Referenzfalls. Eingabe für Entwicklung und Tests, keine Spezifikation.
+# Namen aus der Instanz des Nutzers; Werte mit TODO sind noch festzulegen.
+installation:
+  pmin_w: 1300
+  pmax_w: 3300
+  stage1_w: 1500
+  outdoor_power_sensor: sensor.klima_aussen_leistung_w
+rooms:
+  - {id: wohnen,   area_m2: 30, indoor_unit: climate.klima_wohnen,   power_class: null, window_sensor: null}  # TODO power_class, window_sensor
+  - {id: keller,   area_m2: 30, indoor_unit: climate.klima_keller,   power_class: null, window_sensor: null}
+  - {id: schlafen, area_m2: 6,  indoor_unit: climate.klima_schlafen, power_class: null, window_sensor: null}
+  - {id: isa,      area_m2: 12, indoor_unit: climate.klima_isi,      power_class: null, window_sensor: null}
+  - {id: celle,    area_m2: 12, indoor_unit: climate.klima_celle,    power_class: null, window_sensor: null}
+  - {id: jelle,    area_m2: 12, indoor_unit: climate.klima_jelle,    power_class: null, window_sensor: null}
+  - {id: bad,      area_m2: 12, indoor_unit: climate.klima_bad,      power_class: null, window_sensor: null}
