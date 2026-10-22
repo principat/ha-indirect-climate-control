@@ -129,6 +129,9 @@ async def async_setup_entry(
 
 
 class CCSensor(ClimateControlEntity, SensorEntity):
+    # Forecast lists are large and change at least hourly; planners read the current state only.
+    _unrecorded_attributes = frozenset({"forecast"})
+
     def __init__(
         self, coordinator: ClimateControlCoordinator, desc: CCSensorDescription, currency: str
     ) -> None:
