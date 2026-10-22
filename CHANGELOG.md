@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/principat/ha-indirect-climate-control/compare/v0.1.0...v0.1.1) (2026-10-22)
+
+### Bug Fixes
+
+* keep forecast attributes out of the recorder database ([eadfba0](https://github.com/principat/ha-indirect-climate-control/commit/eadfba050bb0d0ef11e484431f0d83fc21565a4b))
+
 ## [0.1.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.0.0...v0.1.0) (2026-10-22)
 
 ### Features
