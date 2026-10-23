@@ -1,3 +1,13 @@
+## [0.5.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.4.0...v0.5.0) (2026-10-23)
+
+### Features
+
+* wait before the fallback and switch units on step by step ([11a8c38](https://github.com/principat/ha-indirect-climate-control/commit/11a8c388e46606008821665ddab4e986a9a17938))
+
+### Bug Fixes
+
+* window contacts of an indoor unit can be edited again ([ef1dc12](https://github.com/principat/ha-indirect-climate-control/commit/ef1dc125cdf65804ada0a8497a59b317b2873a2a))
+
 ## [0.4.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.3.0...v0.4.0) (2026-10-23)
 
 ### Features
