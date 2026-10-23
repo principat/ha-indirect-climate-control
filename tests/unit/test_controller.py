@@ -80,7 +80,7 @@ def test_open_window_takes_room_out_of_control() -> None:
 
 @pytest.mark.req("FR-SAFE-01")
 def test_open_window_also_overrides_fallback() -> None:
-    ctrl = Controller(installation())
+    ctrl = Controller(installation(fallback_delay_s=0))
     result = ctrl.step(T0, None, states({"a": 20.0, "b": 20.0, "c": 20.0}, b=True))
     assert result.commands["b"].mode == Mode.FAN and result.commands["a"].mode == Mode.HEAT
 
@@ -176,7 +176,9 @@ def test_variable_setpoint_is_used_by_safety_and_fallback() -> None:
     # Hard minimum relative to the current setpoint 23 degC: 19 < 21 -> heat a to 23.
     result = ctrl.step(T0, plan(0), states(temps), {"a": 23.0})
     assert result.commands["a"] == result.commands["a"].__class__(Mode.HEAT, 23.0)
-    result = ctrl.step(T0, None, states(temps), {"b": 19.5})
+    ctrl = Controller(installation(fallback_delay_s=0))  # fallback without waiting
+    ctrl.step(T0, None, states(temps), {"b": 19.5})
+    result = ctrl.step(T0 + 4 * MIN, None, states(temps), {"b": 19.5})  # third step: all groups are on
     assert result.commands["b"].target_c == 19.5 and result.commands["c"].target_c == 21.0
 
 

@@ -38,3 +38,9 @@ class FallbackSensor(ClimateControlEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return bool(self.coordinator.data and self.coordinator.data.result.fallback)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, float] | None:
+        """Seconds the plan has been missing (> 0 while waiting for the planner)."""
+        data = self.coordinator.data
+        return {"plan_missing_s": round(data.result.plan_missing_s)} if data else None

@@ -184,6 +184,7 @@ async def test_several_installations_run_independently(
         domain=DOMAIN,
         title="Werkstatt",
         data={**INSTALLATION, "plan_entity": ["sensor.other_plan"]},
+        options={"fallback_delay_s": 0},
         subentries_data=[
             {"data": room_data("climate.d"), "subentry_type": "room", "title": "D", "unique_id": "climate.d"}
         ],

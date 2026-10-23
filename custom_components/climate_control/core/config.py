@@ -68,6 +68,8 @@ class Parameters:
     plan_max_age_s: float = 1800.0
     neutral_mode: Mode = Mode.FAN
     cycle_s: float = 60.0
+    fallback_delay_s: float = 600.0
+    fallback_step_s: float = 120.0
 
     @classmethod
     def from_mapping(cls, values: dict[str, object]) -> Parameters:
@@ -90,6 +92,8 @@ class Parameters:
             raise ConfigError("SOC scale min < SOC scale max required")
         if self.neutral_mode not in NEUTRAL:
             raise ConfigError("neutral mode must be fan or off")
+        if self.fallback_delay_s < 0 or self.fallback_step_s <= 0:
+            raise ConfigError("fallback delay >= 0 and fallback step > 0 required")
 
 
 @dataclass(frozen=True)

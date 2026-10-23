@@ -355,7 +355,9 @@
           "hard_min_below_k": "Hard minimum below setpoint → Undercharge percentage (K)",
           "overheat_k": "Overheating above setpoint (K)",
           "overheat_s": "Overheating duration (s)",
-          "plan_max_age_s": "Maximum plan age (s)"
+          "plan_max_age_s": "Maximum plan age (s)",
+          "fallback_delay_s": "Wait before fallback (s)",
+          "fallback_step_s": "Fallback step interval (s)"
         },
         "sections": {
           "help_hard_min_below_k": {
@@ -382,6 +384,20 @@
           "help_plan_max_age_s": {
             "name": "Help: Maximum plan age (s)",
             "description": "If the plan has not been updated for longer than this, it counts as outdated and the fallback applies (all units heat to their standard setpoint). Default 1800 s.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_fallback_delay_s": {
+            "name": "Help: Wait before fallback (s)",
+            "description": "If the plan is missing or outdated (planner failed, Home Assistant just restarted), the units stay as they are for this long; the protection rules (hard minimum, window contacts, overheating) still apply. If the plan returns in time, nothing changes. The building is slow, so waiting is harmless. Default 600 s (10 min).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_fallback_step_s": {
+            "name": "Help: Fallback step interval (s)",
+            "description": "After the wait, the fallback switches the units to heating with their standard setpoints step by step: one group of equal nominal power per step, largest deviation first. Units that already run stay on. Default 120 s.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

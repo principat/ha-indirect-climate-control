@@ -17,7 +17,8 @@ energy planner (reference: HAEO). The integration does not plan anything itself:
 - The planner decides when and with how much power to heat, e.g. directly with PV surplus during the day or
   at low prices at night instead of taking the detour via a battery.
 - The integration executes this plan on the installation: it selects indoor units, modes and setpoints,
-  protects the rooms (frost protection, overheating, open window) and falls back to normal heating without a plan.
+  protects the rooms (frost protection, overheating, open window). Without a plan it waits 10 minutes, then falls back
+  to normal heating, switching the units on step by step.
 
 Status: all decided requirements implemented and tested (unit, integration, e2e against Home Assistant
 2026.10.2). Functional specification: `docs/spec/functional/`, technical: `docs/spec/technical/`.
@@ -208,7 +209,8 @@ Home-Assistant-Integration (HACS), die eine Klimaanlage mit mehreren Innengerät
 - Der Planer entscheidet, wann und mit welcher Leistung geheizt wird, z. B. direkt mit PV-Überschuss am Tag
   oder bei günstigen Preisen nachts statt über den Umweg Batteriespeicher.
 - Die Integration setzt diesen Plan an der Anlage um: Sie wählt Innengeräte, Betriebsmodi und Sollwerte,
-  schützt die Räume (Frostschutz, Überhitzung, offenes Fenster) und fällt ohne Plan auf normales Heizen zurück.
+  schützt die Räume (Frostschutz, Überhitzung, offenes Fenster). Ohne Plan wartet sie 10 Minuten und fällt dann auf
+  normales Heizen zurück, wobei die Geräte schrittweise eingeschaltet werden.
 
 Status: alle beschlossenen Anforderungen umgesetzt und getestet (unit, integration, e2e gegen Home Assistant
 2026.10.2). Fachliche Spezifikation: `docs/spec/functional/`, technische: `docs/spec/technical/`.

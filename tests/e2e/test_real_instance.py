@@ -162,22 +162,44 @@ def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> No
         assert _state(sim, unit)["attributes"]["temperature"] == 21.0
 
 
+def _set_option(ha: requests.Session, entry_id: str, group: str, name: str, value: float) -> None:
+    """Change one parameter through the real options dialog (menu -> group form)."""
+    flow = _post(ha, "/api/config/config_entries/options/flow", {"handler": entry_id})
+    assert flow["type"] == "menu", flow
+    flow = _post(ha, f"/api/config/config_entries/options/flow/{flow['flow_id']}", {"next_step_id": group})
+    assert flow["type"] == "form", flow
+    flow = _post(ha, f"/api/config/config_entries/options/flow/{flow['flow_id']}", {name: value})
+    assert flow["type"] == "create_entry", flow
+
+
+def _wait_then_fall_back(sim: requests.Session, entry: dict[str, Any]) -> None:
+    _cycle(sim)
+    fallback = _state(sim, "binary_sensor.climate_control_fallback")
+    assert fallback["state"] == "off"  # waiting: the units stay as they are
+    assert "plan_missing_s" in fallback["attributes"]
+    assert {_state(sim, u)["state"] for u in UNITS} == {"fan_only"}
+    # The wait cannot be fast-forwarded on a real instance: set it to 0, then back to the default.
+    _set_option(sim, entry["entry_id"], "safety", "fallback_delay_s", 0)
+    try:
+        _cycle(sim)
+        assert _state(sim, "binary_sensor.climate_control_fallback")["state"] == "on"
+        for unit in UNITS:  # all simulated units have the same nominal power: one group
+            state = _state(sim, unit)
+            assert state["state"] == "heat" and state["attributes"]["temperature"] == SETPOINT
+    finally:
+        _set_option(sim, entry["entry_id"], "safety", "fallback_delay_s", 600)
+
+
 @pytest.mark.req("FR-SAFE-04")
-def test_planner_failure_falls_back_to_heating(sim: requests.Session) -> None:
+def test_planner_failure_waits_then_falls_back(sim: requests.Session, entry: dict[str, Any]) -> None:
     _service(sim, SIM, "set_plan", power_kw=0, available=False)
-    _cycle(sim)
-    assert _state(sim, "binary_sensor.climate_control_fallback")["state"] == "on"
-    for unit in UNITS:
-        state = _state(sim, unit)
-        assert state["state"] == "heat" and state["attributes"]["temperature"] == SETPOINT
+    _wait_then_fall_back(sim, entry)
 
 
 @pytest.mark.req("FR-SAFE-04")
-def test_expired_plan_falls_back_to_heating(sim: requests.Session) -> None:
+def test_expired_plan_waits_then_falls_back(sim: requests.Session, entry: dict[str, Any]) -> None:
     _service(sim, SIM, "set_plan", power_kw=2.0, hours=2, offset_h=-5)
-    _cycle(sim)
-    assert _state(sim, "binary_sensor.climate_control_fallback")["state"] == "on"
-    assert {_state(sim, u)["state"] for u in UNITS} == {"heat"}
+    _wait_then_fall_back(sim, entry)
 
 
 @pytest.mark.req("FR-CFG-01")

@@ -130,28 +130,67 @@ async def test_no_cooling_while_heating(
 
 
 @pytest.mark.req("FR-SAFE-04")
-async def test_planner_unavailable_falls_back(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
+async def test_planner_unavailable_waits_then_falls_back_step_by_step(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry,  # noqa: ANN001
+    freezer: FrozenDateTimeFactory,
+) -> None:
     set_plan(hass, None)
-    await setup_entry()
-    assert _state(hass, "binary_sensor.climate_control_fallback").state == "on"
-    for entity_id in ROOMS:
-        assert units.mode(entity_id) == "heat" and units.target(entity_id) == 21.0
+    await setup_entry(a={"nominal_power_w": 500}, b={"nominal_power_w": 700}, c={"nominal_power_w": 900})
+    fallback = "binary_sensor.climate_control_fallback"
+    assert _state(hass, fallback).state == "off"  # waiting: nothing is switched
+    assert {units.mode(e) for e in ROOMS} == {"fan_only"} and units.calls == []
+    freezer.tick(timedelta(minutes=9))
+    await run_cycle(hass)
+    assert _state(hass, fallback).state == "off" and units.calls == []
+    assert _state(hass, fallback).attributes["plan_missing_s"] == 540
+
+    freezer.tick(timedelta(minutes=1))
+    await run_cycle(hass)  # the wait is over: first group
+    assert _state(hass, fallback).state == "on"
+    assert [units.mode(e) for e in ROOMS] == ["heat", "fan_only", "fan_only"]
+    assert units.target(A) == 21.0
+    for expected in (["heat", "heat", "fan_only"], ["heat", "heat", "heat"]):
+        freezer.tick(timedelta(minutes=2))
+        await run_cycle(hass)
+        assert [units.mode(e) for e in ROOMS] == expected
 
 
 @pytest.mark.req("FR-SAFE-04")
-async def test_stale_plan_falls_back(
+async def test_stale_plan_waits_then_falls_back(
     hass: HomeAssistant,
     units: FakeUnits,
-    setup_entry,
-    freezer: FrozenDateTimeFactory,  # noqa: ANN001
+    setup_entry,  # noqa: ANN001
+    freezer: FrozenDateTimeFactory,
 ) -> None:
     set_plan(hass, 0)
     await setup_entry()
     assert _state(hass, "binary_sensor.climate_control_fallback").state == "off"
     freezer.tick(timedelta(minutes=31))
+    await run_cycle(hass)  # plan is stale now: the wait starts
+    assert _state(hass, "binary_sensor.climate_control_fallback").state == "off"
+    assert {units.mode(e) for e in ROOMS} == {"fan_only"}
+    freezer.tick(timedelta(minutes=10))
     await run_cycle(hass)
     assert _state(hass, "binary_sensor.climate_control_fallback").state == "on"
-    assert {units.mode(e) for e in ROOMS} == {"heat"}
+    assert {units.mode(e) for e in ROOMS} == {"heat"}  # equal nominal power: one group
+
+
+@pytest.mark.req("FR-SAFE-04")
+async def test_plan_returning_during_the_wait_changes_nothing(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry,  # noqa: ANN001
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    set_plan(hass, None)  # as right after a restart: the planner is not ready yet
+    await setup_entry()
+    freezer.tick(timedelta(minutes=4))
+    set_plan(hass, 0)
+    await run_cycle(hass)
+    assert _state(hass, "binary_sensor.climate_control_fallback").state == "off"
+    assert units.calls == []
 
 
 @pytest.mark.req("FR-PLNR-01")
@@ -185,14 +224,22 @@ async def test_planner_model_values_are_published(hass: HomeAssistant, units: Fa
 
 
 @pytest.mark.req("FR-PLAN-01")
-async def test_several_planner_outputs_are_summed(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
+async def test_several_planner_outputs_are_summed(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry,  # noqa: ANN001
+    freezer: FrozenDateTimeFactory,
+) -> None:
     set_plan(hass, 1.5)
     hass.states.async_set("sensor.stage2", "0.3", {"unit_of_measurement": "kW"})
     entry = await setup_entry()
     hass.config_entries.async_update_entry(entry, data={**entry.data, "plan_entity": [PLAN, "sensor.stage2"]})
     await hass.async_block_till_done()
     assert float(_state(hass, "sensor.climate_control_planned_power").state) == 1800
-    hass.states.async_set("sensor.stage2", "unavailable")
+    hass.states.async_set("sensor.stage2", "unavailable")  # one output fails: the plan is missing as a whole
+    await run_cycle(hass)
+    assert _state(hass, "binary_sensor.climate_control_fallback").state == "off"  # waiting first
+    freezer.tick(timedelta(minutes=10))
     await run_cycle(hass)
     assert _state(hass, "binary_sensor.climate_control_fallback").state == "on"
 
@@ -200,9 +247,9 @@ async def test_several_planner_outputs_are_summed(hass: HomeAssistant, units: Fa
 @pytest.mark.req("FR-GEN-01")
 async def test_setpoint_can_come_from_an_entity(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
     hass.states.async_set("input_number.setpoint_a", "23.5")
-    set_plan(hass, None)  # fallback: every unit heats to its current setpoint
-    await setup_entry(a={"setpoint_entity": "input_number.setpoint_a"})
-    assert units.target(A) == 23.5 and units.target(B) == 21.0
+    set_plan(hass, None)  # fallback without waiting: every unit heats to its current setpoint
+    await setup_entry({"fallback_delay_s": 0}, a={"setpoint_entity": "input_number.setpoint_a"})
+    assert units.target(A) == 23.5  # largest deviation: first step of the fallback
     hass.states.async_set("input_number.setpoint_a", "22")
     await run_cycle(hass)
     assert units.target(A) == 22.0

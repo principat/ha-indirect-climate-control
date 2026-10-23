@@ -31,7 +31,10 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
 3. SOC = Skala(Temperatur des Raums mit kleinster Differenz Temperatur − eigener Sollwert), Median über 15 min.
 4. Überhitzungs-Zeitgeber je Raum führen.
-5. Plan fehlt oder veraltet → Rückfall: alle aktiven Räume Heizen auf Sollwert.
+5. Plan fehlt oder veraltet → zuerst Warten (`fallback_delay_s`, 600 s): Geräte unverändert, Schutz gilt. Danach Rückfall:
+   schrittweise (`fallback_step_s`, 120 s) je eine Gruppe gleicher Nennleistung auf Heizen mit Standard-Sollwert,
+   größte Abweichung zuerst; laufende Geräte bleiben an. Kommt der Plan zurück, beginnt beim nächsten Ausfall
+   die Wartezeit von vorn. Hartes Minimum und Überhitzung gelten in jedem Zweig, Fenster überschreiben alles.
    Sonst: Schwellenentscheidung, bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
    höchstens Überlastgrenze), übrige neutral; hartes Minimum → Heizen; Überhitzung ≥ Dauer und kein Heizziel → Kühlen.
 6. Offenes Fenster → neutral (überschreibt alles, auch den Rückfall).

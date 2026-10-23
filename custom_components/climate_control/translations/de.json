@@ -355,7 +355,9 @@
           "hard_min_below_k": "Hartes Minimum unter Sollwert → Undercharge percentage (K)",
           "overheat_k": "Überhitzung über Sollwert (K)",
           "overheat_s": "Überhitzungsdauer (s)",
-          "plan_max_age_s": "Maximales Planalter (s)"
+          "plan_max_age_s": "Maximales Planalter (s)",
+          "fallback_delay_s": "Wartezeit vor dem Rückfall (s)",
+          "fallback_step_s": "Schrittabstand im Rückfall (s)"
         },
         "sections": {
           "help_hard_min_below_k": {
@@ -382,6 +384,20 @@
           "help_plan_max_age_s": {
             "name": "Hilfe: Maximales Planalter (s)",
             "description": "Wurde der Plan länger als diese Zeit nicht aktualisiert, gilt er als veraltet und der Rückfall greift (alle Geräte heizen auf ihren Standard-Sollwert). Standard 1800 s.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_fallback_delay_s": {
+            "name": "Hilfe: Wartezeit vor dem Rückfall (s)",
+            "description": "Fehlt der Plan oder ist er veraltet (Planer ausgefallen, Home Assistant gerade neu gestartet), bleiben die Geräte so lange unverändert; der Schutz (hartes Minimum, Fensterkontakte, Überhitzung) gilt weiter. Kommt der Plan rechtzeitig zurück, ändert sich nichts. Das Gebäude ist träge, Warten schadet also nicht. Standard 600 s (10 min).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_fallback_step_s": {
+            "name": "Hilfe: Schrittabstand im Rückfall (s)",
+            "description": "Nach der Wartezeit stellt der Rückfall die Geräte schrittweise auf Heizen mit ihren Standard-Sollwerten: je Schritt eine Gruppe gleicher Nennleistung, größte Abweichung zuerst. Bereits laufende Geräte bleiben an. Standard 120 s.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

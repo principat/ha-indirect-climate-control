@@ -25,6 +25,7 @@ class CycleResult:
     running: bool
     fallback: bool
     served: tuple[str, ...]
+    plan_missing_s: float = 0.0  # how long the plan has been missing or stale (0 = plan valid)
     temperatures: dict[str, float] = field(default_factory=dict)  # filtered device temperatures used
 
 
@@ -38,6 +39,7 @@ class Controller:
         self._filter = OutlierFilter(p.outlier_k)
         self._smoother = SocSmoother(p.soc_smoothing_s)
         self._overheat_since: dict[str, datetime] = {}
+        self._plan_missing_since: datetime | None = None
         self.running = False
 
     def step(
@@ -76,13 +78,33 @@ class Controller:
 
         targets: dict[str, Command] = {}
         planned_w = plan.power_at(now) if plan is not None else None
-        fallback = plan is None or plan.is_stale(now, p.plan_max_age_s)
+        plan_missing = plan is None or plan.is_stale(now, p.plan_max_age_s)
+        if plan_missing:
+            if self._plan_missing_since is None:
+                self._plan_missing_since = now
+            missing_s = (now - self._plan_missing_since).total_seconds()
+        else:
+            self._plan_missing_since = None
+            missing_s = 0.0
+        # FR-SAFE-04: the building is slow, so a missing plan is waited out before the fallback starts.
+        fallback = plan_missing and missing_s >= p.fallback_delay_s
         requested_w = 0.0
         served: tuple[RoomConfig, ...] = ()
-        if fallback:
-            # FR-SAFE-04: all units heat with their standard setpoints.
+        if plan_missing and not fallback:
+            # Waiting: units stay as they are (the protection rules below still apply).
+            targets = {r.id: Command(rooms[r.id].mode) for r in active}  # type: ignore[arg-type]
+        elif fallback:
+            # Fallback: units are switched to heating with their standard setpoints step by step,
+            # largest deviation first, one power class group per step. Running units stay on.
             self.running = False
-            targets = {r.id: Command(Mode.HEAT, r.setpoint_c) for r in active}
+            tiers = rank([(r, r.setpoint_c - temps[r.id]) for r in active], p.tie_band_k, cfg.class_order)
+            groups = [group for tier in tiers for group in tier]
+            steps = 1 + int((missing_s - p.fallback_delay_s) // p.fallback_step_s)
+            activated = {r.id for group in groups[:steps] for r in group}
+            targets = {
+                r.id: Command(Mode.HEAT, r.setpoint_c) if r.id in activated else Command(rooms[r.id].mode)  # type: ignore[arg-type]
+                for r in active
+            }
         else:
             # FR-PLAN-02/03/04: the plan alone decides whether the outdoor unit runs.
             decision = decide(planned_w or 0.0, self.running, self._threshold)
@@ -100,18 +122,19 @@ class Controller:
                     targets[r.id] = Command(Mode.HEAT, target)
                 else:
                     targets[r.id] = Command(p.neutral_mode)
-            # FR-SAFE-02: below the hard minimum a room heats regardless of the plan.
+
+        # FR-SAFE-02: below the hard minimum a room heats regardless of the plan (also while waiting).
+        for r in active:
+            if temps[r.id] < r.setpoint_c - p.hard_min_below_k:
+                current = targets[r.id]
+                target = max(r.setpoint_c, current.target_c or r.setpoint_c)
+                targets[r.id] = Command(Mode.HEAT, target)
+        # FR-SAFE-03: overheated for long enough -> cool, only while no unit is to heat.
+        if not any(c.mode == Mode.HEAT for c in targets.values()):
             for r in active:
-                if temps[r.id] < r.setpoint_c - p.hard_min_below_k:
-                    current = targets[r.id]
-                    target = max(r.setpoint_c, current.target_c or r.setpoint_c)
-                    targets[r.id] = Command(Mode.HEAT, target)
-            # FR-SAFE-03: overheated for long enough -> cool, only while no unit is to heat.
-            if not any(c.mode == Mode.HEAT for c in targets.values()):
-                for r in active:
-                    since = self._overheat_since.get(r.id)
-                    if since is not None and (now - since).total_seconds() >= p.overheat_s:
-                        targets[r.id] = Command(Mode.COOL, r.setpoint_c)
+                since = self._overheat_since.get(r.id)
+                if since is not None and (now - since).total_seconds() >= p.overheat_s:
+                    targets[r.id] = Command(Mode.COOL, r.setpoint_c)
 
         # FR-SAFE-01: a room with an open window is taken out of the control.
         for r in cfg.rooms:
@@ -134,5 +157,6 @@ class Controller:
             running=self.running,
             fallback=fallback,
             served=tuple(r.id for r in served),
+            plan_missing_s=missing_s,
             temperatures=temps,
         )

@@ -47,7 +47,8 @@ Fällt ein Sensor aus, gilt der Plan als fehlend. Zielbild der HAEO-Topologie: `
   ohne Zeitzone = Zeitzone des Empfangs.
 - Ohne `forecast` gilt der Zustand allein als Plan ab Empfang.
 - Empfangszeit = max(`last_updated`, `last_reported`).
-- `unavailable`/`unknown` = Planer ausgefallen → Rückfall.
+- `unavailable`/`unknown` = Planer ausgefallen: erst Wartezeit, dann schrittweiser Rückfall (FR-SAFE-04). Gilt auch
+  nach einem Neustart von Home Assistant, bis der Planer seinen ersten Plan liefert (hier etwa 4 Minuten).
 
 Ungeprüfte Annahme: Das Ausgabeformat von HAEO-Sensoren entspricht dieser Form. Belegt ist nur, dass HAEO
 Eingänge mit `forecast: [{time, value}]` liest (haeo.io, Stand 21.10.2026).
@@ -72,7 +73,7 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 
 ### Status
 
-`planned_power` (W, Prognose), `requested_power` (W, Attribut `served_rooms`), `binary_sensor` `running`, `fallback`.
+`planned_power` (W, Prognose), `requested_power` (W, Attribut `served_rooms`), `binary_sensor` `running`, `fallback` (an erst nach der Wartezeit; Attribut `plan_missing_s` = Sekunden ohne gültigen Plan).
 
 Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation` (K), `room_heat_demand` (kWh),
 `room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).

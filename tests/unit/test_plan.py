@@ -2,10 +2,9 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from custom_components.climate_control.core.model import Mode
 from custom_components.climate_control.core.plan import plan_from_forecast
 
-from .helpers import T0, installation, plan, states
+from .helpers import T0, plan
 
 HOUR = timedelta(hours=1)
 
@@ -51,21 +50,6 @@ def test_plan_is_stale_when_older_than_max_age_or_expired() -> None:
     assert p.is_stale(T0 + timedelta(minutes=31), 1800)
     assert p.is_stale(T0 + 3 * HOUR, 10**6)
     assert p.power_at(T0 - HOUR) is None
-
-
-@pytest.mark.req("FR-SAFE-04")
-def test_fallback_heats_all_units_with_standard_setpoints() -> None:
-    from custom_components.climate_control.core.controller import Controller
-
-    ctrl = Controller(installation())
-    temps = {"a": 22.0, "b": 25.0, "c": 19.0}
-    old = plan(2000, now=T0 - 2 * HOUR)
-    for p in (None, old):
-        result = ctrl.step(T0, p, states(temps))
-        assert result.fallback
-        assert {rid: (c.mode, c.target_c) for rid, c in result.commands.items()} == {
-            rid: (Mode.HEAT, 21.0) for rid in temps
-        }
 
 
 @pytest.mark.req("FR-SAFE-04")
