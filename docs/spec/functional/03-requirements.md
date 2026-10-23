@@ -25,6 +25,7 @@
 | FR-CFG-01 | Innengeräte werden einzeln erfasst. Jedes kann für sich hinzugefügt, geändert und entfernt werden, ohne die übrige Einrichtung zu wiederholen. | beschlossen | integration,e2e |
 | FR-CFG-02 | Mehrere voneinander unabhängige Anlagen können gleichzeitig betrieben werden. | beschlossen | integration |
 | FR-CFG-03 | Über jedem Einstellungsfeld mit nicht trivialem Inhalt steht ein einklappbarer Erklärtext, mit dem der Nutzer die Einstellung ohne weitere Unterlagen pflegen kann. Ein Schalter legt fest, ob die Erklärtexte beim Öffnen der Einstellungen auf- oder zugeklappt sind. | beschlossen | unit,integration |
+| FR-OBS-02 | Für jedes Innengerät werden zur Diagnose angezeigt: Abweichung zum Sollwert, Wärmebedarf bis zum Sollwert und verbleibende Speicherkapazität bis zur Überlastgrenze. | beschlossen | unit,integration |
 | FR-OBS-01 | Betriebsdaten (Start, Stopp, Gerätetemperatur, Sollwert, Modus, Lüfterstufe) werden fortlaufend aufgezeichnet. | Vorschlag | integration |
 | NF-CFG-01 | Die Konfiguration wird gegen eine echte Instanz der Zielplattform geprüft, nicht nur gegen Mocks. | beschlossen | e2e |
 | NF-TEST-01 | Jede Anforderung mit Status beschlossen ist auf allen genannten Ebenen getestet. | beschlossen | unit |
