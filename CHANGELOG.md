@@ -1,3 +1,13 @@
+## [0.4.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.3.0...v0.4.0) (2026-10-23)
+
+### Features
+
+* add integration icon (outdoor unit with control badge) ([52e1c4b](https://github.com/principat/ha-indirect-climate-control/commit/52e1c4b664acdbf9c90307db565dfcb53edec566))
+
+### Bug Fixes
+
+* connect the planner output under Configure and correct HAEO sensor names ([9601b93](https://github.com/principat/ha-indirect-climate-control/commit/9601b93d8e465164ca6c5387e7e6c0f82f7e117c))
+
 ## [0.3.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.2.0...v0.3.0) (2026-10-23)
 
 ### Features
