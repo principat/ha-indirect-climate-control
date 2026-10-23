@@ -9,7 +9,7 @@
           "p_max_w": "Pmax (largest power)",
           "plan_entity": "Planned power (planner outputs, optional at first)"
         },
-        "description": "Outdoor unit, planner output optional. Indoor units are added one by one afterwards (“Add indoor unit”).",
+        "description": "Outdoor unit, planner output optional. Afterwards add the indoor units one by one via the three-dot menu (⋮) of this entry → “Add indoor unit”.",
         "sections": {
           "help_p_min_w": {
             "name": "Help: Pmin (smallest continuous power)",
@@ -88,6 +88,8 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value)",
             "setpoint_entity": "Setpoint entity (optional)",
+            "comfort_max_c": "Upper bound without surcharge (°C)",
+            "overload_max_c": "Overload limit (°C)",
             "power_class": "Power class",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
@@ -111,6 +113,20 @@
             "help_setpoint_entity": {
               "name": "Help: Setpoint entity (optional)",
               "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_comfort_max_c": {
+              "name": "Help: Upper bound without surcharge (°C)",
+              "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_overload_max_c": {
+              "name": "Help: Overload limit (°C)",
+              "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -151,6 +167,8 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value)",
             "setpoint_entity": "Setpoint entity (optional)",
+            "comfort_max_c": "Upper bound without surcharge (°C)",
+            "overload_max_c": "Overload limit (°C)",
             "power_class": "Power class",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
@@ -167,6 +185,20 @@
             "help_setpoint_entity": {
               "name": "Help: Setpoint entity (optional)",
               "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_comfort_max_c": {
+              "name": "Help: Upper bound without surcharge (°C)",
+              "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_overload_max_c": {
+              "name": "Help: Overload limit (°C)",
+              "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -203,7 +235,8 @@
         }
       },
       "error": {
-        "already_configured": "This indoor unit is already configured."
+        "already_configured": "This indoor unit is already configured.",
+        "room_limits": "Required: SOC scale 0 % < upper bound without surcharge < overload limit <= SOC scale 100 %."
       },
       "abort": {
         "reconfigure_successful": "Indoor unit updated."
@@ -224,8 +257,6 @@
           "overheat_k": "Overheating above setpoint (K)",
           "overheat_s": "Overheating duration (s)",
           "hard_min_below_k": "Hard minimum below setpoint (K)",
-          "overload_max_c": "Overload limit (°C)",
-          "comfort_max_c": "Upper bound without surcharge (°C)",
           "soc_min_c": "SOC scale 0 % (°C)",
           "soc_max_c": "SOC scale 100 % (°C)",
           "efficiency_pct": "Buffer efficiency (%)",
@@ -301,20 +332,6 @@
           "help_hard_min_below_k": {
             "name": "Help: Hard minimum below setpoint (K)",
             "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_overload_max_c": {
-            "name": "Help: Overload limit (°C)",
-            "description": "Highest room temperature up to which the buffer may be charged (overload with surcharge). Units at or above it are no longer served, setpoints are capped to it. Default 28 °C.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_comfort_max_c": {
-            "name": "Help: Upper bound without surcharge (°C)",
-            "description": "Upper bound without surcharge in the planner model. Between this value and the overload limit the planner applies the overload surcharge. Must lie between SOC scale 0 % and the overload limit. Default 24 °C (assumption, not fixed in the functional spec).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

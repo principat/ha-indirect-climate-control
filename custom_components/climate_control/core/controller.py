@@ -88,14 +88,14 @@ class Controller:
             self.running = decision.run
             requested_w = decision.power_w
             if decision.run:
-                eligible = [r for r in active if temps[r.id] < p.overload_max_c]
+                eligible = [r for r in active if temps[r.id] < r.overload_max_c]
                 tiers = rank(
                     [(r, r.setpoint_c - temps[r.id]) for r in eligible], p.tie_band_k, cfg.class_order
                 )
                 served = select(tiers, requested_w)
             for r in active:
                 if r in served:
-                    target = min(temps[r.id] + p.heat_offset_k, p.overload_max_c)
+                    target = min(temps[r.id] + p.heat_offset_k, r.overload_max_c)
                     targets[r.id] = Command(Mode.HEAT, target)
                 else:
                     targets[r.id] = Command(p.neutral_mode)

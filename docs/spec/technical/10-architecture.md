@@ -53,7 +53,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Fenster offen | Gerät neutral, nicht im SOC, nicht verteilt, auch im Rückfall | – |
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |
 | Nachtabsenkung | senkt Untergrenze und hartes Minimum für den Planer um 1 K; Raumschutz unverändert | `night_setback_k` |
-| Obergrenze ohne Aufschlag | 24 °C | `comfort_max_c` |
+| Obergrenze ohne Aufschlag | 24 °C je Innengerät; für den Planer flächengewichtet gemittelt (wie die Überlastgrenze) | `comfort_max_c` je Innengerät |
 | Aufschlag Überlast | 0,003 je kWh | `overcharge_cost` |
 | Pufferkapazität | Startwert 7 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
 | Aufschlag Spätladen „fällt mit der Zeit" | linear vom Startwert auf 0 über den Horizont, damit bei gleichem Preis später geladen wird | `late_charge_surcharge` |

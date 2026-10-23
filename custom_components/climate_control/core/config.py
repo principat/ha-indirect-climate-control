@@ -33,6 +33,8 @@ class RoomConfig:
     power_class: str
     nominal_power_w: float
     area_m2: float = 1.0
+    comfort_max_c: float = 24.0  # upper bound without surcharge (room dependent)
+    overload_max_c: float = 28.0  # highest temperature the buffer may be charged to (room dependent)
 
 
 @dataclass(frozen=True)
@@ -48,8 +50,6 @@ class Parameters:
     overheat_k: float = 3.0
     overheat_s: float = 3600.0
     hard_min_below_k: float = 2.0
-    overload_max_c: float = 28.0
-    comfort_max_c: float = 24.0
     soc_min_c: float = 15.0
     soc_max_c: float = 30.0
     efficiency_pct: float = 92.0
@@ -82,8 +82,8 @@ class Parameters:
     def validate(self) -> None:
         if not 0 < self.stop_ratio <= self.start_ratio:
             raise ConfigError("0 < stop ratio <= start ratio required")
-        if not self.soc_min_c < self.comfort_max_c < self.overload_max_c <= self.soc_max_c:
-            raise ConfigError("SOC scale min < comfort max < overload max <= SOC scale max required")
+        if not self.soc_min_c < self.soc_max_c:
+            raise ConfigError("SOC scale min < SOC scale max required")
         if self.neutral_mode not in NEUTRAL:
             raise ConfigError("neutral mode must be fan or off")
 
@@ -107,6 +107,12 @@ class InstallationConfig:
         if self.capacity_kwh_per_k <= 0:
             raise ConfigError("capacity must be positive")
         self.params.validate()
+        p = self.params
+        for r in self.rooms:
+            if not p.soc_min_c < r.comfort_max_c < r.overload_max_c <= p.soc_max_c:
+                raise ConfigError(
+                    f"{r.id}: SOC scale min < comfort max < overload max <= SOC scale max required"
+                )
 
     @property
     def class_order(self) -> tuple[str, ...]:

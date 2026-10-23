@@ -5,7 +5,7 @@
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
 | Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Planer-Sensor(en) optional | `entry.data`, Titel |
-| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen"), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Leistungsklasse, Nennleistung, Fläche, Fensterkontakt | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
+| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Leistungsklasse, Nennleistung, Fläche, Fensterkontakt | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow mit allen Feldern aus `Parameters` | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
 

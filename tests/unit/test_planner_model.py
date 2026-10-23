@@ -54,3 +54,16 @@ def test_late_charge_surcharge_falls_over_horizon() -> None:
     values = [v for _, v in inp.charge_cost_forecast]
     assert len(values) == 24 and values[0] == inp.charge_cost == 0.001 and values[-1] == 0.0
     assert values == sorted(values, reverse=True)
+
+
+@pytest.mark.req("FR-PLNR-01")
+def test_upper_bounds_are_area_weighted_room_values() -> None:
+    from dataclasses import replace
+
+    cfg = installation(
+        replace(room("a", area=30), comfort_max_c=25.0, overload_max_c=28.0),
+        replace(room("b", area=10), comfort_max_c=21.0, overload_max_c=24.0),
+    )
+    inp = planner_inputs(cfg, NOON)
+    assert inp.max_charge_pct == pytest.approx(60.0)  # 24 degC
+    assert inp.overcharge_pct == pytest.approx(80.0)  # 27 degC

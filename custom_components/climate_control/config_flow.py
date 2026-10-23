@@ -6,6 +6,7 @@ a time), all parameters as options. Several installations can be configured side
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import fields
 from typing import Any
 
@@ -30,8 +31,10 @@ from .const import (
     DOMAIN,
     ROOM_AREA,
     ROOM_CLASS,
+    ROOM_COMFORT_MAX,
     ROOM_ENTITY,
     ROOM_NAME,
+    ROOM_OVERLOAD_MAX,
     ROOM_POWER,
     ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
@@ -98,6 +101,8 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
             vol.Optional(ROOM_SETPOINT_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["input_number", "number", "sensor"])
             ),
+            vol.Required(ROOM_COMFORT_MAX, default=24.0): _number("°C", step=0.5, minimum=5, maximum=35),
+            vol.Required(ROOM_OVERLOAD_MAX, default=28.0): _number("°C", step=0.5, minimum=5, maximum=35),
             vol.Required(ROOM_CLASS, default="standard"): str,
             vol.Required(ROOM_POWER): _number("W"),
             vol.Required(ROOM_AREA, default=10): _number("m²", step=0.5),
@@ -107,6 +112,14 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
         }
     )
     return items
+
+
+def _room_errors(values: dict[str, Any], options: Mapping[str, Any]) -> dict[str, str]:
+    """Room limits must lie on the SOC scale: scale min < comfort max < overload max <= scale max."""
+    p = Parameters.from_mapping(dict(options))
+    if not p.soc_min_c < values[ROOM_COMFORT_MAX] < values[ROOM_OVERLOAD_MAX] <= p.soc_max_c:
+        return {"base": "room_limits"}
+    return {}
 
 
 def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
@@ -188,9 +201,10 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
             entity_id = values[ROOM_ENTITY]
+            errors = _room_errors(values, self._get_entry().options)
             if any(s.unique_id == entity_id for s in self._get_entry().subentries.values()):
                 errors[ROOM_ENTITY] = "already_configured"
-            else:
+            elif not errors:
                 return self.async_create_entry(title=values[ROOM_NAME], data=values, unique_id=entity_id)
         schema = _with_help(_room_fields(with_entity=True), ROOM_HELP, self._expanded())
         return self.async_show_form(
@@ -199,18 +213,24 @@ class RoomSubentryFlow(ConfigSubentryFlow):
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         subentry = self._get_reconfigure_subentry()
+        errors: dict[str, str] = {}
+        current = dict(subentry.data)
         if user_input is not None:
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
-            data = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
-            return self.async_update_and_abort(
-                self._get_entry(), subentry, title=values[ROOM_NAME], data=data
-            )
+            errors = _room_errors(values, self._get_entry().options)
+            if not errors:
+                data = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
+                return self.async_update_and_abort(
+                    self._get_entry(), subentry, title=values[ROOM_NAME], data=data
+                )
+            current = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
         schema = _with_help(_room_fields(with_entity=False), ROOM_HELP, self._expanded())
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self.add_suggested_values_to_schema(schema, dict(subentry.data)),
+            data_schema=self.add_suggested_values_to_schema(schema, current),
             description_placeholders={"entity_id": subentry.data[ROOM_ENTITY]},
+            errors=errors,
         )
 
 

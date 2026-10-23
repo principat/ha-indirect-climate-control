@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from custom_components.climate_control.core.config import ConfigError, InstallationConfig, Parameters
@@ -28,7 +30,9 @@ def test_core_has_no_plant_defaults() -> None:
         {"p_min_w": 4000},
         {"capacity_kwh_per_k": 0},
         {"params": Parameters(stop_ratio=0.9)},
-        {"params": Parameters(comfort_max_c=29)},
+        {"rooms": (replace(room("a"), comfort_max_c=29.0),)},
+        {"rooms": (replace(room("a"), overload_max_c=31.0),)},
+        {"params": Parameters(soc_min_c=30)},
         {"params": Parameters(neutral_mode=Mode.HEAT)},
     ],
 )

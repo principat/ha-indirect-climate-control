@@ -178,3 +178,15 @@ def test_variable_setpoint_is_used_by_safety_and_fallback() -> None:
     assert result.commands["a"] == result.commands["a"].__class__(Mode.HEAT, 23.0)
     result = ctrl.step(T0, None, states(temps), {"b": 19.5})
     assert result.commands["b"].target_c == 19.5 and result.commands["c"].target_c == 21.0
+
+
+@pytest.mark.req("FR-PLNR-01")
+def test_overload_limit_is_per_room() -> None:
+    from dataclasses import replace
+
+    cool_room = replace(room("a"), comfort_max_c=21.0, overload_max_c=22.0)
+    ctrl = Controller(installation(cool_room, room("b"), heat_offset_k=3.0))
+    result = ctrl.step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
+    assert result.served == ("b",)  # a reached its own overload limit
+    result = ctrl.step(T0, plan(2000), states({"a": 21.0, "b": 20.0}))
+    assert result.commands["a"].target_c == 22.0  # 21 + 3 K capped at the room's limit, not at 28

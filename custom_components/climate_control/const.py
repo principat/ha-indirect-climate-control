@@ -20,6 +20,8 @@ ROOM_POWER = "nominal_power_w"
 ROOM_AREA = "area_m2"
 ROOM_WINDOW = "window_entity"
 ROOM_SETPOINT_ENTITY = "setpoint_entity"
+ROOM_COMFORT_MAX = "comfort_max_c"
+ROOM_OVERLOAD_MAX = "overload_max_c"
 
 SERVICE_RUN_CYCLE = "run_cycle"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"

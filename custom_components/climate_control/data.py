@@ -12,8 +12,10 @@ from .const import (
     DEFAULT_CAPACITY_KWH_PER_K,
     ROOM_AREA,
     ROOM_CLASS,
+    ROOM_COMFORT_MAX,
     ROOM_ENTITY,
     ROOM_NAME,
+    ROOM_OVERLOAD_MAX,
     ROOM_POWER,
     ROOM_SETPOINT,
     SUBENTRY_ROOM,
@@ -41,6 +43,8 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
             power_class=str(r[ROOM_CLASS]),
             nominal_power_w=float(r[ROOM_POWER]),
             area_m2=float(r.get(ROOM_AREA, 1.0)),
+            comfort_max_c=float(r.get(ROOM_COMFORT_MAX, 24.0)),
+            overload_max_c=float(r.get(ROOM_OVERLOAD_MAX, 28.0)),
         )
         for r in room_data(entry)
     )

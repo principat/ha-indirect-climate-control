@@ -20,6 +20,8 @@ ROOM_HELP = (
     "entity_id",
     "setpoint_c",
     "setpoint_entity",
+    "comfort_max_c",
+    "overload_max_c",
     "power_class",
     "nominal_power_w",
     "area_m2",

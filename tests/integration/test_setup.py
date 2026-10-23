@@ -138,7 +138,7 @@ async def test_all_parameters_are_options(hass: HomeAssistant, units: FakeUnits,
     keys = {str(k) for k in result["data_schema"].schema}
     assert {"start_ratio", "tie_band_k", "overheat_s", "night_setback_k", "neutral_mode", "cycle_s"} <= keys
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"tie_band_k": 0.5, "neutral_mode": "off", "comfort_max_c": 29.5}
+        result["flow_id"], {"tie_band_k": 0.5, "neutral_mode": "off", "stop_ratio": 0.9}
     )
     assert result["type"] == FlowResultType.FORM and result["errors"] == {"base": "invalid_parameters"}
     result = await hass.config_entries.options.async_configure(
@@ -266,3 +266,22 @@ async def test_without_planner_output_nothing_is_controlled(hass: HomeAssistant,
     assert result["reason"] == "reconfigure_successful"
     await hass.async_block_till_done()
     assert units.mode(ROOMS[0]) == "heat"  # now controlled: hard minimum protection
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUnits) -> None:
+    set_plan(hass, 0)
+    entry = await _create_installation(hass)
+    result = await _add_room(hass, entry, ROOMS[0], comfort_max_c=26.0, overload_max_c=25.0)
+    assert result["type"] == FlowResultType.FORM and result["errors"] == {"base": "room_limits"}
+    result = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], room_data(ROOMS[0], comfort_max_c=22.0, overload_max_c=25.0)
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    room = entry.runtime_data.cfg.room(ROOMS[0])
+    assert (room.comfort_max_c, room.overload_max_c) == (22.0, 25.0)
+    keys = [
+        str(k) for k in (await hass.config_entries.options.async_init(entry.entry_id))["data_schema"].schema
+    ]
+    assert "overload_max_c" not in keys and "comfort_max_c" not in keys

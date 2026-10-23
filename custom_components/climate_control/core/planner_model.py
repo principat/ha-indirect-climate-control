@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from .config import InstallationConfig
+from .config import InstallationConfig, RoomConfig
 from .soc import temperature_to_soc
 
 Series = tuple[tuple[datetime, float], ...]
@@ -29,10 +30,14 @@ class PlannerInputs:
     charge_cost_forecast: Series
 
 
-def weighted_setpoint(cfg: InstallationConfig) -> float:
-    """Area-weighted mean of the room setpoints."""
+def weighted(cfg: InstallationConfig, value: Callable[[RoomConfig], float]) -> float:
+    """Area-weighted mean of a room value over all rooms."""
     area = sum(r.area_m2 for r in cfg.rooms)
-    return sum(r.setpoint_c * r.area_m2 for r in cfg.rooms) / area
+    return sum(value(r) * r.area_m2 for r in cfg.rooms) / area
+
+
+def weighted_setpoint(cfg: InstallationConfig) -> float:
+    return weighted(cfg, lambda r: r.setpoint_c)
 
 
 def is_night(t: datetime, start_h: int, end_h: int) -> bool:
@@ -64,8 +69,8 @@ def planner_inputs(cfg: InstallationConfig, now: datetime) -> PlannerInputs:
         capacity_kwh=round(cfg.capacity_kwh_per_k * (p.soc_max_c - p.soc_min_c), 3),
         min_charge_pct=soc(lowered(now, lower_c)),
         undercharge_pct=soc(lowered(now, hard_c)),
-        max_charge_pct=soc(p.comfort_max_c),
-        overcharge_pct=soc(p.overload_max_c),
+        max_charge_pct=soc(weighted(cfg, lambda r: r.comfort_max_c)),
+        overcharge_pct=soc(weighted(cfg, lambda r: r.overload_max_c)),
         undercharge_cost=p.undercharge_cost,
         overcharge_cost=p.overcharge_cost,
         efficiency_pct=p.efficiency_pct,

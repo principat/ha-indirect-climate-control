@@ -9,7 +9,7 @@
           "p_max_w": "Pmax (größte Leistung)",
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
-        "description": "Außengerät, Planer-Ausgabe optional. Innengeräte werden danach einzeln hinzugefügt („Innengerät hinzufügen“).",
+        "description": "Außengerät, Planer-Ausgabe optional. Danach die Innengeräte einzeln über das Drei-Punkte-Menü (⋮) dieses Eintrags → „Innengerät hinzufügen“ anlegen.",
         "sections": {
           "help_p_min_w": {
             "name": "Hilfe: Pmin (kleinste Dauerleistung)",
@@ -88,6 +88,8 @@
             "name": "Raumname",
             "setpoint_c": "Sollwert (fest bzw. Ersatzwert)",
             "setpoint_entity": "Sollwert-Entität (optional)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
+            "overload_max_c": "Überlastgrenze (°C)",
             "power_class": "Leistungsklasse",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
@@ -111,6 +113,20 @@
             "help_setpoint_entity": {
               "name": "Hilfe: Sollwert-Entität (optional)",
               "description": "Optionaler Zahl-Helfer, Number oder Sensor, dessen Wert (°C) statt des festen Werts als Sollwert gilt, z. B. um Sollwerte per Automation oder Zeitplan zu ändern. Der Wert wird in jedem Regelzyklus gelesen; Werte außerhalb 5–30 °C, nicht verfügbare oder nicht numerische Zustände werden ignoriert, dann gilt der feste Sollwert. Leer lassen für einen festen Sollwert.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_comfort_max_c": {
+              "name": "Hilfe: Obergrenze ohne Aufschlag (°C)",
+              "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_overload_max_c": {
+              "name": "Hilfe: Überlastgrenze (°C)",
+              "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -151,6 +167,8 @@
             "name": "Raumname",
             "setpoint_c": "Sollwert (fest bzw. Ersatzwert)",
             "setpoint_entity": "Sollwert-Entität (optional)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
+            "overload_max_c": "Überlastgrenze (°C)",
             "power_class": "Leistungsklasse",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
@@ -167,6 +185,20 @@
             "help_setpoint_entity": {
               "name": "Hilfe: Sollwert-Entität (optional)",
               "description": "Optionaler Zahl-Helfer, Number oder Sensor, dessen Wert (°C) statt des festen Werts als Sollwert gilt, z. B. um Sollwerte per Automation oder Zeitplan zu ändern. Der Wert wird in jedem Regelzyklus gelesen; Werte außerhalb 5–30 °C, nicht verfügbare oder nicht numerische Zustände werden ignoriert, dann gilt der feste Sollwert. Leer lassen für einen festen Sollwert.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_comfort_max_c": {
+              "name": "Hilfe: Obergrenze ohne Aufschlag (°C)",
+              "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_overload_max_c": {
+              "name": "Hilfe: Überlastgrenze (°C)",
+              "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -203,7 +235,8 @@
         }
       },
       "error": {
-        "already_configured": "Dieses Innengerät ist bereits erfasst."
+        "already_configured": "Dieses Innengerät ist bereits erfasst.",
+        "room_limits": "Erforderlich: SOC-Skala 0 % < Obergrenze ohne Aufschlag < Überlastgrenze <= SOC-Skala 100 %."
       },
       "abort": {
         "reconfigure_successful": "Innengerät aktualisiert."
@@ -224,8 +257,6 @@
           "overheat_k": "Überhitzung über Sollwert (K)",
           "overheat_s": "Überhitzungsdauer (s)",
           "hard_min_below_k": "Hartes Minimum unter Sollwert (K)",
-          "overload_max_c": "Überlastgrenze (°C)",
-          "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
           "soc_min_c": "SOC-Skala 0 % (°C)",
           "soc_max_c": "SOC-Skala 100 % (°C)",
           "efficiency_pct": "Wirkungsgrad Puffer (%)",
@@ -301,20 +332,6 @@
           "help_hard_min_below_k": {
             "name": "Hilfe: Hartes Minimum unter Sollwert (K)",
             "description": "Hartes Minimum = Sollwert minus dieser Wert. Darunter wird der Raum auch ohne Plan geheizt. Zugleich unteres Ende der Strafzone im Planer-Modell. Standard 2 K.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_overload_max_c": {
-            "name": "Hilfe: Überlastgrenze (°C)",
-            "description": "Höchste Raumtemperatur, bis zu der der Puffer geladen werden darf (Überlast mit Aufschlag). Geräte ab dieser Temperatur werden nicht mehr bedient, Sollwerte werden darauf begrenzt. Standard 28 °C.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_comfort_max_c": {
-            "name": "Hilfe: Obergrenze ohne Aufschlag (°C)",
-            "description": "Obere Grenze ohne Aufschlag im Planer-Modell. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Muss zwischen SOC-Skala 0 % und Überlastgrenze liegen. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

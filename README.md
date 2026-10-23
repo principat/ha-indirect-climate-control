@@ -33,8 +33,10 @@ Therefore set up in this order:
    (or the second button above): name, Pmin, Pmax. **Leave the planner sensor empty.**
    Without a planner sensor the installation is in commissioning mode: it publishes all sensors but sends
    **no command to the indoor units** (no fallback either).
-3. **Add indoor units** – in the installation, *"Add indoor unit"* once per unit: climate entity, room name,
+3. **Add indoor units** – in the three-dot menu (⋮) of the installation entry, *"Add indoor unit"* once per
+   unit: climate entity, room name,
    setpoint (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
+   upper bound without surcharge and overload limit (room dependent, default 24 / 28 °C),
    power class, nominal power, area, optional window contact. Units can be changed or removed one by one.
 4. **Set up HAEO** with the sensors of Climate Control, see [Connecting HAEO](#connecting-haeo).
 5. **Connect the plan** – *Reconfigure* the installation and select the HAEO sensor with the planned power
@@ -121,10 +123,10 @@ instance language (English names below, German in brackets).
 | Battery: Capacity | Capacity (Kapazität) |
 | Battery: Current Charge Percentage | State of charge (Füllstand) |
 | Battery: Min Charge Percentage | Min charge (Untergrenze) – area-weighted setpoint, lowered at night, with forecast |
-| Battery: Max Charge Percentage | Max charge (Obergrenze) |
+| Battery: Max Charge Percentage | Max charge (Obergrenze) – area-weighted upper bounds without surcharge of the rooms |
 | Battery: Undercharge Percentage | Undercharge (Hartes Minimum) – with forecast |
 | Battery: Undercharge Cost | Undercharge cost (Strafwert Untergrenze) |
-| Battery: Overcharge Percentage | Overcharge (Überlast) |
+| Battery: Overcharge Percentage | Overcharge (Überlast) – area-weighted overload limits of the rooms |
 | Battery: Overcharge Cost | Overcharge cost (Aufschlag Überlast) |
 | Battery: Charge efficiency | Efficiency (Wirkungsgrad) |
 | Battery: Discharge efficiency | helper `100` |
@@ -200,9 +202,11 @@ Deshalb in dieser Reihenfolge einrichten:
    (oder zweite Schaltfläche oben): Name, Pmin, Pmax. **Planer-Sensor leer lassen.**
    Ohne Planer-Sensor ist die Anlage in Inbetriebnahme: Sie stellt alle Sensoren bereit, schickt aber
    **keinen Befehl an die Innengeräte** (auch keinen Rückfall).
-3. **Innengeräte hinzufügen** – in der Anlage *„Innengerät hinzufügen“*, je Gerät einmal: Klimagerät,
+3. **Innengeräte hinzufügen** – im Drei-Punkte-Menü (⋮) des Anlagen-Eintrags *„Innengerät hinzufügen“*, je Gerät
+   einmal: Klimagerät,
    Raumname, Sollwert (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der
-   Ersatzwert), Leistungsklasse, Nennleistung, Fläche, optional Fensterkontakt. Innengeräte lassen sich später
+   Ersatzwert), Obergrenze ohne Aufschlag und Überlastgrenze (raumabhängig, Standard 24 / 28 °C),
+   Leistungsklasse, Nennleistung, Fläche, optional Fensterkontakt. Innengeräte lassen sich später
    einzeln ändern oder löschen.
 4. **HAEO einrichten** mit den Sensoren von Climate Control, siehe [HAEO anbinden](#haeo-anbinden).
 5. **Plan verbinden** – Anlage *neu konfigurieren* und den HAEO-Sensor mit der geplanten Leistung wählen
@@ -292,10 +296,10 @@ Sprache der Instanz (unten deutscher Name, in Klammern der englische).
 | Batterie: Capacity | Kapazität (Capacity) |
 | Batterie: Current Charge Percentage | Füllstand (State of charge) |
 | Batterie: Min Charge Percentage | Untergrenze (Min charge) – flächengewichteter Sollwert, nachts abgesenkt, mit Prognose |
-| Batterie: Max Charge Percentage | Obergrenze (Max charge) |
+| Batterie: Max Charge Percentage | Obergrenze (Max charge) – flächengewichtete Obergrenzen ohne Aufschlag der Räume |
 | Batterie: Undercharge Percentage | Hartes Minimum (Undercharge) – mit Prognose |
 | Batterie: Undercharge Cost | Strafwert Untergrenze (Undercharge cost) |
-| Batterie: Overcharge Percentage | Überlast (Overcharge) |
+| Batterie: Overcharge Percentage | Überlast (Overcharge) – flächengewichtete Überlastgrenzen der Räume |
 | Batterie: Overcharge Cost | Aufschlag Überlast (Overcharge cost) |
 | Batterie: Charge efficiency | Wirkungsgrad (Efficiency) |
 | Batterie: Discharge efficiency | Helfer `100` |
