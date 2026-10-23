@@ -19,7 +19,7 @@
 | FR-SAFE-01 | Ein Raum mit offenem Fenster wird aus der Regelung genommen. | beschlossen | unit,integration |
 | FR-SAFE-02 | Fällt ein Raum unter das harte Minimum (Sollwert minus 2 K), wird er geheizt, auch ohne Plan. Der Schutz hat Vorrang vor dem Plan. | beschlossen | unit,integration |
 | FR-SAFE-03 | Liegt ein Raum mindestens 3 K über dem Sollwert, seit mindestens 1 h, wird gekühlt. Das gilt für alle Räume. Heizen hat Vorrang, gekühlt wird nur im neutralen Zustand (kein Gerät heizt). | beschlossen | unit,integration |
-| FR-SAFE-04 | Ist der Plan veraltet oder der Planer ausgefallen, gilt der Rückfall. Nur dieser Ausfall wird automatisch abgefangen, alle anderen Störungen behebt der Betreiber manuell. | beschlossen | unit,integration,e2e |
+| FR-SAFE-04 | Ist der Plan veraltet oder der Planer ausgefallen, bleiben die Geräte zunächst unverändert (Wartezeit 10 Minuten, das Gebäude ist träge), der Schutz der Räume gilt weiter. Kommt der Plan in dieser Zeit zurück, ändert sich nichts. Dauert der Ausfall länger, gilt der Rückfall: Die Geräte werden schrittweise auf Heizen mit Standard-Sollwerten gestellt, größte Abweichung zuerst, je Schritt eine Gruppe, bereits laufende Geräte bleiben an. Nur dieser Ausfall wird automatisch abgefangen, alle anderen Störungen behebt der Betreiber manuell. | beschlossen | unit,integration,e2e |
 | FR-PLNR-01 | Die Integration liefert dem Planer die Vorgaben für den Puffer: Entladegrenze, Wirkungsgrad, gewichtete Untergrenzen, Nachtabsenkung (senkt nur die Untergrenzen), Strafzone zwischen Sollwert und hartem Minimum, Überlast mit Aufschlag, Aufschlag für spätes Laden. Werte siehe Parameter. | beschlossen | unit,integration |
 | FR-GEN-01 | Zahl und Namen der Räume, Leistungsklassen, Pmin, Pmax und alle Parameter sind konfigurierbar. Keine Anlagenwerte im Kern. | beschlossen | unit,integration,e2e |
 | FR-CFG-01 | Innengeräte werden einzeln erfasst. Jedes kann für sich hinzugefügt, geändert und entfernt werden, ohne die übrige Einrichtung zu wiederholen. | beschlossen | integration,e2e |
@@ -43,4 +43,4 @@ Sinkt A auf 1 K, sind alle gleichauf und werden nach Gruppe und angelegter Reihe
 **FR-MODE-01 Moduswechsel.** Gegeben ein Gerät kühlt. Soll ein anderes heizen, gehen erst alle Geräte in den neutralen Modus,
 dann in den Zielmodus, danach werden die Sollwerte neu gesetzt.
 
-**FR-SAFE-04 Rückfall.** Gegeben der Plan ist älter als seine Gültigkeit. Dann gehen alle Geräte auf Heizen mit Standard-Sollwerten.
+**FR-SAFE-04 Rückfall.** Gegeben der Plan ist älter als seine Gültigkeit. Dann bleiben die Geräte 10 Minuten unverändert. Kommt der Plan nicht zurück, wird alle 2 Minuten eine weitere Gruppe auf Heizen mit Standard-Sollwerten gestellt, bis alle Geräte heizen. Fällt ein Raum in dieser Zeit unter das harte Minimum, wird er sofort geheizt.

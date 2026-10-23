@@ -16,4 +16,4 @@
 | Startschwelle / Abschaltschwelle | Anteile von Pmin, ab denen gestartet bzw. unter denen abgeschaltet wird |
 | Leistungsklasse | Gruppe von Innengeräten gleicher Nennleistung |
 | Gleichstand-Band | Spanne, in der Abweichungen als gleich gelten |
-| Rückfall | Normalbetrieb ohne Planer: alle Geräte heizen mit Standard-Sollwerten |
+| Rückfall | Normalbetrieb ohne Planer nach einer Wartezeit: alle Geräte heizen schrittweise mit Standard-Sollwerten |

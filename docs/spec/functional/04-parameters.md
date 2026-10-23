@@ -11,6 +11,8 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (Auflösung der Geräte) |
 | Offset-Schritt | 0,5 K | je Regelschritt |
 | Wartezeit | 2 min | nach jedem Schritt |
+| Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |
+| Schritt des Rückfalls | 2 min | je Schritt wird eine weitere Gerätegruppe auf Heizen gestellt |
 | Lastmittel | 5 min | Messung der Außenleistung |
 | SOC-Glättung | 15 min | Mittelwert oder Median |
 | Ausreißergrenze | 2 K je Zyklus | Plausibilitätsprüfung |
