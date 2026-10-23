@@ -332,7 +332,7 @@ async def test_stored_version_1_configuration_is_migrated(hass: HomeAssistant, u
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.version == 2
+    assert entry.version == 3
     assert "stage1_w" not in entry.data and "capacity_kwh_per_k" not in entry.data
     assert entry.options == {"tie_band_k": 0.5}
     rooms = [dict(s.data) for s in entry.subentries.values()]
@@ -371,3 +371,77 @@ async def test_planner_output_is_set_under_configure(
     result = await hass.config_entries.options.async_configure(form["flow_id"], {})
     await hass.async_block_till_done()
     assert "plan_entity" not in entry.data  # cleared again: back to commissioning
+
+
+async def _reconfigure_room(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str) -> Any:
+    subentry = next(s for s in entry.subentries.values() if s.unique_id == entity_id)
+    return await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "room"), context={"source": SOURCE_RECONFIGURE, "subentry_id": subentry.subentry_id}
+    )
+
+
+def _suggested(form: Any, field: str) -> Any:
+    marker = next(m for m in form["data_schema"].schema if str(m) == field)
+    return marker.description["suggested_value"]
+
+
+@pytest.mark.req("FR-SAFE-01")
+async def test_window_contacts_can_be_edited_when_stored_as_single_id(
+    hass: HomeAssistant, units: FakeUnits
+) -> None:
+    """Entries before 0.3 stored one contact as text; the multi-select needs a list to stay editable."""
+    set_plan(hass, 0)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Klima",
+        version=3,  # already current: the form itself must cope with a stored single id
+        data={**INSTALLATION},
+        subentries_data=[
+            {
+                "data": room_data(ROOMS[0], window_entity="binary_sensor.fs_terrassentur_contact"),
+                "subentry_type": "room",
+                "title": "A",
+                "unique_id": ROOMS[0],
+            }
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    form = await _reconfigure_room(hass, entry, ROOMS[0])
+    assert _suggested(form, "window_entity") == ["binary_sensor.fs_terrassentur_contact"]
+
+    changed = {k: v for k, v in room_data(ROOMS[0]).items() if k != "entity_id"}
+    changed["window_entity"] = ["binary_sensor.fs_terrassentur_contact", "binary_sensor.fs_couch_contact"]
+    result = await hass.config_entries.subentries.async_configure(form["flow_id"], changed)
+    assert result["reason"] == "reconfigure_successful"
+    stored = next(iter(entry.subentries.values())).data["window_entity"]
+    assert stored == ["binary_sensor.fs_terrassentur_contact", "binary_sensor.fs_couch_contact"]
+
+
+@pytest.mark.req("FR-SAFE-01")
+async def test_single_window_contact_is_migrated_to_a_list(hass: HomeAssistant, units: FakeUnits) -> None:
+    set_plan(hass, 0)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Klima",
+        version=2,
+        data={**INSTALLATION},
+        subentries_data=[
+            {
+                "data": room_data(ROOMS[0], window_entity="binary_sensor.fs_terrassentur_contact"),
+                "subentry_type": "room",
+                "title": "A",
+                "unique_id": ROOMS[0],
+            },
+            {"data": room_data(ROOMS[1]), "subentry_type": "room", "title": "B", "unique_id": ROOMS[1]},
+        ],
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.version == 3
+    rooms = [dict(s.data) for s in entry.subentries.values()]
+    assert rooms[0]["window_entity"] == ["binary_sensor.fs_terrassentur_contact"]
+    assert "window_entity" not in rooms[1]

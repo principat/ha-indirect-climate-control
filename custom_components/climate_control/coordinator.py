@@ -33,16 +33,9 @@ from .core.diagnostics import RoomDiagnostics, room_diagnostics
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
-from .data import build_config, room_data
+from .data import as_list, build_config, room_data
 
 type ClimateControlConfigEntry = ConfigEntry[ClimateControlCoordinator]
-
-
-def _as_list(value: object) -> list[str]:
-    """Entity selection stored as a single id (older entries) or a list."""
-    if not value:
-        return []
-    return [value] if isinstance(value, str) else [str(v) for v in value]  # type: ignore[attr-defined]
 
 
 @dataclass(frozen=True)
@@ -69,9 +62,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             update_interval=timedelta(seconds=params.cycle_s),
         )
         self.controller = Controller(self.cfg) if self.cfg else None
-        self._plan_entities: list[str] = _as_list(entry.data.get(CONF_PLAN_ENTITY))
+        self._plan_entities: list[str] = as_list(entry.data.get(CONF_PLAN_ENTITY))
         self._windows: dict[str, list[str]] = {
-            r[ROOM_ENTITY]: _as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
+            r[ROOM_ENTITY]: as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
         }
         self._setpoint_entities: dict[str, str] = {
             r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY] for r in room_data(entry) if r.get(ROOM_SETPOINT_ENTITY)

@@ -25,6 +25,13 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 
+def as_list(value: object) -> list[str]:
+    """Entity selection stored as a single id (entries before 0.3) or as a list."""
+    if not value:
+        return []
+    return [value] if isinstance(value, str) else [str(v) for v in value]  # type: ignore[attr-defined]
+
+
 def room_data(entry: ConfigEntry) -> list[Mapping[str, Any]]:
     """Room subentries in creation order (= configured order)."""
     return [s.data for s in entry.subentries.values() if s.subentry_type == SUBENTRY_ROOM]

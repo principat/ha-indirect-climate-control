@@ -97,3 +97,6 @@ Aufrufe `climate.set_hvac_mode` und `climate.set_temperature` (blocking). Gelese
 - Config-Entry-Version 2 (`async_migrate_entry`): entfernt `stage1_w` und `capacity_kwh_per_k` aus den Daten,
   verschiebt `comfort_max_c`/`overload_max_c` aus den Optionen in jedes Innengerät (eigene Werte haben Vorrang),
   entfernt `power_class` aus den Innengeräten.
+- Config-Entry-Version 3: Fensterkontakte eines Innengeräts werden als Liste gespeichert (vor 0.3 ein einzelner
+  Text). Eine Mehrfachauswahl braucht eine Liste als Vorgabewert, sonst lässt sich das Feld im Dialog nicht mehr
+  ändern; das Formular wandelt zusätzlich einen noch gespeicherten Einzelwert um.

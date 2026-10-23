@@ -42,7 +42,7 @@ from .const import (
 )
 from .core.config import ConfigError, Parameters
 from .core.model import Mode
-from .data import build_config
+from .data import as_list, build_config
 from .help import (
     HELP_KEY,
     OPTION_HELP,
@@ -133,7 +133,7 @@ def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
 
 
 class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         self._help = False
@@ -198,6 +198,13 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 entry, options={**entry.options, OPTION_HELP: expanded}
             )
 
+    @staticmethod
+    def _suggested(values: dict[str, Any]) -> dict[str, Any]:
+        """Multi-selects need a list as suggested value, older entries stored a single id."""
+        if values.get(ROOM_WINDOW):
+            values[ROOM_WINDOW] = as_list(values[ROOM_WINDOW])
+        return values
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         errors: dict[str, str] = {}
         values: dict[str, Any] = {}
@@ -218,7 +225,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
-        current = dict(subentry.data)
+        current = self._suggested(dict(subentry.data))
         if user_input is not None:
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
@@ -228,7 +235,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
                 return self.async_update_and_abort(
                     self._get_entry(), subentry, title=values[ROOM_NAME], data=data
                 )
-            current = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
+            current = self._suggested({ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values})
         schema = _with_help(_room_fields(with_entity=False), ROOM_HELP, self._expanded())
         return self.async_show_form(
             step_id="reconfigure",

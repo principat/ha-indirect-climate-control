@@ -10,9 +10,10 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import ATTR_CONFIG_ENTRY_ID, DOMAIN, LOGGER, SERVICE_RUN_CYCLE, SUBENTRY_ROOM
+from .const import ATTR_CONFIG_ENTRY_ID, DOMAIN, LOGGER, ROOM_WINDOW, SERVICE_RUN_CYCLE, SUBENTRY_ROOM
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator
 from .core.config import Parameters
+from .data import as_list
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -33,8 +34,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> bool:
-    """Version 1 -> 2: settings moved or removed in 0.2/0.3 are cleaned up in stored entries."""
-    if entry.version > 2:
+    """Version 1 -> 2: settings moved or removed in 0.2/0.3 are cleaned up in stored entries.
+
+    Version 2 -> 3: window contacts are stored as a list (single id before 0.3).
+    """
+    if entry.version > 3:
         return False  # downgrade from a newer version
     if entry.version == 1:
         data = {k: v for k, v in entry.data.items() if k not in _OBSOLETE_DATA}
@@ -49,6 +53,14 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ClimateControlConfigEn
                 hass.config_entries.async_update_subentry(entry, subentry, data=room)
         hass.config_entries.async_update_entry(entry, data=data, options=options, version=2)
         LOGGER.info("Migrated %s to configuration version 2", entry.title)
+    if entry.version == 2:
+        for subentry in entry.subentries.values():
+            window = subentry.data.get(ROOM_WINDOW)
+            if subentry.subentry_type == SUBENTRY_ROOM and isinstance(window, str):
+                room = {**subentry.data, ROOM_WINDOW: as_list(window)}
+                hass.config_entries.async_update_subentry(entry, subentry, data=room)
+        hass.config_entries.async_update_entry(entry, version=3)
+        LOGGER.info("Migrated %s to configuration version 3", entry.title)
     return True
 
 
