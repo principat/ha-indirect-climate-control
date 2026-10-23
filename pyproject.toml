@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "climate-control"
-version = "0.2.0"  # wird von semantic-release gesetzt (scripts/set_version.py)
+version = "0.3.0"  # wird von semantic-release gesetzt (scripts/set_version.py)
 description = "Home Assistant integration: plan-following control of a multi-split air conditioner"
 requires-python = ">=3.14"
 dependencies = []
