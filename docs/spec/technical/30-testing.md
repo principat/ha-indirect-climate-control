@@ -33,7 +33,7 @@ Test-Integration `climate_control_sim`, eingebunden über `.devcontainer/docker-
 (7 und 30 Räume, Plan mit 48 Stunden Prognose) und 2 × 200 Zyklen in Home Assistant mit 7 Innengeräten.
 Zeit und Speicher werden in getrennten Läufen gemessen (Speicher-Tracing verlangsamt Python stark).
 
-Messung vom 22.10.2026:
+Messung vom 22.10.2026, HA-Stresstest aktualisiert am 23.10.2026:
 
 | Messung | x86 (Entwicklungsrechner) | arm64 unter QEMU-Emulation |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Messung vom 22.10.2026:
 | Kern, 30 Räume, je Zyklus | Mittel 0,45 ms, max. 1,8 ms | Mittel 8,1 ms, max. 22 ms |
 | Speicherzuwachs nach Aufwärmen, 1 bzw. 3 Tage | < 1 KiB (kein Wachstum) | < 1 KiB |
 | HA-Zyklus, nichts ändert sich | Mittel 3 ms, 0 Dienstaufrufe, 0 Zustandsänderungen | – |
-| HA-Zyklus, jede Minute ändert sich eine Gerätetemperatur (Stresstest) | Mittel 27 ms, max. 68 ms (inkl. Dienstaufrufe), 3,3 Dienstaufrufe und 1,2 Zustandsänderungen je Zyklus | – |
+| HA-Zyklus, jede Minute ändert sich eine Gerätetemperatur (Stresstest) | Mittel 27 ms, max. 52 ms (inkl. Dienstaufrufe), 3,3 Dienstaufrufe und 4,1 Zustandsänderungen je Zyklus (seit 0.3 inkl. Diagnose-Sensoren je Raum) | – |
 
 Einordnung (Schätzung, nicht auf einem Pi 5 gemessen): Die Emulation ist etwa 20-mal langsamer als x86; ein
 echter Pi 5 ist nach veröffentlichten Einkern-Benchmarks etwa 3- bis 4-mal langsamer als x86. Erwartet werden
