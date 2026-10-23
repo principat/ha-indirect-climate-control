@@ -89,7 +89,6 @@ def room_data(entity_id: str, **overrides: Any) -> dict[str, Any]:
         "entity_id": entity_id,
         "name": entity_id.split(".")[1].upper(),
         "setpoint_c": 21.0,
-        "power_class": "standard",
         "nominal_power_w": 700,
         "area_m2": 10,
     }

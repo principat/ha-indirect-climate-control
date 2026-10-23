@@ -1,17 +1,21 @@
-"""Sensors: buffer state, plan and the planner model values (FR-PLNR-01)."""
+"""Sensors: buffer state, plan, planner model values (FR-PLNR-01) and diagnostics per room (FR-OBS-02)."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import PERCENTAGE, UnitOfEnergy, UnitOfPower
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfEnergy, UnitOfPower, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import DOMAIN, ROOM_ENTITY, ROOM_NAME, SUBENTRY_ROOM
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator, CycleData
+from .core.diagnostics import RoomDiagnostics
 from .core.planner_model import Series
 from .entity import ClimateControlEntity
 
@@ -111,8 +115,17 @@ SENSORS: tuple[CCSensorDescription, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant, entry: ClimateControlConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
+    coordinator = entry.runtime_data
     currency = f"{hass.config.currency}/kWh"
-    async_add_entities(CCSensor(entry.runtime_data, d, currency) for d in SENSORS)
+    async_add_entities(CCSensor(coordinator, d, currency) for d in SENSORS)
+    # FR-OBS-02: diagnostic sensors on a device per indoor unit, linked to its subentry.
+    for subentry in entry.subentries.values():
+        if subentry.subentry_type != SUBENTRY_ROOM:
+            continue
+        async_add_entities(
+            (RoomSensor(coordinator, subentry.subentry_id, subentry.data, d) for d in ROOM_SENSORS),
+            config_subentry_id=subentry.subentry_id,
+        )
 
 
 class CCSensor(ClimateControlEntity, SensorEntity):
@@ -137,3 +150,69 @@ class CCSensor(ClimateControlEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         data = self.coordinator.data
         return self._desc.attrs(data) if data and self._desc.attrs else None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RoomSensorDescription:
+    key: str
+    value: Callable[[RoomDiagnostics], float | None]
+    unit: str
+    device_class: SensorDeviceClass | None = None
+
+
+ROOM_SENSORS: tuple[RoomSensorDescription, ...] = (
+    RoomSensorDescription(
+        key="room_deviation",
+        value=lambda r: r.deviation_k,
+        unit=UnitOfTemperature.KELVIN,
+    ),
+    RoomSensorDescription(
+        key="room_heat_demand",
+        value=lambda r: r.heat_demand_kwh,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+    ),
+    RoomSensorDescription(
+        key="room_storage",
+        value=lambda r: r.storage_kwh,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+    ),
+)
+
+
+class RoomSensor(CoordinatorEntity[ClimateControlCoordinator], SensorEntity):
+    """Diagnostic value of one indoor unit, on its own device."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: ClimateControlCoordinator,
+        subentry_id: str,
+        room: Mapping[str, Any],
+        desc: RoomSensorDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        entry = coordinator.config_entry
+        self._room_id: str = room[ROOM_ENTITY]
+        self._desc = desc
+        self._attr_unique_id = f"{entry.entry_id}_{subentry_id}_{desc.key}"
+        self._attr_translation_key = desc.key
+        self._attr_native_unit_of_measurement = desc.unit
+        self._attr_device_class = desc.device_class
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry.entry_id}_{subentry_id}")},
+            name=room[ROOM_NAME],
+        )
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.native_value is not None
+
+    @property
+    def native_value(self) -> float | None:
+        data = self.coordinator.data
+        diagnostics = data.rooms.get(self._room_id) if data else None
+        return self._desc.value(diagnostics) if diagnostics else None

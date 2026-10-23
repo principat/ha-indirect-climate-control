@@ -10,9 +10,9 @@ from .helpers import installation, room
 
 @pytest.mark.req("FR-GEN-01")
 def test_any_number_of_rooms_and_classes() -> None:
-    cfg = installation(room("x", cls="s"), room("y", cls="l"), room("z", cls="s"))
-    assert cfg.class_order == ("s", "l")
-    assert cfg.room("y").power_class == "l"
+    cfg = installation(room("x", power=400), room("y", power=900), room("z", power=400))
+    assert cfg.class_order == (400.0, 900.0)  # power class = equal nominal power, configured order
+    assert cfg.room("y").power_class == 900.0
 
 
 @pytest.mark.req("FR-GEN-01")

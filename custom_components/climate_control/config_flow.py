@@ -30,7 +30,6 @@ from .const import (
     CONF_PLAN_ENTITY,
     DOMAIN,
     ROOM_AREA,
-    ROOM_CLASS,
     ROOM_COMFORT_MAX,
     ROOM_ENTITY,
     ROOM_NAME,
@@ -44,9 +43,15 @@ from .const import (
 from .core.config import ConfigError, Parameters
 from .core.model import Mode
 from .data import build_config
-from .help import HELP_KEY, OPTION_HELP, ROOM_HELP, USER_HELP, help_section_key, split_help
-
-OPTIONS_HELP = tuple(f.name for f in fields(Parameters))
+from .help import (
+    HELP_KEY,
+    OPTION_HELP,
+    PARAMETER_GROUPS,
+    ROOM_HELP,
+    USER_HELP,
+    help_section_key,
+    split_help,
+)
 
 
 def _number(
@@ -103,11 +108,10 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
             ),
             vol.Required(ROOM_COMFORT_MAX, default=24.0): _number("°C", step=0.5, minimum=5, maximum=35),
             vol.Required(ROOM_OVERLOAD_MAX, default=28.0): _number("°C", step=0.5, minimum=5, maximum=35),
-            vol.Required(ROOM_CLASS, default="standard"): str,
             vol.Required(ROOM_POWER): _number("W"),
             vol.Required(ROOM_AREA, default=10): _number("m²", step=0.5),
             vol.Optional(ROOM_WINDOW): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="binary_sensor")
+                selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
             ),
         }
     )
@@ -234,10 +238,11 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         )
 
 
-def _options_fields(current: Parameters) -> dict[Any, Any]:
+def _options_fields(current: Parameters, names: tuple[str, ...]) -> dict[Any, Any]:
     items: dict[Any, Any] = {}
-    for f in fields(Parameters):
-        value = getattr(current, f.name)
+    for name in names:
+        value = getattr(current, name)
+        f = next(f for f in fields(Parameters) if f.name == name)
         if isinstance(value, Mode):
             items[vol.Required(f.name, default=str(value))] = selector.SelectSelector(
                 selector.SelectSelectorConfig(
@@ -252,19 +257,37 @@ def _options_fields(current: Parameters) -> dict[Any, Any]:
 
 
 class ClimateControlOptionsFlow(OptionsFlow):
-    """All tunable parameters (functional spec, section 4)."""
+    """All tunable parameters (functional spec, section 4), grouped into menu steps."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="init", menu_options=list(PARAMETER_GROUPS))
+
+    async def async_step_control(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return await self._group("control", user_input)
+
+    async def async_step_soc(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return await self._group("soc", user_input)
+
+    async def async_step_safety(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return await self._group("safety", user_input)
+
+    async def async_step_planner(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return await self._group("planner", user_input)
+
+    async def _group(self, group: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
+        names = PARAMETER_GROUPS[group]
         expanded = bool(self.config_entry.options.get(OPTION_HELP, False))
-        errors: dict[str, str] = {}
         current = Parameters.from_mapping(dict(self.config_entry.options))
+        errors: dict[str, str] = {}
         if user_input is not None:
             values, expanded = split_help(user_input, expanded)
+            stored = {k: (str(v) if isinstance(v, Mode) else v) for k, v in current.as_mapping().items()}
+            merged = {**stored, **values}
             try:
-                build_config(self.config_entry, values)
+                build_config(self.config_entry, merged)
             except ConfigError, ValueError:
                 errors["base"] = "invalid_parameters"
             else:
-                return self.async_create_entry(data={**values, OPTION_HELP: expanded})
-        schema = _with_help(_options_fields(current), OPTIONS_HELP, expanded)
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+                return self.async_create_entry(data={**merged, OPTION_HELP: expanded})
+        schema = _with_help(_options_fields(current, names), names, expanded)
+        return self.async_show_form(step_id=group, data_schema=schema, errors=errors)

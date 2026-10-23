@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 from homeassistant.components.climate.const import (
@@ -29,6 +29,7 @@ from homeassistant.util import dt as dt_util
 from .const import CONF_PLAN_ENTITY, DOMAIN, LOGGER, ROOM_ENTITY, ROOM_SETPOINT_ENTITY, ROOM_WINDOW
 from .core.config import InstallationConfig, Parameters, valid_setpoint
 from .core.controller import Controller, CycleResult
+from .core.diagnostics import RoomDiagnostics, room_diagnostics
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
@@ -37,11 +38,19 @@ from .data import build_config, room_data
 type ClimateControlConfigEntry = ConfigEntry[ClimateControlCoordinator]
 
 
+def _as_list(value: object) -> list[str]:
+    """Entity selection stored as a single id (older entries) or a list."""
+    if not value:
+        return []
+    return [value] if isinstance(value, str) else [str(v) for v in value]  # type: ignore[attr-defined]
+
+
 @dataclass(frozen=True)
 class CycleData:
     result: CycleResult
     planner: PlannerInputs
     plan: Plan | None
+    rooms: dict[str, RoomDiagnostics] = field(default_factory=dict)
 
 
 class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
@@ -60,11 +69,10 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             update_interval=timedelta(seconds=params.cycle_s),
         )
         self.controller = Controller(self.cfg) if self.cfg else None
-        plan_entities = entry.data.get(CONF_PLAN_ENTITY) or []
-        self._plan_entities: list[str] = (
-            [plan_entities] if isinstance(plan_entities, str) else list(plan_entities)
-        )
-        self._windows: dict[str, str | None] = {r[ROOM_ENTITY]: r.get(ROOM_WINDOW) for r in room_data(entry)}
+        self._plan_entities: list[str] = _as_list(entry.data.get(CONF_PLAN_ENTITY))
+        self._windows: dict[str, list[str]] = {
+            r[ROOM_ENTITY]: _as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
+        }
         self._setpoint_entities: dict[str, str] = {
             r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY] for r in room_data(entry) if r.get(ROOM_SETPOINT_ENTITY)
         }
@@ -87,8 +95,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             result = replace(result, commands={}, running=False, fallback=False, requested_w=0.0, served=())
         for entity_id, command in result.commands.items():
             await self._apply(entity_id, command)
-        planner = planner_inputs(self.cfg.with_setpoints(setpoints), dt_util.as_local(now))
-        return CycleData(result, planner, plan)
+        current = self.cfg.with_setpoints(setpoints)
+        planner = planner_inputs(current, dt_util.as_local(now))
+        return CycleData(result, planner, plan, room_diagnostics(current, result.temperatures))
 
     def _read_setpoints(self) -> dict[str, float]:
         """Current setpoints from configured entities. Invalid or missing values keep the fixed setpoint."""
@@ -121,8 +130,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
 
     def _room_state(self, entity_id: str) -> RoomState:
         state = self.hass.states.get(entity_id)
-        window = self._windows.get(entity_id)
-        window_open = window is not None and self.hass.states.is_state(window, STATE_ON)
+        # FR-SAFE-01: open as soon as any of the room's window contacts is open.
+        window_open = any(self.hass.states.is_state(w, STATE_ON) for w in self._windows.get(entity_id, []))
         if state is None:
             return RoomState(None, None, window_open)
         try:

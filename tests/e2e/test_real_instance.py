@@ -17,7 +17,6 @@ PLAN = "sensor.sim_planner_power"
 REFERENCE = yaml.safe_load(Path("config/reference-case.yaml").read_text(encoding="utf-8"))
 UNITS = [r["indoor_unit"] for r in REFERENCE["rooms"]]
 SETPOINT = 21.0  # reference case has no setpoints yet (TODO in config/)
-DEFAULT_CLASS = "standard"  # power classes not yet defined in config/
 
 
 def _url(ha: requests.Session, path: str) -> str:
@@ -76,7 +75,6 @@ def _room_input(room: dict[str, Any]) -> dict[str, Any]:
     return {
         "name": room["id"],
         "setpoint_c": SETPOINT,
-        "power_class": room["power_class"] or DEFAULT_CLASS,
         "nominal_power_w": 500,
         "area_m2": room["area_m2"],
     }

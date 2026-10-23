@@ -90,10 +90,9 @@
             "setpoint_entity": "Setpoint entity (optional)",
             "comfort_max_c": "Upper bound without surcharge (°C)",
             "overload_max_c": "Overload limit (°C)",
-            "power_class": "Power class",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
-            "window_entity": "Window contact"
+            "window_entity": "Window contacts"
           },
           "sections": {
             "help_entity_id": {
@@ -131,16 +130,9 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_power_class": {
-              "name": "Help: Power class",
-              "description": "Free name for units with the same nominal power, e.g. 'small' or 'large'. When deviations are tied, units are grouped by power class and switched on group by group so that the load rises evenly. Order of the classes = order in which they first appear among the indoor units.",
-              "data": {
-                "help_expanded": "Expand help texts when opening"
-              }
-            },
             "help_nominal_power_w": {
               "name": "Help: Nominal power",
-              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request.",
+              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request. Units with the same nominal power form a group (power class) and are switched on together when their deviation is tied, so that the load rises evenly. Enter identical values for identical units.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -153,8 +145,8 @@
               }
             },
             "help_window_entity": {
-              "name": "Help: Window contact",
-              "description": "Optional window contact (on = open). While the window is open the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
+              "name": "Help: Window contacts",
+              "description": "Optional, one or more window or door contacts of the room (on = open). As soon as one of them is open, the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -169,10 +161,9 @@
             "setpoint_entity": "Setpoint entity (optional)",
             "comfort_max_c": "Upper bound without surcharge (°C)",
             "overload_max_c": "Overload limit (°C)",
-            "power_class": "Power class",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
-            "window_entity": "Window contact"
+            "window_entity": "Window contacts"
           },
           "sections": {
             "help_setpoint_c": {
@@ -203,16 +194,9 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_power_class": {
-              "name": "Help: Power class",
-              "description": "Free name for units with the same nominal power, e.g. 'small' or 'large'. When deviations are tied, units are grouped by power class and switched on group by group so that the load rises evenly. Order of the classes = order in which they first appear among the indoor units.",
-              "data": {
-                "help_expanded": "Expand help texts when opening"
-              }
-            },
             "help_nominal_power_w": {
               "name": "Help: Nominal power",
-              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request.",
+              "description": "Electrical power this indoor unit roughly draws at the outdoor unit while heating. It decides how many units run for the requested power: groups are added until their sum covers the request. Units with the same nominal power form a group (power class) and are switched on together when their deviation is tied, so that the load rises evenly. Enter identical values for identical units.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -225,8 +209,8 @@
               }
             },
             "help_window_entity": {
-              "name": "Help: Window contact",
-              "description": "Optional window contact (on = open). While the window is open the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
+              "name": "Help: Window contacts",
+              "description": "Optional, one or more window or door contacts of the room (on = open). As soon as one of them is open, the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -247,28 +231,21 @@
     "step": {
       "init": {
         "title": "Parameters",
+        "description": "Choose a group.",
+        "menu_options": {
+          "control": "Control: thresholds and distribution",
+          "soc": "State of charge (SOC)",
+          "safety": "Protection and fallback",
+          "planner": "Planner model (HAEO)"
+        }
+      },
+      "control": {
+        "title": "Control: thresholds and distribution",
         "data": {
           "start_ratio": "Start threshold (share of Pmin)",
           "stop_ratio": "Stop threshold (share of Pmin)",
           "tie_band_k": "Tie band (K)",
           "heat_offset_k": "Heating offset above device temperature (K)",
-          "soc_smoothing_s": "SOC smoothing (s)",
-          "outlier_k": "Outlier limit per cycle (K)",
-          "overheat_k": "Overheating above setpoint (K)",
-          "overheat_s": "Overheating duration (s)",
-          "hard_min_below_k": "Hard minimum below setpoint (K)",
-          "soc_min_c": "SOC scale 0 % (°C)",
-          "soc_max_c": "SOC scale 100 % (°C)",
-          "efficiency_pct": "Buffer efficiency (%)",
-          "discharge_limit_w": "Buffer discharge limit (W)",
-          "night_start_h": "Night setback start (hour)",
-          "night_end_h": "Night setback end (hour)",
-          "night_setback_k": "Night setback of lower bounds (K)",
-          "late_charge_surcharge": "Late charge surcharge (per kWh)",
-          "undercharge_cost": "Penalty between setpoint and hard minimum (per kWh)",
-          "overcharge_cost": "Overload surcharge (per kWh)",
-          "planner_horizon_h": "Planner forecast horizon (h)",
-          "plan_max_age_s": "Maximum plan age (s)",
           "neutral_mode": "Neutral mode",
           "cycle_s": "Control cycle (s)"
         },
@@ -301,6 +278,45 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
+          "help_neutral_mode": {
+            "name": "Help: Neutral mode",
+            "description": "Mode of units that are not served; it separates heating and cooling. Fan (default) keeps the device temperature meaningful, off saves the fan power (about 85 W for seven units).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_cycle_s": {
+            "name": "Help: Control cycle (s)",
+            "description": "Interval between control cycles. Each cycle reads plan and device temperatures, decides and sends only changed commands to the indoor units. Shorter intervals react faster but send more commands. Default 60 s.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
+        }
+      },
+      "soc": {
+        "title": "State of charge (SOC)",
+        "data": {
+          "soc_min_c": "SOC scale 0 % (°C)",
+          "soc_max_c": "SOC scale 100 % (°C)",
+          "soc_smoothing_s": "SOC smoothing (s)",
+          "outlier_k": "Outlier limit per cycle (K)"
+        },
+        "sections": {
+          "help_soc_min_c": {
+            "name": "Help: SOC scale 0 % (°C)",
+            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_soc_max_c": {
+            "name": "Help: SOC scale 100 % (°C)",
+            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_soc_smoothing_s": {
             "name": "Help: SOC smoothing (s)",
             "description": "Time window for smoothing the SOC (median of the values within the window). Default 900 s (15 min).",
@@ -311,6 +327,24 @@
           "help_outlier_k": {
             "name": "Help: Outlier limit per cycle (K)",
             "description": "If a device temperature jumps by more than this within one cycle, the value is discarded. If the next cycle confirms the new value, it is accepted. Default 2 K.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
+        }
+      },
+      "safety": {
+        "title": "Protection and fallback",
+        "data": {
+          "hard_min_below_k": "Hard minimum below setpoint (K)",
+          "overheat_k": "Overheating above setpoint (K)",
+          "overheat_s": "Overheating duration (s)",
+          "plan_max_age_s": "Maximum plan age (s)"
+        },
+        "sections": {
+          "help_hard_min_below_k": {
+            "name": "Help: Hard minimum below setpoint (K)",
+            "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -329,27 +363,29 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_hard_min_below_k": {
-            "name": "Help: Hard minimum below setpoint (K)",
-            "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
+          "help_plan_max_age_s": {
+            "name": "Help: Maximum plan age (s)",
+            "description": "If the plan has not been updated for longer than this, it counts as outdated and the fallback applies (all units heat to their standard setpoint). Default 1800 s.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
-          },
-          "help_soc_min_c": {
-            "name": "Help: SOC scale 0 % (°C)",
-            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_soc_max_c": {
-            "name": "Help: SOC scale 100 % (°C)",
-            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
+          }
+        }
+      },
+      "planner": {
+        "title": "Planner model (HAEO)",
+        "data": {
+          "efficiency_pct": "Buffer efficiency (%)",
+          "discharge_limit_w": "Buffer discharge limit (W)",
+          "night_start_h": "Night setback start (hour)",
+          "night_end_h": "Night setback end (hour)",
+          "night_setback_k": "Night setback of lower bounds (K)",
+          "undercharge_cost": "Penalty between setpoint and hard minimum (per kWh)",
+          "overcharge_cost": "Overload surcharge (per kWh)",
+          "late_charge_surcharge": "Late charge surcharge (per kWh)",
+          "planner_horizon_h": "Planner forecast horizon (h)"
+        },
+        "sections": {
           "help_efficiency_pct": {
             "name": "Help: Buffer efficiency (%)",
             "description": "Efficiency of the climate buffer in the planner model (losses while storing heat). Default 92 %.",
@@ -385,13 +421,6 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_late_charge_surcharge": {
-            "name": "Help: Late charge surcharge (per kWh)",
-            "description": "Small amount per kWh that falls linearly to 0 over the forecast horizon. It only decides between equally priced time windows: then the planner charges later (less storage loss). Default 0.001.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
           "help_undercharge_cost": {
             "name": "Help: Penalty between setpoint and hard minimum (per kWh)",
             "description": "Penalty per kWh when the planner discharges the buffer between setpoint and hard minimum. Default 0.003 (slightly below that of the car charging).",
@@ -406,30 +435,16 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
+          "help_late_charge_surcharge": {
+            "name": "Help: Late charge surcharge (per kWh)",
+            "description": "Small amount per kWh that falls linearly to 0 over the forecast horizon. It only decides between equally priced time windows: then the planner charges later (less storage loss). Default 0.001.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_planner_horizon_h": {
             "name": "Help: Planner forecast horizon (h)",
             "description": "Number of hours in the forecasts of the planner values. Should be at least the planner's horizon. Default 24.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_plan_max_age_s": {
-            "name": "Help: Maximum plan age (s)",
-            "description": "If the plan has not been updated for longer than this, it counts as outdated and the fallback applies (all units heat to their standard setpoint). Default 1800 s.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_neutral_mode": {
-            "name": "Help: Neutral mode",
-            "description": "Mode of units that are not served; it separates heating and cooling. Fan (default) keeps the device temperature meaningful, off saves the fan power (about 85 W for seven units).",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_cycle_s": {
-            "name": "Help: Control cycle (s)",
-            "description": "Interval between control cycles. Each cycle reads plan and device temperatures, decides and sends only changed commands to the indoor units. Shorter intervals react faster but send more commands. Default 60 s.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -500,6 +515,15 @@
       },
       "charge_cost": {
         "name": "Charge cost"
+      },
+      "room_deviation": {
+        "name": "Deviation from setpoint"
+      },
+      "room_heat_demand": {
+        "name": "Heat demand"
+      },
+      "room_storage": {
+        "name": "Storage capacity"
       }
     }
   },

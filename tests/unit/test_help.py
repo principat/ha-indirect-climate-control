@@ -5,7 +5,13 @@ from pathlib import Path
 import pytest
 
 from custom_components.climate_control.core.config import Parameters
-from custom_components.climate_control.help import ROOM_HELP, USER_HELP, help_section_key, split_help
+from custom_components.climate_control.help import (
+    PARAMETER_GROUPS,
+    ROOM_HELP,
+    USER_HELP,
+    help_section_key,
+    split_help,
+)
 
 BASE = Path("custom_components/climate_control")
 FILES = [BASE / "strings.json", BASE / "translations" / "en.json", BASE / "translations" / "de.json"]
@@ -19,7 +25,7 @@ def _forms(data: dict) -> list[tuple[str, dict, tuple[str, ...]]]:  # type: igno
         ("reconfigure", data["config"]["step"]["reconfigure"], USER_HELP),
         ("room", room["user"], ROOM_HELP),
         ("room reconfigure", room["reconfigure"], tuple(f for f in ROOM_HELP if f != "entity_id")),
-        ("options", data["options"]["step"]["init"], OPTIONS_HELP),
+        *((f"options {g}", data["options"]["step"][g], names) for g, names in PARAMETER_GROUPS.items()),
     ]
 
 
@@ -58,3 +64,12 @@ def test_help_switch_toggles_when_any_section_differs() -> None:
     )
     assert split_help({"help_a": {"help_expanded": False}}, True)[1] is False
     assert split_help({"help_text": "not a section"}, True) == ({"help_text": "not a section"}, True)
+
+
+@pytest.mark.req("FR-CFG-03")
+def test_parameters_are_grouped_completely_and_once() -> None:
+    grouped = [name for names in PARAMETER_GROUPS.values() for name in names]
+    assert sorted(grouped) == sorted(OPTIONS_HELP)
+    for path in FILES:
+        menu = json.loads(path.read_text(encoding="utf-8"))["options"]["step"]["init"]["menu_options"]
+        assert set(menu) == set(PARAMETER_GROUPS), path.name

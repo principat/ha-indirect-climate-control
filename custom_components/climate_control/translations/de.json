@@ -90,10 +90,9 @@
             "setpoint_entity": "Sollwert-Entität (optional)",
             "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
             "overload_max_c": "Überlastgrenze (°C)",
-            "power_class": "Leistungsklasse",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
-            "window_entity": "Fensterkontakt"
+            "window_entity": "Fensterkontakte"
           },
           "sections": {
             "help_entity_id": {
@@ -131,16 +130,9 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
-            "help_power_class": {
-              "name": "Hilfe: Leistungsklasse",
-              "description": "Freier Name für Geräte gleicher Nennleistung, z. B. „klein“ oder „groß“. Bei Gleichstand der Abweichung werden Geräte nach Leistungsklasse gruppiert und gruppenweise zugeschaltet, damit die Last gleichmäßig steigt. Reihenfolge der Klassen = Reihenfolge, in der sie zuerst bei einem Innengerät vorkommen.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
             "help_nominal_power_w": {
               "name": "Hilfe: Nennleistung",
-              "description": "Elektrische Leistung, die dieses Innengerät beim Heizen am Außengerät etwa abruft. Sie bestimmt, wie viele Geräte für die angeforderte Leistung laufen: Gruppen werden zugeschaltet, bis ihre Summe die Anforderung deckt.",
+              "description": "Elektrische Leistung, die dieses Innengerät beim Heizen am Außengerät etwa abruft. Sie bestimmt, wie viele Geräte für die angeforderte Leistung laufen: Gruppen werden zugeschaltet, bis ihre Summe die Anforderung deckt. Geräte gleicher Nennleistung bilden eine Gruppe (Leistungsklasse) und werden bei gleicher Abweichung gemeinsam zugeschaltet, damit die Last gleichmäßig steigt. Für baugleiche Geräte denselben Wert eintragen.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -153,8 +145,8 @@
               }
             },
             "help_window_entity": {
-              "name": "Hilfe: Fensterkontakt",
-              "description": "Optionaler Fensterkontakt (an = offen). Bei offenem Fenster wird der Raum aus der Regelung genommen: Das Gerät geht in den neutralen Modus und zählt weder für den SOC noch für die Verteilung.",
+              "name": "Hilfe: Fensterkontakte",
+              "description": "Optional ein oder mehrere Fenster- oder Türkontakte des Raums (an = offen). Sobald einer davon offen ist, wird der Raum aus der Regelung genommen: Das Gerät geht in den neutralen Modus und zählt weder für den SOC noch für die Verteilung.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -169,10 +161,9 @@
             "setpoint_entity": "Sollwert-Entität (optional)",
             "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
             "overload_max_c": "Überlastgrenze (°C)",
-            "power_class": "Leistungsklasse",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
-            "window_entity": "Fensterkontakt"
+            "window_entity": "Fensterkontakte"
           },
           "sections": {
             "help_setpoint_c": {
@@ -203,16 +194,9 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
-            "help_power_class": {
-              "name": "Hilfe: Leistungsklasse",
-              "description": "Freier Name für Geräte gleicher Nennleistung, z. B. „klein“ oder „groß“. Bei Gleichstand der Abweichung werden Geräte nach Leistungsklasse gruppiert und gruppenweise zugeschaltet, damit die Last gleichmäßig steigt. Reihenfolge der Klassen = Reihenfolge, in der sie zuerst bei einem Innengerät vorkommen.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
             "help_nominal_power_w": {
               "name": "Hilfe: Nennleistung",
-              "description": "Elektrische Leistung, die dieses Innengerät beim Heizen am Außengerät etwa abruft. Sie bestimmt, wie viele Geräte für die angeforderte Leistung laufen: Gruppen werden zugeschaltet, bis ihre Summe die Anforderung deckt.",
+              "description": "Elektrische Leistung, die dieses Innengerät beim Heizen am Außengerät etwa abruft. Sie bestimmt, wie viele Geräte für die angeforderte Leistung laufen: Gruppen werden zugeschaltet, bis ihre Summe die Anforderung deckt. Geräte gleicher Nennleistung bilden eine Gruppe (Leistungsklasse) und werden bei gleicher Abweichung gemeinsam zugeschaltet, damit die Last gleichmäßig steigt. Für baugleiche Geräte denselben Wert eintragen.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -225,8 +209,8 @@
               }
             },
             "help_window_entity": {
-              "name": "Hilfe: Fensterkontakt",
-              "description": "Optionaler Fensterkontakt (an = offen). Bei offenem Fenster wird der Raum aus der Regelung genommen: Das Gerät geht in den neutralen Modus und zählt weder für den SOC noch für die Verteilung.",
+              "name": "Hilfe: Fensterkontakte",
+              "description": "Optional ein oder mehrere Fenster- oder Türkontakte des Raums (an = offen). Sobald einer davon offen ist, wird der Raum aus der Regelung genommen: Das Gerät geht in den neutralen Modus und zählt weder für den SOC noch für die Verteilung.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -247,28 +231,21 @@
     "step": {
       "init": {
         "title": "Parameter",
+        "description": "Gruppe wählen.",
+        "menu_options": {
+          "control": "Regelung: Schwellen und Verteilung",
+          "soc": "Füllstand (SOC)",
+          "safety": "Schutz und Rückfall",
+          "planner": "Planer-Modell (HAEO)"
+        }
+      },
+      "control": {
+        "title": "Regelung: Schwellen und Verteilung",
         "data": {
           "start_ratio": "Startschwelle (Anteil von Pmin)",
           "stop_ratio": "Abschaltschwelle (Anteil von Pmin)",
           "tie_band_k": "Gleichstand-Band (K)",
           "heat_offset_k": "Heiz-Offset über Gerätetemperatur (K)",
-          "soc_smoothing_s": "SOC-Glättung (s)",
-          "outlier_k": "Ausreißergrenze je Zyklus (K)",
-          "overheat_k": "Überhitzung über Sollwert (K)",
-          "overheat_s": "Überhitzungsdauer (s)",
-          "hard_min_below_k": "Hartes Minimum unter Sollwert (K)",
-          "soc_min_c": "SOC-Skala 0 % (°C)",
-          "soc_max_c": "SOC-Skala 100 % (°C)",
-          "efficiency_pct": "Wirkungsgrad Puffer (%)",
-          "discharge_limit_w": "Entladegrenze Puffer (W)",
-          "night_start_h": "Nachtabsenkung Beginn (Stunde)",
-          "night_end_h": "Nachtabsenkung Ende (Stunde)",
-          "night_setback_k": "Nachtabsenkung der Untergrenzen (K)",
-          "late_charge_surcharge": "Aufschlag Spätladen (je kWh)",
-          "undercharge_cost": "Strafwert Sollwert bis hartes Minimum (je kWh)",
-          "overcharge_cost": "Aufschlag Überlast (je kWh)",
-          "planner_horizon_h": "Prognosehorizont für den Planer (h)",
-          "plan_max_age_s": "Maximales Planalter (s)",
           "neutral_mode": "Neutraler Modus",
           "cycle_s": "Regelzyklus (s)"
         },
@@ -301,6 +278,45 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
+          "help_neutral_mode": {
+            "name": "Hilfe: Neutraler Modus",
+            "description": "Modus nicht bedienter Geräte; er trennt Heizen und Kühlen. Lüften (Standard) hält die Gerätetemperatur aussagekräftig, Aus spart die Lüfterleistung (etwa 85 W für sieben Geräte).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_cycle_s": {
+            "name": "Hilfe: Regelzyklus (s)",
+            "description": "Abstand zwischen zwei Regelzyklen. Jeder Zyklus liest Plan und Gerätetemperaturen, entscheidet und schickt nur geänderte Befehle an die Innengeräte. Kürzere Abstände reagieren schneller, senden aber mehr Befehle. Standard 60 s.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          }
+        }
+      },
+      "soc": {
+        "title": "Füllstand (SOC)",
+        "data": {
+          "soc_min_c": "SOC-Skala 0 % (°C)",
+          "soc_max_c": "SOC-Skala 100 % (°C)",
+          "soc_smoothing_s": "SOC-Glättung (s)",
+          "outlier_k": "Ausreißergrenze je Zyklus (K)"
+        },
+        "sections": {
+          "help_soc_min_c": {
+            "name": "Hilfe: SOC-Skala 0 % (°C)",
+            "description": "Temperatur des schlechtesten Raums, die 0 % SOC entspricht. Standard 15 °C.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_soc_max_c": {
+            "name": "Hilfe: SOC-Skala 100 % (°C)",
+            "description": "Temperatur des schlechtesten Raums, die 100 % SOC entspricht. Standard 30 °C.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_soc_smoothing_s": {
             "name": "Hilfe: SOC-Glättung (s)",
             "description": "Zeitfenster für die Glättung des SOC (Median der Werte im Fenster). Standard 900 s (15 min).",
@@ -311,6 +327,24 @@
           "help_outlier_k": {
             "name": "Hilfe: Ausreißergrenze je Zyklus (K)",
             "description": "Springt die Gerätetemperatur in einem Zyklus um mehr als diesen Wert, wird der Wert verworfen. Bestätigt der nächste Zyklus den neuen Wert, wird er übernommen. Standard 2 K.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          }
+        }
+      },
+      "safety": {
+        "title": "Schutz und Rückfall",
+        "data": {
+          "hard_min_below_k": "Hartes Minimum unter Sollwert (K)",
+          "overheat_k": "Überhitzung über Sollwert (K)",
+          "overheat_s": "Überhitzungsdauer (s)",
+          "plan_max_age_s": "Maximales Planalter (s)"
+        },
+        "sections": {
+          "help_hard_min_below_k": {
+            "name": "Hilfe: Hartes Minimum unter Sollwert (K)",
+            "description": "Hartes Minimum = Sollwert minus dieser Wert. Darunter wird der Raum auch ohne Plan geheizt. Zugleich unteres Ende der Strafzone im Planer-Modell. Standard 2 K.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -329,27 +363,29 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_hard_min_below_k": {
-            "name": "Hilfe: Hartes Minimum unter Sollwert (K)",
-            "description": "Hartes Minimum = Sollwert minus dieser Wert. Darunter wird der Raum auch ohne Plan geheizt. Zugleich unteres Ende der Strafzone im Planer-Modell. Standard 2 K.",
+          "help_plan_max_age_s": {
+            "name": "Hilfe: Maximales Planalter (s)",
+            "description": "Wurde der Plan länger als diese Zeit nicht aktualisiert, gilt er als veraltet und der Rückfall greift (alle Geräte heizen auf ihren Standard-Sollwert). Standard 1800 s.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
-          },
-          "help_soc_min_c": {
-            "name": "Hilfe: SOC-Skala 0 % (°C)",
-            "description": "Temperatur des schlechtesten Raums, die 0 % SOC entspricht. Standard 15 °C.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_soc_max_c": {
-            "name": "Hilfe: SOC-Skala 100 % (°C)",
-            "description": "Temperatur des schlechtesten Raums, die 100 % SOC entspricht. Standard 30 °C.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
+          }
+        }
+      },
+      "planner": {
+        "title": "Planer-Modell (HAEO)",
+        "data": {
+          "efficiency_pct": "Wirkungsgrad Puffer (%)",
+          "discharge_limit_w": "Entladegrenze Puffer (W)",
+          "night_start_h": "Nachtabsenkung Beginn (Stunde)",
+          "night_end_h": "Nachtabsenkung Ende (Stunde)",
+          "night_setback_k": "Nachtabsenkung der Untergrenzen (K)",
+          "undercharge_cost": "Strafwert Sollwert bis hartes Minimum (je kWh)",
+          "overcharge_cost": "Aufschlag Überlast (je kWh)",
+          "late_charge_surcharge": "Aufschlag Spätladen (je kWh)",
+          "planner_horizon_h": "Prognosehorizont für den Planer (h)"
+        },
+        "sections": {
           "help_efficiency_pct": {
             "name": "Hilfe: Wirkungsgrad Puffer (%)",
             "description": "Wirkungsgrad des Klima-Puffers im Planer-Modell (Verluste beim Speichern von Wärme). Standard 92 %.",
@@ -385,13 +421,6 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_late_charge_surcharge": {
-            "name": "Hilfe: Aufschlag Spätladen (je kWh)",
-            "description": "Kleiner Betrag je kWh, der über den Prognosehorizont linear auf 0 fällt. Er entscheidet nur zwischen gleich teuren Zeitfenstern: Dann lädt der Planer später (weniger Speicherverlust). Standard 0,001.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
           "help_undercharge_cost": {
             "name": "Hilfe: Strafwert Sollwert bis hartes Minimum (je kWh)",
             "description": "Strafwert je kWh, wenn der Planer den Puffer zwischen Sollwert und hartem Minimum entlädt. Standard 0,003 (etwas unter dem der Autoladung).",
@@ -406,30 +435,16 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
+          "help_late_charge_surcharge": {
+            "name": "Hilfe: Aufschlag Spätladen (je kWh)",
+            "description": "Kleiner Betrag je kWh, der über den Prognosehorizont linear auf 0 fällt. Er entscheidet nur zwischen gleich teuren Zeitfenstern: Dann lädt der Planer später (weniger Speicherverlust). Standard 0,001.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_planner_horizon_h": {
             "name": "Hilfe: Prognosehorizont für den Planer (h)",
             "description": "Anzahl Stunden in den Prognosen der Planer-Vorgaben. Sollte mindestens dem Horizont des Planers entsprechen. Standard 24.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_plan_max_age_s": {
-            "name": "Hilfe: Maximales Planalter (s)",
-            "description": "Wurde der Plan länger als diese Zeit nicht aktualisiert, gilt er als veraltet und der Rückfall greift (alle Geräte heizen auf ihren Standard-Sollwert). Standard 1800 s.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_neutral_mode": {
-            "name": "Hilfe: Neutraler Modus",
-            "description": "Modus nicht bedienter Geräte; er trennt Heizen und Kühlen. Lüften (Standard) hält die Gerätetemperatur aussagekräftig, Aus spart die Lüfterleistung (etwa 85 W für sieben Geräte).",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_cycle_s": {
-            "name": "Hilfe: Regelzyklus (s)",
-            "description": "Abstand zwischen zwei Regelzyklen. Jeder Zyklus liest Plan und Gerätetemperaturen, entscheidet und schickt nur geänderte Befehle an die Innengeräte. Kürzere Abstände reagieren schneller, senden aber mehr Befehle. Standard 60 s.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -500,6 +515,15 @@
       },
       "charge_cost": {
         "name": "Aufschlag Spätladen"
+      },
+      "room_deviation": {
+        "name": "Abweichung zum Sollwert"
+      },
+      "room_heat_demand": {
+        "name": "Wärmebedarf"
+      },
+      "room_storage": {
+        "name": "Speicherkapazität"
       }
     }
   },

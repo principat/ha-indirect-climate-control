@@ -5,13 +5,13 @@
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
 | Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Planer-Sensor(en) optional | `entry.data`, Titel |
-| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Leistungsklasse, Nennleistung, Fläche, Fensterkontakt | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
-| Parameter | Options Flow mit allen Feldern aus `Parameters` | `entry.options` |
+| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
+| Parameter | Options Flow: Menü mit Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
 
 - Mehrere Anlagen: beliebig viele Config Entries, keine Einschränkung auf eine Instanz (FR-CFG-02).
   Entitäts-IDs folgen dem Anlagennamen (`sensor.<name>_state_of_charge`).
-- Reihenfolge der Innengeräte = Anlagereihenfolge der Subentries; Reihenfolge der Leistungsklassen = erstes Vorkommen.
+- Reihenfolge der Innengeräte = Anlagereihenfolge der Subentries; Reihenfolge der Leistungsklassen (gleiche Nennleistung) = erstes Vorkommen.
 - Ohne Innengerät läuft die Anlage leer, alle Entitäten sind `unavailable`.
 - Ohne Planer-Sensor (Inbetriebnahme): SOC und Planer-Vorgaben werden berechnet und veröffentlicht, es gehen
   keine Befehle an die Innengeräte, `running` und `fallback` sind aus. Grund: Der Planer braucht zuerst die
@@ -72,6 +72,9 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 ### Status
 
 `planned_power` (W, Prognose), `requested_power` (W, Attribut `served_rooms`), `binary_sensor` `running`, `fallback`.
+
+Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation` (K), `room_heat_demand` (kWh),
+`room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).
 
 ## Dienst
 

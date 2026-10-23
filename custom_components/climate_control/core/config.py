@@ -30,11 +30,15 @@ class RoomConfig:
     id: str
     name: str
     setpoint_c: float
-    power_class: str
     nominal_power_w: float
     area_m2: float = 1.0
     comfort_max_c: float = 24.0  # upper bound without surcharge (room dependent)
     overload_max_c: float = 28.0  # highest temperature the buffer may be charged to (room dependent)
+
+    @property
+    def power_class(self) -> float:
+        """Power class = group of indoor units with the same nominal power (glossary)."""
+        return self.nominal_power_w
 
 
 @dataclass(frozen=True)
@@ -115,7 +119,7 @@ class InstallationConfig:
                 )
 
     @property
-    def class_order(self) -> tuple[str, ...]:
+    def class_order(self) -> tuple[float, ...]:
         """Power classes in the order they were first used by the configured rooms."""
         return tuple(dict.fromkeys(r.power_class for r in self.rooms))
 

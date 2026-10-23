@@ -1,5 +1,6 @@
 """Integration level: configuration through the HA test harness (no real instance)."""
 
+from dataclasses import fields
 from typing import Any
 
 import pytest
@@ -9,6 +10,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.climate_control.const import DOMAIN
+from custom_components.climate_control.core.config import Parameters
 
 from .fakes import INSTALLATION, PLAN, ROOMS, FakeUnits, room_data, run_cycle, set_plan
 
@@ -36,6 +38,13 @@ async def _add_room(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str,
     return result
 
 
+async def _open_group(hass: HomeAssistant, entry: MockConfigEntry, group: str) -> Any:
+    """Options open a menu of parameter groups; open one group form."""
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.MENU
+    return await hass.config_entries.options.async_configure(result["flow_id"], {"next_step_id": group})
+
+
 def _sections(result: Any) -> dict[str, Any]:
     """Help sections of a form: key -> (collapsed, default of the helper switch)."""
     out = {}
@@ -54,14 +63,12 @@ async def test_installation_first_then_indoor_units_one_by_one(hass: HomeAssista
     assert entry.title == "Klima" and entry.state is ConfigEntryState.LOADED
     assert hass.states.get("sensor.klima_state_of_charge").state == "unavailable"  # type: ignore[union-attr]
     for i, entity_id in enumerate(ROOMS):
-        result = await _add_room(
-            hass, entry, entity_id, setpoint_c=20 + i, power_class="small" if i else "big"
-        )
+        result = await _add_room(hass, entry, entity_id, setpoint_c=20 + i, nominal_power_w=500 if i else 900)
         assert result["type"] == FlowResultType.CREATE_ENTRY
     assert [s.unique_id for s in entry.subentries.values()] == list(ROOMS)
     cfg = entry.runtime_data.cfg
     assert [r.setpoint_c for r in cfg.rooms] == [20, 21, 22]
-    assert cfg.class_order == ("big", "small")
+    assert cfg.class_order == (900.0, 500.0)
     assert float(hass.states.get("sensor.klima_state_of_charge").state) > 0  # type: ignore[union-attr]
 
 
@@ -133,10 +140,15 @@ async def test_config_flow_rejects_inconsistent_installation(
 async def test_all_parameters_are_options(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
     set_plan(hass, 0)
     entry = await setup_entry()
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] == FlowResultType.FORM
-    keys = {str(k) for k in result["data_schema"].schema}
-    assert {"start_ratio", "tie_band_k", "overheat_s", "night_setback_k", "neutral_mode", "cycle_s"} <= keys
+    menu = await hass.config_entries.options.async_init(entry.entry_id)
+    assert menu["type"] == FlowResultType.MENU
+    assert menu["menu_options"] == ["control", "soc", "safety", "planner"]
+    keys: set[str] = set()
+    for group in menu["menu_options"]:
+        form = await _open_group(hass, entry, group)
+        keys |= {str(k) for k in form["data_schema"].schema if not str(k).startswith("help_")}
+    assert keys == {f.name for f in fields(Parameters)}  # every parameter in a group
+    result = await _open_group(hass, entry, "control")
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"tie_band_k": 0.5, "neutral_mode": "off", "stop_ratio": 0.9}
     )
@@ -147,6 +159,7 @@ async def test_all_parameters_are_options(hass: HomeAssistant, units: FakeUnits,
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.runtime_data.cfg.params.tie_band_k == 0.5
+    assert entry.options["overheat_s"] == 3600.0  # other groups keep their values
     assert all(units.mode(e) == "off" for e in ROOMS)
 
 
@@ -197,7 +210,7 @@ async def test_help_sections_above_complex_fields_follow_the_switch(
 ) -> None:
     set_plan(hass, 0)
     entry = await setup_entry()
-    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await _open_group(hass, entry, "control")
     keys = [str(k) for k in result["data_schema"].schema]
     assert keys.index("help_tie_band_k") == keys.index("tie_band_k") - 1  # directly above the field
     assert set(_sections(result).values()) == {(True, False)}  # collapsed by default
@@ -211,7 +224,7 @@ async def test_help_sections_above_complex_fields_follow_the_switch(
     assert entry.runtime_data.controller is controller  # UI setting only, the control is not reloaded
 
     for form in (
-        await hass.config_entries.options.async_init(entry.entry_id),
+        await _open_group(hass, entry, "control"),
         await hass.config_entries.subentries.async_init((entry.entry_id, "room"), context={"source": "user"}),
         await entry.start_reconfigure_flow(hass),
     ):
@@ -225,7 +238,7 @@ async def test_help_sections_above_complex_fields_follow_the_switch(
         sub["flow_id"], {**room_data("climate.e"), "help_setpoint_c": {"help_expanded": False}}
     )
     await hass.async_block_till_done()
-    form = await hass.config_entries.options.async_init(entry.entry_id)
+    form = await _open_group(hass, entry, "control")
     assert set(_sections(form).values()) == {(True, False)}
 
 
@@ -282,6 +295,8 @@ async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUn
     room = entry.runtime_data.cfg.room(ROOMS[0])
     assert (room.comfort_max_c, room.overload_max_c) == (22.0, 25.0)
     keys = [
-        str(k) for k in (await hass.config_entries.options.async_init(entry.entry_id))["data_schema"].schema
+        str(k)
+        for g in ("control", "soc", "safety", "planner")
+        for k in (await _open_group(hass, entry, g))["data_schema"].schema
     ]
     assert "overload_max_c" not in keys and "comfort_max_c" not in keys

@@ -11,7 +11,7 @@ Tier = tuple[Group, ...]
 
 
 def rank(
-    deviations: Sequence[tuple[RoomConfig, float]], band_k: float, class_order: Sequence[str]
+    deviations: Sequence[tuple[RoomConfig, float]], band_k: float, class_order: Sequence[float]
 ) -> tuple[Tier, ...]:
     """Order rooms by deviation (setpoint minus temperature), largest first.
 

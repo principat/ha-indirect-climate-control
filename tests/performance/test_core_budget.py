@@ -41,14 +41,12 @@ FACTOR = float(os.environ.get("PERF_BUDGET_FACTOR", "1"))
 
 
 def _installation(rooms: int) -> object:
-    classes = ("small", "large")
     return config.InstallationConfig(
         p_min_w=1300,
         p_max_w=3300,
         capacity_kwh_per_k=3.5,
         rooms=tuple(
-            config.RoomConfig(f"r{i}", f"R{i}", 21.0, classes[i % 2], 400.0 + 200 * (i % 2), 12.0)
-            for i in range(rooms)
+            config.RoomConfig(f"r{i}", f"R{i}", 21.0, 400.0 + 200 * (i % 2), 12.0) for i in range(rooms)
         ),
         params=config.Parameters(planner_horizon_h=48),
     )

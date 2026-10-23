@@ -22,7 +22,6 @@ ROOM_HELP = (
     "setpoint_entity",
     "comfort_max_c",
     "overload_max_c",
-    "power_class",
     "nominal_power_w",
     "area_m2",
     "window_entity",
@@ -47,3 +46,22 @@ def split_help(user_input: Mapping[str, Any], expanded: bool) -> tuple[dict[str,
         else:
             values[key] = value
     return values, new
+
+
+# Options are grouped into menu steps: form sections cannot be nested, help sections already are sections.
+PARAMETER_GROUPS: dict[str, tuple[str, ...]] = {
+    "control": ("start_ratio", "stop_ratio", "tie_band_k", "heat_offset_k", "neutral_mode", "cycle_s"),
+    "soc": ("soc_min_c", "soc_max_c", "soc_smoothing_s", "outlier_k"),
+    "safety": ("hard_min_below_k", "overheat_k", "overheat_s", "plan_max_age_s"),
+    "planner": (
+        "efficiency_pct",
+        "discharge_limit_w",
+        "night_start_h",
+        "night_end_h",
+        "night_setback_k",
+        "undercharge_cost",
+        "overcharge_cost",
+        "late_charge_surcharge",
+        "planner_horizon_h",
+    ),
+}

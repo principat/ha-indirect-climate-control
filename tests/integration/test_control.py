@@ -211,3 +211,45 @@ async def test_setpoint_can_come_from_an_entity(hass: HomeAssistant, units: Fake
     await run_cycle(hass)
     assert units.target(A) == 21.0  # fixed setpoint as substitute
     assert float(_state(hass, "sensor.climate_control_min_charge").state) < min_charge
+
+
+@pytest.mark.req("FR-OBS-02")
+async def test_diagnostic_sensors_per_indoor_unit(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+
+    units.set(A, "fan_only", 19)
+    set_plan(hass, 0)
+    entry = await setup_entry()
+    ent_reg = er.async_get(hass)
+    own = [
+        e for e in ent_reg.entities.values() if e.config_entry_id == entry.entry_id and e.config_subentry_id
+    ]
+    assert len(own) == 3 * len(ROOMS)
+    assert {e.entity_category for e in own} == {er.EntityCategory.DIAGNOSTIC}
+    first = next(iter(entry.subentries.values()))
+    room_entities = {e.translation_key: e.entity_id for e in own if e.config_subentry_id == first.subentry_id}
+    device = dr.async_get(hass).async_get(
+        next(e for e in own if e.config_subentry_id == first.subentry_id).device_id
+    )
+    assert device is not None and device.name == "A"
+    assert float(_state(hass, room_entities["room_deviation"]).state) == 2.0
+    # default capacity 7 kWh/K, three rooms of 10 m2 -> 7/3 kWh/K per room
+    assert float(_state(hass, room_entities["room_heat_demand"]).state) == pytest.approx(7 / 3 * 2, abs=0.001)
+    assert float(_state(hass, room_entities["room_storage"]).state) == pytest.approx(7 / 3 * 9, abs=0.001)
+
+
+@pytest.mark.req("FR-SAFE-01")
+async def test_any_of_several_window_contacts_opens_the_room(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry,  # noqa: ANN001
+) -> None:
+    hass.states.async_set("binary_sensor.window_a1", "off")
+    hass.states.async_set("binary_sensor.window_a2", "on")
+    set_plan(hass, 2.0)
+    await setup_entry(a={"window_entity": ["binary_sensor.window_a1", "binary_sensor.window_a2"]})
+    assert units.mode(A) == "fan_only" and units.mode(B) == "heat"
+    hass.states.async_set("binary_sensor.window_a2", "off")
+    await run_cycle(hass)
+    assert units.mode(A) == "heat"

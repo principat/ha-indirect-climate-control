@@ -19,7 +19,8 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 | `plan.py` | FR-PLAN-01, FR-SAFE-04 | `Plan` aus Prognosepunkten, Leistung zu einem Zeitpunkt, Horizont, Gültigkeit; `plan_from_forecast` liest die Planer-Ausgabe |
 | `threshold.py` | FR-PLAN-02, FR-PLAN-03 | Start-/Abschaltschwelle mit Hysterese, mindestens Pmin |
 | `soc.py` | FR-SOC-01, FR-SOC-02 | Skala, schlechtester Raum, Ausreißerfilter, Median-Glättung |
-| `distribution.py` | FR-DIST-01, FR-DIST-02 | Rangstufen nach Abweichung mit Gleichstand-Band, Gruppen je Leistungsklasse, Auswahl bis Nennleistung ≥ Anforderung |
+| `distribution.py` | FR-DIST-01, FR-DIST-02 | Rangstufen nach Abweichung mit Gleichstand-Band, Gruppen je Leistungsklasse (= gleiche Nennleistung, kein eigenes Feld), Auswahl bis Nennleistung ≥ Anforderung |
+| `diagnostics.py` | FR-OBS-02 | Abweichung, Wärmebedarf und Speicherkapazität je Raum aus den im Zyklus verwendeten Temperaturen |
 | `modes.py` | FR-MODE-01 | nächster zulässiger Moduszustand (Heizen/Kühlen nur über neutral) |
 | `planner_model.py` | FR-PLNR-01 | Vorgaben für den Planer inkl. Stundenprognosen |
 | `controller.py` | alle obigen, FR-PLAN-04, FR-SAFE-01..04, FR-MODE-03, FR-SRC-01 | ein Regelzyklus |
@@ -58,5 +59,6 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Pufferkapazität | Startwert 7 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
 | Aufschlag Spätladen „fällt mit der Zeit" | linear vom Startwert auf 0 über den Horizont, damit bei gleichem Preis später geladen wird | `late_charge_surcharge` |
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
+| Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |
 
 Nicht umgesetzt (Status nicht `beschlossen`): FR-DIST-03 (offen), FR-LOAD-01 und FR-OBS-01 (Vorschlag).

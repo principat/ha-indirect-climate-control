@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from .config import InstallationConfig, RoomConfig
@@ -25,6 +25,7 @@ class CycleResult:
     running: bool
     fallback: bool
     served: tuple[str, ...]
+    temperatures: dict[str, float] = field(default_factory=dict)  # filtered device temperatures used
 
 
 class Controller:
@@ -133,4 +134,5 @@ class Controller:
             running=self.running,
             fallback=fallback,
             served=tuple(r.id for r in served),
+            temperatures=temps,
         )

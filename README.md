@@ -37,11 +37,14 @@ Therefore set up in this order:
    unit: climate entity, room name,
    setpoint (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
    upper bound without surcharge and overload limit (room dependent, default 24 / 28 °C),
-   power class, nominal power, area, optional window contact. Units can be changed or removed one by one.
+   nominal power (units with equal nominal power form a power class), area, optional window contacts (one or
+   more, the room counts as open as soon as one is open). Units can
+   be changed or removed one by one. Each indoor unit gets its own device with diagnostic sensors (see below).
 4. **Set up HAEO** with the sensors of Climate Control, see [Connecting HAEO](#connecting-haeo).
 5. **Connect the plan** – *Reconfigure* the installation and select the HAEO sensor with the planned power
    (`sensor.klima_power_source_target`). From now on Climate Control follows the plan.
-6. Optional: **Configure** opens all parameters (thresholds, SOC, safety, planner model).
+6. Optional: **Configure** opens a menu of parameter groups: control, state of charge, protection and fallback,
+   planner model.
 
 Above every non-trivial field there is a collapsible **"Help: …"** section explaining the field. The switch
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
@@ -49,6 +52,16 @@ settings are opened. Several installations can be set up side by side.
 
 The buffer capacity is not a setting. It starts at 7 kWh_el/K; learning it from operating data is planned
 (concept in `docs/spec/technical/50-capacity-learning.md`).
+
+### Diagnostic sensors per indoor unit
+
+| Sensor | Meaning |
+| --- | --- |
+| Deviation from setpoint (K) | setpoint minus device temperature; positive = room too cold |
+| Heat demand (kWh_el) | electrical energy up to the setpoint; negative = energy stored above the setpoint |
+| Storage capacity (kWh_el) | electrical energy the room can still take up to its overload limit |
+
+The energy values split the buffer capacity among the rooms by area (assumption).
 
 ## Connecting HAEO
 
@@ -206,12 +219,15 @@ Deshalb in dieser Reihenfolge einrichten:
    einmal: Klimagerät,
    Raumname, Sollwert (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der
    Ersatzwert), Obergrenze ohne Aufschlag und Überlastgrenze (raumabhängig, Standard 24 / 28 °C),
-   Leistungsklasse, Nennleistung, Fläche, optional Fensterkontakt. Innengeräte lassen sich später
+   Nennleistung (Geräte gleicher Nennleistung bilden eine Leistungsklasse), Fläche, optional Fensterkontakte
+   (einer oder mehrere, der Raum gilt als offen, sobald einer offen ist).
+   Jedes Innengerät erhält ein eigenes Gerät mit Diagnose-Sensoren (siehe unten). Innengeräte lassen sich später
    einzeln ändern oder löschen.
 4. **HAEO einrichten** mit den Sensoren von Climate Control, siehe [HAEO anbinden](#haeo-anbinden).
 5. **Plan verbinden** – Anlage *neu konfigurieren* und den HAEO-Sensor mit der geplanten Leistung wählen
    (`sensor.klima_power_source_target`). Ab jetzt folgt Climate Control dem Plan.
-6. Optional: **Konfigurieren** öffnet alle Parameter (Schwellen, SOC, Sicherheit, Planer-Modell).
+6. Optional: **Konfigurieren** öffnet ein Menü mit Parametergruppen: Regelung, Füllstand, Schutz und Rückfall,
+   Planer-Modell.
 
 Über jedem nicht trivialen Feld steht ein einklappbarer Abschnitt **„Hilfe: …“** mit der Erklärung des
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
@@ -219,6 +235,16 @@ beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebene
 
 Die Pufferkapazität ist keine Einstellung. Sie startet mit 7 kWh_el/K; das Lernen aus Betriebsdaten ist
 geplant (Konzept in `docs/spec/technical/50-capacity-learning.md`).
+
+### Diagnose-Sensoren je Innengerät
+
+| Sensor | Bedeutung |
+| --- | --- |
+| Abweichung zum Sollwert (K) | Sollwert minus Gerätetemperatur; positiv = Raum zu kalt |
+| Wärmebedarf (kWh_el) | elektrische Energie bis zum Sollwert; negativ = über dem Sollwert gespeicherte Energie |
+| Speicherkapazität (kWh_el) | elektrische Energie, die der Raum bis zu seiner Überlastgrenze noch aufnehmen kann |
+
+Die Energiewerte teilen die Pufferkapazität nach Fläche auf die Räume auf (Annahme).
 
 ## HAEO anbinden
 
