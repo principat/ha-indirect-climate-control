@@ -300,3 +300,45 @@ async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUn
         for k in (await _open_group(hass, entry, g))["data_schema"].schema
     ]
     assert "overload_max_c" not in keys and "comfort_max_c" not in keys
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_stored_version_1_configuration_is_migrated(hass: HomeAssistant, units: FakeUnits) -> None:
+    from homeassistant.helpers import entity_registry as er
+
+    set_plan(hass, 0)
+    old_room = {**room_data(ROOMS[0]), "power_class": "standard"}
+    own_limits = {**room_data(ROOMS[1]), "comfort_max_c": 22.0, "overload_max_c": 25.0}
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Climate Control",
+        version=1,
+        data={**INSTALLATION, "stage1_w": 1500, "capacity_kwh_per_k": 3.5},
+        options={"comfort_max_c": 23.0, "overload_max_c": 27.0, "tie_band_k": 0.5},
+        subentries_data=[
+            {"data": old_room, "subentry_type": "room", "title": "A", "unique_id": ROOMS[0]},
+            {"data": own_limits, "subentry_type": "room", "title": "B", "unique_id": ROOMS[1]},
+        ],
+    )
+    entry.add_to_hass(hass)
+    # An entity created by an older version keeps its id, only its display name follows the new naming.
+    er.async_get(hass).async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{entry.entry_id}_min_charge",
+        config_entry=entry,
+        suggested_object_id="cc_untergrenze",
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.version == 2
+    assert "stage1_w" not in entry.data and "capacity_kwh_per_k" not in entry.data
+    assert entry.options == {"tie_band_k": 0.5}
+    rooms = [dict(s.data) for s in entry.subentries.values()]
+    assert "power_class" not in rooms[0]
+    assert (rooms[0]["comfort_max_c"], rooms[0]["overload_max_c"]) == (23.0, 27.0)  # from the old options
+    assert (rooms[1]["comfort_max_c"], rooms[1]["overload_max_c"]) == (22.0, 25.0)  # own values win
+    assert entry.runtime_data.cfg.capacity_kwh_per_k == 7.0
+    state = hass.states.get("sensor.cc_untergrenze")
+    assert state is not None and state.attributes["friendly_name"] == "Climate Control Min Charge Level"

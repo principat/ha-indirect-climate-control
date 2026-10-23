@@ -158,22 +158,22 @@ async def test_stale_plan_falls_back(
 async def test_planner_model_values_are_published(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
     set_plan(hass, 0)
     await setup_entry()
-    values = {
-        key: _state(hass, f"sensor.climate_control_{key}")
-        for key in (
-            "capacity",
-            "min_charge",
-            "undercharge",
-            "max_charge",
-            "overcharge",
-            "undercharge_cost",
-            "overcharge_cost",
-            "efficiency",
-            "max_discharge_power",
-            "max_charge_power",
-            "charge_cost",
-        )
+    # Names follow the HAEO 0.4.1 fields they feed (entity ids derive from them on a new installation).
+    names = {
+        "capacity": "capacity",
+        "min_charge": "min_charge_level",
+        "undercharge": "undercharge_percentage",
+        "max_charge": "max_charge_level",
+        "overcharge": "overcharge_percentage",
+        "undercharge_cost": "undercharge_cost",
+        "overcharge_cost": "overcharge_cost",
+        "efficiency": "charge_efficiency",
+        "max_discharge_power": "max_discharge_power",
+        "max_charge_power": "max_power_source_to_target",
+        "charge_cost": "charge_cost",
     }
+    values = {key: _state(hass, f"sensor.climate_control_{slug}") for key, slug in names.items()}
+    assert values["min_charge"].attributes["friendly_name"] == "Climate Control Min Charge Level"
     assert float(values["capacity"].state) == 105.0  # default 7 kWh/K x 15 K
     assert float(values["efficiency"].state) == 92.0
     assert float(values["max_discharge_power"].state) == 3.5
@@ -206,11 +206,11 @@ async def test_setpoint_can_come_from_an_entity(hass: HomeAssistant, units: Fake
     hass.states.async_set("input_number.setpoint_a", "22")
     await run_cycle(hass)
     assert units.target(A) == 22.0
-    min_charge = float(_state(hass, "sensor.climate_control_min_charge").state)
+    min_charge = float(_state(hass, "sensor.climate_control_min_charge_level").state)
     hass.states.async_set("input_number.setpoint_a", "unavailable")
     await run_cycle(hass)
     assert units.target(A) == 21.0  # fixed setpoint as substitute
-    assert float(_state(hass, "sensor.climate_control_min_charge").state) < min_charge
+    assert float(_state(hass, "sensor.climate_control_min_charge_level").state) < min_charge
 
 
 @pytest.mark.req("FR-OBS-02")

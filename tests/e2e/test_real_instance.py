@@ -133,7 +133,7 @@ def test_reference_case_loads_with_all_rooms(ha: requests.Session, entry: dict[s
     for entity_id in (
         "sensor.climate_control_state_of_charge",
         "sensor.climate_control_planned_power",
-        "sensor.climate_control_min_charge",
+        "sensor.climate_control_min_charge_level",
         "binary_sensor.climate_control_running",
         "binary_sensor.climate_control_fallback",
     ):

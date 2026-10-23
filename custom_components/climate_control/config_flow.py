@@ -133,7 +133,7 @@ def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
 
 
 class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         self._help = False

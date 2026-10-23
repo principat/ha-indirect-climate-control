@@ -68,8 +68,8 @@ The energy values split the buffer capacity among the rooms by area (assumption)
 The integration does not configure HAEO. It provides sensors that the HAEO elements refer to and reads the
 plan back from HAEO. HAEO is set up by hand.
 
-> Based on the HAEO documentation haeo.io/latest, checked on 22 Oct 2026. Field names may differ in older
-> HAEO versions (not checked for versions before 0.5).
+> Field names as in HAEO 0.4.1 (checked on 23 Oct 2026). HAEO 0.5 changes the battery (e.g. "Limit cost" instead of
+> partitions); this guide does not cover 0.5 yet.
 
 ### Target topology
 
@@ -81,7 +81,7 @@ flowchart LR
         pv["PV"] --- house
         battery["House battery"] --- house
         consumption["House load, car"] --- house
-        house -- "Connection Klima<br/>only house → Klima, max. Pmax<br/>price: late charge surcharge" --> klima(("Node Klima"))
+        house -- "Connection Klima<br/>only house → Klima<br/>max. Pmax" --> klima(("Node Klima"))
         klima --- buffer[("Battery Klima-Puffer")]
         klima --> heat["Load Wärmebedarf<br/>(heat demand forecast)"]
     end
@@ -91,7 +91,7 @@ flowchart LR
         control["Control"]
     end
     values -. "values" .-> buffer
-    values -. "limits, prices" .-> klima
+    values -. "Max Power Source to Target" .-> klima
     klima -. "plan = flow house → Klima" .-> control
     control --> units["Indoor units"]
 ```
@@ -112,12 +112,11 @@ flowchart LR
 2. Create a **number helper** (`input_number`) for each fixed value: `0` (reverse direction) and `100`
    (discharge efficiency). HAEO expects helpers for constants.
 3. Create **node** `Klima` (neither source nor sink).
-4. Create **battery** `Klima-Puffer`, attach it to node `Klima`, enable partitions, fields as in the table below.
-5. Create **load** `Wärmebedarf`, attach it to node `Klima`, forecast = sensor of the expected heat demand in kW
+4. Create **battery** `Klima-Puffer`: *Connection* = `Klima`, *Configure battery partitions* on,
+   all fields as in the table below.
+5. Create **load** `Wärmebedarf`: *Connection* = `Klima`, *Forecast* = sensor of the expected heat demand in kW
    (electrical).
-6. Create **connection** `Klima`: source = house node, target = `Klima`.
-   Max power source→target = sensor *Max charge power*, target→source = helper `0`,
-   price source→target = sensor *Charge cost*.
+6. Create **connection** `Klima`: *Source Device* = house node, *Target Device* = `Klima`, fields as in the table.
 7. Continue with step 5 of the [setup order](#setup-order).
 
 **Optional, two power stages:** if HAEO should use the upper, less efficient power range only when it pays off,
@@ -128,33 +127,41 @@ Climate Control, they are added up.
 
 ### Sensor mapping
 
-The sensors are called `sensor.<installation>_<name>`; entity IDs are derived from the display name in the
-instance language (English names below, German in brackets).
+Every sensor that feeds a HAEO field carries the name of that field. In the entity picker it appears as
+**"&lt;installation name&gt; &lt;field name&gt;"**, e.g. *Climate Control Haus Min Charge Level*. Field names below
+are those of HAEO 0.4.1 (HAEO is English only). Lower and upper limits form pairs:
+*Min/Max Charge Level*, *Undercharge/Overcharge percentage*, *Undercharge/Overcharge cost*.
 
-| HAEO element and field | Climate Control sensor |
-| --- | --- |
-| Battery: Capacity | Capacity (Kapazität) |
-| Battery: Current Charge Percentage | State of charge (Füllstand) |
-| Battery: Min Charge Percentage | Min charge (Untergrenze) – area-weighted setpoint, lowered at night, with forecast |
-| Battery: Max Charge Percentage | Max charge (Obergrenze) – area-weighted upper bounds without surcharge of the rooms |
-| Battery: Undercharge Percentage | Undercharge (Hartes Minimum) – with forecast |
-| Battery: Undercharge Cost | Undercharge cost (Strafwert Untergrenze) |
-| Battery: Overcharge Percentage | Overcharge (Überlast) – area-weighted overload limits of the rooms |
-| Battery: Overcharge Cost | Overcharge cost (Aufschlag Überlast) |
-| Battery: Charge efficiency | Efficiency (Wirkungsgrad) |
-| Battery: Discharge efficiency | helper `100` |
-| Battery: Max Discharge Power | Max discharge power (Entladegrenze) |
-| Battery: Max Charge Power | leave empty (limited by the connection) |
-| Connection Klima: Max Power Source→Target | Max charge power (Maximale Leistung) |
-| Connection Klima: Max Power Target→Source | helper `0` |
-| Connection Klima: Price Source→Target | Charge cost (Aufschlag Spätladen) – falls over the horizon, with forecast |
+| HAEO element | HAEO field | Choose in the picker | Meaning |
+| --- | --- | --- | --- |
+| Battery | Capacity | *&lt;installation&gt;* Capacity | buffer capacity, kWh |
+| Battery | State of Charge | *&lt;installation&gt;* State of Charge | SOC of the worst room |
+| Battery | Min Charge Level | *&lt;installation&gt;* Min Charge Level | area-weighted setpoints, lowered at night, forecast |
+| Battery | Max Charge Level | *&lt;installation&gt;* Max Charge Level | area-weighted upper bounds without surcharge of the rooms |
+| Battery | Charge efficiency | *&lt;installation&gt;* Charge efficiency | buffer efficiency |
+| Battery | Discharge efficiency | helper `100` | – |
+| Battery | Max discharge power | *&lt;installation&gt;* Max discharge power | buffer discharge limit |
+| Battery | Max charge power | leave empty | limited by the connection |
+| Battery | Charge cost | *&lt;installation&gt;* Charge cost | late charge surcharge, falls over the horizon, forecast |
+| Battery partitions | Undercharge percentage | *&lt;installation&gt;* Undercharge percentage | area-weighted hard minimum, lowered at night, forecast |
+| Battery partitions | Undercharge cost | *&lt;installation&gt;* Undercharge cost | penalty between setpoint and hard minimum |
+| Battery partitions | Overcharge percentage | *&lt;installation&gt;* Overcharge percentage | area-weighted overload limits of the rooms |
+| Battery partitions | Overcharge cost | *&lt;installation&gt;* Overcharge cost | overload surcharge |
+| Connection Klima | Max Power Source to Target | *&lt;installation&gt;* Max Power Source to Target | Pmax |
+| Connection Klima | Max Power Target to Source | helper `0` | no feed-in into the house |
+
+The other Climate Control sensors are for the user: *Planned power*, *Requested power*, *Running*,
+*Fallback*, and per indoor unit *Deviation from setpoint*, *Heat demand*, *Storage capacity*.
 
 The efficiency parameter (default 92 %) is used as charge efficiency here; the discharge efficiency stays at
 100 % so that the overall efficiency equals the parameter.
 
+**Updating from version 0.2 or older:** the display names changed to the HAEO field names; entity IDs that
+already exist stay the same, so selections already made in HAEO keep working.
+
 ### Forecasts
 
-The sensors *Min charge*, *Undercharge* and *Charge cost* carry a `forecast` attribute as a list of
+The sensors *Min Charge Level*, *Undercharge percentage* and *Charge cost* carry a `forecast` attribute as a list of
 `{time, value}` with ISO 8601 timestamps. This is the custom format documented by HAEO for input sensors
 (also used by e.g. template forecasts). Notes from the HAEO documentation:
 
@@ -251,8 +258,8 @@ Die Energiewerte teilen die Pufferkapazität nach Fläche auf die Räume auf (An
 Die Integration konfiguriert HAEO nicht selbst. Sie stellt Sensoren bereit, auf die die HAEO-Elemente
 verweisen, und liest den Plan aus HAEO zurück. Die Einrichtung in HAEO erfolgt von Hand.
 
-> Stand: HAEO-Dokumentation haeo.io/latest, geprüft am 22.10.2026. Feldnamen können in älteren
-> HAEO-Versionen abweichen (ungeprüft für Versionen vor 0.5).
+> Feldnamen wie in HAEO 0.4.1 (geprüft am 23.10.2026). HAEO 0.5 baut die Batterie um (z. B. „Limit cost“ statt
+> Partitionen); diese Anleitung deckt 0.5 noch nicht ab.
 
 ### Zielbild der Topologie
 
@@ -264,7 +271,7 @@ flowchart LR
         pv["PV"] --- haus
         akku["Hausbatterie"] --- haus
         verbrauch["Hausverbrauch, Auto"] --- haus
-        haus -- "Verbindung Klima<br/>nur Haus → Klima, max. Pmax<br/>Preis: Aufschlag Spätladen" --> klima(("Knoten Klima"))
+        haus -- "Verbindung Klima<br/>nur Haus → Klima<br/>max. Pmax" --> klima(("Knoten Klima"))
         klima --- puffer[("Batterie Klima-Puffer")]
         klima --> waerme["Last Wärmebedarf<br/>(Prognose Heizlast)"]
     end
@@ -274,7 +281,7 @@ flowchart LR
         regelung["Regelung"]
     end
     vorgaben -. "Werte" .-> puffer
-    vorgaben -. "Grenzen, Preise" .-> klima
+    vorgaben -. "Max Power Source to Target" .-> klima
     klima -. "Plan = Fluss Haus → Klima" .-> regelung
     regelung --> geraete["Innengeräte"]
 ```
@@ -297,13 +304,11 @@ flowchart LR
 2. Für feste Werte je einen **Helfer „Zahl“** (`input_number`) anlegen: `0` (Rückrichtung) und `100`
    (Entlade-Wirkungsgrad). HAEO erwartet für Konstanten Helfer.
 3. **Knoten** `Klima` anlegen (weder Quelle noch Senke).
-4. **Batterie** `Klima-Puffer` anlegen, an den Knoten `Klima` anschließen, Partitionen einschalten,
-   Felder laut Tabelle unten.
-5. **Last** `Wärmebedarf` anlegen, an den Knoten `Klima` anschließen, Prognose = Sensor der erwarteten
-   Heizlast in kW (elektrisch).
-6. **Verbindung** `Klima`: Quelle = Hausknoten, Ziel = `Klima`.
-   Max. Leistung Quelle→Ziel = Sensor *Maximale Leistung*, Ziel→Quelle = Helfer `0`,
-   Preis Quelle→Ziel = Sensor *Aufschlag Spätladen*.
+4. **Batterie** `Klima-Puffer` anlegen: *Connection* = `Klima`, *Configure battery partitions* an,
+   alle Felder laut Tabelle unten.
+5. **Last** `Wärmebedarf` anlegen: *Connection* = `Klima`, *Forecast* = Sensor der erwarteten Heizlast in kW
+   (elektrisch).
+6. **Verbindung** `Klima` anlegen: *Source Device* = Hausknoten, *Target Device* = `Klima`, Felder laut Tabelle.
 7. Weiter mit Schritt 5 der [Reihenfolge der Einrichtung](#reihenfolge-der-einrichtung).
 
 **Optional, zwei Leistungsstufen:** Soll HAEO den oberen, weniger effizienten Leistungsbereich nur nutzen,
@@ -314,33 +319,41 @@ Verbindungssensoren als geplante Leistung wählen, sie werden addiert.
 
 ### Zuordnung der Sensoren
 
-Die Sensoren heißen `sensor.<anlage>_<name>`; die Entitäts-IDs entstehen aus dem Anzeigenamen in der
-Sprache der Instanz (unten deutscher Name, in Klammern der englische).
+Jeder Sensor, der ein HAEO-Feld befüllt, trägt den Namen dieses Felds. In der Entitätsauswahl erscheint er als
+**„&lt;Name der Anlage&gt; &lt;Feldname&gt;“**, z. B. *Climate Control Haus Min Charge Level*. Die Feldnamen unten
+sind die von HAEO 0.4.1 (HAEO gibt es nur auf Englisch). Untere und obere Grenzen bilden Paare:
+*Min/Max Charge Level*, *Undercharge/Overcharge percentage*, *Undercharge/Overcharge cost*.
 
-| HAEO-Element und Feld | Sensor von Climate Control |
-| --- | --- |
-| Batterie: Capacity | Kapazität (Capacity) |
-| Batterie: Current Charge Percentage | Füllstand (State of charge) |
-| Batterie: Min Charge Percentage | Untergrenze (Min charge) – flächengewichteter Sollwert, nachts abgesenkt, mit Prognose |
-| Batterie: Max Charge Percentage | Obergrenze (Max charge) – flächengewichtete Obergrenzen ohne Aufschlag der Räume |
-| Batterie: Undercharge Percentage | Hartes Minimum (Undercharge) – mit Prognose |
-| Batterie: Undercharge Cost | Strafwert Untergrenze (Undercharge cost) |
-| Batterie: Overcharge Percentage | Überlast (Overcharge) – flächengewichtete Überlastgrenzen der Räume |
-| Batterie: Overcharge Cost | Aufschlag Überlast (Overcharge cost) |
-| Batterie: Charge efficiency | Wirkungsgrad (Efficiency) |
-| Batterie: Discharge efficiency | Helfer `100` |
-| Batterie: Max Discharge Power | Entladegrenze (Max discharge power) |
-| Batterie: Max Charge Power | leer lassen (begrenzt durch die Verbindung) |
-| Verbindung Klima: Max Power Source→Target | Maximale Leistung (Max charge power) |
-| Verbindung Klima: Max Power Target→Source | Helfer `0` |
-| Verbindung Klima: Price Source→Target | Aufschlag Spätladen (Charge cost) – fällt über den Horizont, mit Prognose |
+| HAEO-Element | HAEO-Feld | In der Auswahl wählen | Bedeutung |
+| --- | --- | --- | --- |
+| Batterie | Capacity | *&lt;Anlage&gt;* Capacity | Pufferkapazität, kWh |
+| Batterie | State of Charge | *&lt;Anlage&gt;* State of Charge | Füllstand des schlechtesten Raums |
+| Batterie | Min Charge Level | *&lt;Anlage&gt;* Min Charge Level | flächengewichtete Sollwerte, nachts abgesenkt, Prognose |
+| Batterie | Max Charge Level | *&lt;Anlage&gt;* Max Charge Level | flächengewichtete Obergrenzen ohne Aufschlag der Räume |
+| Batterie | Charge efficiency | *&lt;Anlage&gt;* Charge efficiency | Wirkungsgrad des Puffers |
+| Batterie | Discharge efficiency | Helfer `100` | – |
+| Batterie | Max discharge power | *&lt;Anlage&gt;* Max discharge power | Entladegrenze des Puffers |
+| Batterie | Max charge power | leer lassen | begrenzt durch die Verbindung |
+| Batterie | Charge cost | *&lt;Anlage&gt;* Charge cost | Aufschlag Spätladen, fällt über den Horizont, Prognose |
+| Batterie-Partitionen | Undercharge percentage | *&lt;Anlage&gt;* Undercharge percentage | flächengewichtetes hartes Minimum, nachts abgesenkt, Prognose |
+| Batterie-Partitionen | Undercharge cost | *&lt;Anlage&gt;* Undercharge cost | Strafwert zwischen Sollwert und hartem Minimum |
+| Batterie-Partitionen | Overcharge percentage | *&lt;Anlage&gt;* Overcharge percentage | flächengewichtete Überlastgrenzen der Räume |
+| Batterie-Partitionen | Overcharge cost | *&lt;Anlage&gt;* Overcharge cost | Aufschlag Überlast |
+| Verbindung Klima | Max Power Source to Target | *&lt;Anlage&gt;* Max Power Source to Target | Pmax |
+| Verbindung Klima | Max Power Target to Source | Helfer `0` | keine Einspeisung ins Haus |
+
+Die übrigen Sensoren von Climate Control sind für dich: *Geplante Leistung*, *Angeforderte Leistung*,
+*In Betrieb*, *Rückfall* und je Innengerät *Abweichung zum Sollwert*, *Wärmebedarf*, *Speicherkapazität*.
 
 Der Wirkungsgrad aus den Parametern (Standard 92 %) gilt hier als Lade-Wirkungsgrad, der Entlade-Wirkungsgrad
 bleibt bei 100 %, damit der Gesamtwirkungsgrad dem Parameter entspricht.
 
+**Update von Version 0.2 oder älter:** Die Anzeigenamen sind jetzt die HAEO-Feldnamen; bereits vorhandene
+Entitäts-IDs bleiben gleich, im HAEO schon getroffene Auswahlen funktionieren also weiter.
+
 ### Prognosen
 
-Die Sensoren *Untergrenze*, *Hartes Minimum* und *Aufschlag Spätladen* tragen ein Attribut `forecast` als
+Die Sensoren *Min Charge Level*, *Undercharge percentage* und *Charge cost* tragen ein Attribut `forecast` als
 Liste aus `{time, value}` mit Zeitstempeln nach ISO 8601. Das ist das von HAEO für Eingangssensoren
 dokumentierte eigene Format (das z. B. auch Template-Forecasts verwenden). Hinweise aus der HAEO-Doku:
 

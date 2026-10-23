@@ -20,7 +20,7 @@
           },
           "help_p_max_w": {
             "name": "Help: Pmax (largest power)",
-            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max charge power' passes it to the planner as the maximum of the connection house → air conditioner.",
+            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max Power Source to Target' passes it to the planner as the maximum of the connection house → air conditioner.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -52,7 +52,7 @@
           },
           "help_p_max_w": {
             "name": "Help: Pmax (largest power)",
-            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max charge power' passes it to the planner as the maximum of the connection house → air conditioner.",
+            "description": "Largest electrical power the outdoor unit draws at full load, e.g. from the data sheet or the highest measured power. It is the upper limit for the planned power: the sensor 'Max Power Source to Target' passes it to the planner as the maximum of the connection house → air conditioner.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -86,10 +86,10 @@
           "data": {
             "entity_id": "Indoor unit",
             "name": "Room name",
-            "setpoint_c": "Setpoint (fixed or substitute value)",
+            "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge (°C)",
-            "overload_max_c": "Overload limit (°C)",
+            "comfort_max_c": "Upper bound without surcharge → Max Charge Level (°C)",
+            "overload_max_c": "Overload limit → Overcharge percentage (°C)",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
@@ -103,7 +103,7 @@
               }
             },
             "help_setpoint_c": {
-              "name": "Help: Setpoint (fixed or substitute value)",
+              "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
               "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -117,14 +117,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge (°C)",
+              "name": "Help: Upper bound without surcharge → Max Charge Level (°C)",
               "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
             "help_overload_max_c": {
-              "name": "Help: Overload limit (°C)",
+              "name": "Help: Overload limit → Overcharge percentage (°C)",
               "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -157,17 +157,17 @@
           "title": "Indoor unit {entity_id}",
           "data": {
             "name": "Room name",
-            "setpoint_c": "Setpoint (fixed or substitute value)",
+            "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge (°C)",
-            "overload_max_c": "Overload limit (°C)",
+            "comfort_max_c": "Upper bound without surcharge → Max Charge Level (°C)",
+            "overload_max_c": "Overload limit → Overcharge percentage (°C)",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
           },
           "sections": {
             "help_setpoint_c": {
-              "name": "Help: Setpoint (fixed or substitute value)",
+              "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
               "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -181,14 +181,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge (°C)",
+              "name": "Help: Upper bound without surcharge → Max Charge Level (°C)",
               "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
             "help_overload_max_c": {
-              "name": "Help: Overload limit (°C)",
+              "name": "Help: Overload limit → Overcharge percentage (°C)",
               "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -336,14 +336,14 @@
       "safety": {
         "title": "Protection and fallback",
         "data": {
-          "hard_min_below_k": "Hard minimum below setpoint (K)",
+          "hard_min_below_k": "Hard minimum below setpoint → Undercharge percentage (K)",
           "overheat_k": "Overheating above setpoint (K)",
           "overheat_s": "Overheating duration (s)",
           "plan_max_age_s": "Maximum plan age (s)"
         },
         "sections": {
           "help_hard_min_below_k": {
-            "name": "Help: Hard minimum below setpoint (K)",
+            "name": "Help: Hard minimum below setpoint → Undercharge percentage (K)",
             "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -375,26 +375,26 @@
       "planner": {
         "title": "Planner model (HAEO)",
         "data": {
-          "efficiency_pct": "Buffer efficiency (%)",
-          "discharge_limit_w": "Buffer discharge limit (W)",
+          "efficiency_pct": "Buffer efficiency → Charge efficiency (%)",
+          "discharge_limit_w": "Buffer discharge limit → Max discharge power (W)",
           "night_start_h": "Night setback start (hour)",
           "night_end_h": "Night setback end (hour)",
-          "night_setback_k": "Night setback of lower bounds (K)",
-          "undercharge_cost": "Penalty between setpoint and hard minimum (per kWh)",
-          "overcharge_cost": "Overload surcharge (per kWh)",
-          "late_charge_surcharge": "Late charge surcharge (per kWh)",
+          "night_setback_k": "Night setback of Min Charge Level and Undercharge percentage (K)",
+          "undercharge_cost": "Penalty between setpoint and hard minimum → Undercharge cost (per kWh)",
+          "overcharge_cost": "Overload surcharge → Overcharge cost (per kWh)",
+          "late_charge_surcharge": "Late charge surcharge → Charge cost (per kWh)",
           "planner_horizon_h": "Planner forecast horizon (h)"
         },
         "sections": {
           "help_efficiency_pct": {
-            "name": "Help: Buffer efficiency (%)",
+            "name": "Help: Buffer efficiency → Charge efficiency (%)",
             "description": "Efficiency of the climate buffer in the planner model (losses while storing heat). Default 92 %.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_discharge_limit_w": {
-            "name": "Help: Buffer discharge limit (W)",
+            "name": "Help: Buffer discharge limit → Max discharge power (W)",
             "description": "Highest discharge power of the buffer in the planner model, i.e. how fast the house loses heat. Default 3500 W.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -415,28 +415,28 @@
             }
           },
           "help_night_setback_k": {
-            "name": "Help: Night setback of lower bounds (K)",
+            "name": "Help: Night setback of Min Charge Level and Undercharge percentage (K)",
             "description": "Lower bound and hard minimum for the planner are lowered by this much at night. The protection of the hard minimum in the room stays unchanged. Default 1 K (assumption, not fixed in the functional spec).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_undercharge_cost": {
-            "name": "Help: Penalty between setpoint and hard minimum (per kWh)",
+            "name": "Help: Penalty between setpoint and hard minimum → Undercharge cost (per kWh)",
             "description": "Penalty per kWh when the planner discharges the buffer between setpoint and hard minimum. Default 0.003 (slightly below that of the car charging).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_overcharge_cost": {
-            "name": "Help: Overload surcharge (per kWh)",
+            "name": "Help: Overload surcharge → Overcharge cost (per kWh)",
             "description": "Surcharge per kWh for charging between the upper bound without surcharge and the overload limit. Default 0.003 (assumption, not fixed in the functional spec).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_late_charge_surcharge": {
-            "name": "Help: Late charge surcharge (per kWh)",
+            "name": "Help: Late charge surcharge → Charge cost (per kWh)",
             "description": "Small amount per kWh that falls linearly to 0 over the forecast horizon. It only decides between equally priced time windows: then the planner charges later (less storage loss). Default 0.001.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -475,7 +475,7 @@
     },
     "sensor": {
       "soc": {
-        "name": "State of charge"
+        "name": "State of Charge"
       },
       "planned_power": {
         "name": "Planned power"
@@ -487,16 +487,16 @@
         "name": "Capacity"
       },
       "min_charge": {
-        "name": "Min charge"
+        "name": "Min Charge Level"
       },
       "undercharge": {
-        "name": "Undercharge"
+        "name": "Undercharge percentage"
       },
       "max_charge": {
-        "name": "Max charge"
+        "name": "Max Charge Level"
       },
       "overcharge": {
-        "name": "Overcharge"
+        "name": "Overcharge percentage"
       },
       "undercharge_cost": {
         "name": "Undercharge cost"
@@ -505,13 +505,13 @@
         "name": "Overcharge cost"
       },
       "efficiency": {
-        "name": "Efficiency"
+        "name": "Charge efficiency"
       },
       "max_discharge_power": {
         "name": "Max discharge power"
       },
       "max_charge_power": {
-        "name": "Max charge power"
+        "name": "Max Power Source to Target"
       },
       "charge_cost": {
         "name": "Charge cost"

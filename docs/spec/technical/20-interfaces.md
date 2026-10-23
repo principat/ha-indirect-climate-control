@@ -84,3 +84,15 @@ Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation`
 
 Aufrufe `climate.set_hvac_mode` und `climate.set_temperature` (blocking). Gelesen werden Zustand (Modus),
 `current_temperature` und `temperature`.
+
+## Benennung und Migration
+
+- Anzeigenamen der Sensoren, die HAEO-Felder befüllen, sind die Feldnamen von HAEO 0.4.1 (alle Sprachen gleich,
+  HAEO ist nur englisch): Capacity, State of Charge, Min/Max Charge Level, Undercharge/Overcharge percentage,
+  Undercharge/Overcharge cost, Charge efficiency, Max discharge power, Charge cost (Batteriefeld),
+  Max Power Source to Target (Verbindung). Felder im Einrichtungsdialog nennen das HAEO-Feld nach „→“.
+- `unique_id` (Schlüssel) und bereits registrierte Entitäts-IDs bleiben bei Umbenennungen unverändert;
+  nur der Anzeigename folgt der Übersetzung. Auswahlen in HAEO bleiben dadurch gültig.
+- Config-Entry-Version 2 (`async_migrate_entry`): entfernt `stage1_w` und `capacity_kwh_per_k` aus den Daten,
+  verschiebt `comfort_max_c`/`overload_max_c` aus den Optionen in jedes Innengerät (eigene Werte haben Vorrang),
+  entfernt `power_class` aus den Innengeräten.

@@ -20,7 +20,7 @@
           },
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
-            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Maximale Leistung“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
+            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Max Power Source to Target“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -52,7 +52,7 @@
           },
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
-            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Maximale Leistung“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
+            "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Max Power Source to Target“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -86,10 +86,10 @@
           "data": {
             "entity_id": "Innengerät",
             "name": "Raumname",
-            "setpoint_c": "Sollwert (fest bzw. Ersatzwert)",
+            "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
             "setpoint_entity": "Sollwert-Entität (optional)",
-            "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
-            "overload_max_c": "Überlastgrenze (°C)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level (°C)",
+            "overload_max_c": "Überlastgrenze → Overcharge percentage (°C)",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "window_entity": "Fensterkontakte"
@@ -103,7 +103,7 @@
               }
             },
             "help_setpoint_c": {
-              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert)",
+              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
               "description": "Eigener Sollwert des Raums. Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), das harte Minimum (Sollwert − 2 K → Heizen auch ohne Plan), die Überhitzung (Sollwert + 3 K für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert). Ist unten eine Sollwert-Entität angegeben, gilt dieser Wert nur, solange die Entität keinen gültigen Wert liefert.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -117,14 +117,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Hilfe: Obergrenze ohne Aufschlag (°C)",
+              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level (°C)",
               "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
             "help_overload_max_c": {
-              "name": "Hilfe: Überlastgrenze (°C)",
+              "name": "Hilfe: Überlastgrenze → Overcharge percentage (°C)",
               "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -157,17 +157,17 @@
           "title": "Innengerät {entity_id}",
           "data": {
             "name": "Raumname",
-            "setpoint_c": "Sollwert (fest bzw. Ersatzwert)",
+            "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
             "setpoint_entity": "Sollwert-Entität (optional)",
-            "comfort_max_c": "Obergrenze ohne Aufschlag (°C)",
-            "overload_max_c": "Überlastgrenze (°C)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level (°C)",
+            "overload_max_c": "Überlastgrenze → Overcharge percentage (°C)",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
             "help_setpoint_c": {
-              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert)",
+              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
               "description": "Eigener Sollwert des Raums. Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), das harte Minimum (Sollwert − 2 K → Heizen auch ohne Plan), die Überhitzung (Sollwert + 3 K für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert). Ist unten eine Sollwert-Entität angegeben, gilt dieser Wert nur, solange die Entität keinen gültigen Wert liefert.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -181,14 +181,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Hilfe: Obergrenze ohne Aufschlag (°C)",
+              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level (°C)",
               "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
             "help_overload_max_c": {
-              "name": "Hilfe: Überlastgrenze (°C)",
+              "name": "Hilfe: Überlastgrenze → Overcharge percentage (°C)",
               "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -336,14 +336,14 @@
       "safety": {
         "title": "Schutz und Rückfall",
         "data": {
-          "hard_min_below_k": "Hartes Minimum unter Sollwert (K)",
+          "hard_min_below_k": "Hartes Minimum unter Sollwert → Undercharge percentage (K)",
           "overheat_k": "Überhitzung über Sollwert (K)",
           "overheat_s": "Überhitzungsdauer (s)",
           "plan_max_age_s": "Maximales Planalter (s)"
         },
         "sections": {
           "help_hard_min_below_k": {
-            "name": "Hilfe: Hartes Minimum unter Sollwert (K)",
+            "name": "Hilfe: Hartes Minimum unter Sollwert → Undercharge percentage (K)",
             "description": "Hartes Minimum = Sollwert minus dieser Wert. Darunter wird der Raum auch ohne Plan geheizt. Zugleich unteres Ende der Strafzone im Planer-Modell. Standard 2 K.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -375,26 +375,26 @@
       "planner": {
         "title": "Planer-Modell (HAEO)",
         "data": {
-          "efficiency_pct": "Wirkungsgrad Puffer (%)",
-          "discharge_limit_w": "Entladegrenze Puffer (W)",
+          "efficiency_pct": "Wirkungsgrad Puffer → Charge efficiency (%)",
+          "discharge_limit_w": "Entladegrenze Puffer → Max discharge power (W)",
           "night_start_h": "Nachtabsenkung Beginn (Stunde)",
           "night_end_h": "Nachtabsenkung Ende (Stunde)",
-          "night_setback_k": "Nachtabsenkung der Untergrenzen (K)",
-          "undercharge_cost": "Strafwert Sollwert bis hartes Minimum (je kWh)",
-          "overcharge_cost": "Aufschlag Überlast (je kWh)",
-          "late_charge_surcharge": "Aufschlag Spätladen (je kWh)",
+          "night_setback_k": "Nachtabsenkung von Min Charge Level und Undercharge percentage (K)",
+          "undercharge_cost": "Strafwert Sollwert bis hartes Minimum → Undercharge cost (je kWh)",
+          "overcharge_cost": "Aufschlag Überlast → Overcharge cost (je kWh)",
+          "late_charge_surcharge": "Aufschlag Spätladen → Charge cost (je kWh)",
           "planner_horizon_h": "Prognosehorizont für den Planer (h)"
         },
         "sections": {
           "help_efficiency_pct": {
-            "name": "Hilfe: Wirkungsgrad Puffer (%)",
+            "name": "Hilfe: Wirkungsgrad Puffer → Charge efficiency (%)",
             "description": "Wirkungsgrad des Klima-Puffers im Planer-Modell (Verluste beim Speichern von Wärme). Standard 92 %.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
           "help_discharge_limit_w": {
-            "name": "Hilfe: Entladegrenze Puffer (W)",
+            "name": "Hilfe: Entladegrenze Puffer → Max discharge power (W)",
             "description": "Höchste Entladeleistung des Puffers im Planer-Modell, also wie schnell das Haus Wärme verliert. Standard 3500 W.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -415,28 +415,28 @@
             }
           },
           "help_night_setback_k": {
-            "name": "Hilfe: Nachtabsenkung der Untergrenzen (K)",
+            "name": "Hilfe: Nachtabsenkung von Min Charge Level und Undercharge percentage (K)",
             "description": "Um so viel werden Untergrenze und hartes Minimum für den Planer nachts abgesenkt. Der Schutz durch das harte Minimum im Raum bleibt unverändert. Standard 1 K (Annahme, in der Fachspec nicht festgelegt).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
           "help_undercharge_cost": {
-            "name": "Hilfe: Strafwert Sollwert bis hartes Minimum (je kWh)",
+            "name": "Hilfe: Strafwert Sollwert bis hartes Minimum → Undercharge cost (je kWh)",
             "description": "Strafwert je kWh, wenn der Planer den Puffer zwischen Sollwert und hartem Minimum entlädt. Standard 0,003 (etwas unter dem der Autoladung).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
           "help_overcharge_cost": {
-            "name": "Hilfe: Aufschlag Überlast (je kWh)",
+            "name": "Hilfe: Aufschlag Überlast → Overcharge cost (je kWh)",
             "description": "Aufschlag je kWh für Laden zwischen der Obergrenze ohne Aufschlag und der Überlastgrenze. Standard 0,003 (Annahme, in der Fachspec nicht festgelegt).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
           "help_late_charge_surcharge": {
-            "name": "Hilfe: Aufschlag Spätladen (je kWh)",
+            "name": "Hilfe: Aufschlag Spätladen → Charge cost (je kWh)",
             "description": "Kleiner Betrag je kWh, der über den Prognosehorizont linear auf 0 fällt. Er entscheidet nur zwischen gleich teuren Zeitfenstern: Dann lädt der Planer später (weniger Speicherverlust). Standard 0,001.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -475,7 +475,7 @@
     },
     "sensor": {
       "soc": {
-        "name": "Füllstand"
+        "name": "State of Charge"
       },
       "planned_power": {
         "name": "Geplante Leistung"
@@ -484,37 +484,37 @@
         "name": "Angeforderte Leistung"
       },
       "capacity": {
-        "name": "Kapazität"
+        "name": "Capacity"
       },
       "min_charge": {
-        "name": "Untergrenze"
+        "name": "Min Charge Level"
       },
       "undercharge": {
-        "name": "Hartes Minimum"
+        "name": "Undercharge percentage"
       },
       "max_charge": {
-        "name": "Obergrenze"
+        "name": "Max Charge Level"
       },
       "overcharge": {
-        "name": "Überlast"
+        "name": "Overcharge percentage"
       },
       "undercharge_cost": {
-        "name": "Strafwert Untergrenze"
+        "name": "Undercharge cost"
       },
       "overcharge_cost": {
-        "name": "Aufschlag Überlast"
+        "name": "Overcharge cost"
       },
       "efficiency": {
-        "name": "Wirkungsgrad"
+        "name": "Charge efficiency"
       },
       "max_discharge_power": {
-        "name": "Entladegrenze"
+        "name": "Max discharge power"
       },
       "max_charge_power": {
-        "name": "Maximale Leistung"
+        "name": "Max Power Source to Target"
       },
       "charge_cost": {
-        "name": "Aufschlag Spätladen"
+        "name": "Charge cost"
       },
       "room_deviation": {
         "name": "Abweichung zum Sollwert"
