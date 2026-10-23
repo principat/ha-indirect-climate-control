@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Planer-Sensor(en) optional | `entry.data`, Titel |
 | Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
-| Parameter | Options Flow: Menü mit Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
+| Parameter | Options Flow: Menü mit `plan` (Planer-Sensor, schreibt `entry.data`) und den Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
 
 - Mehrere Anlagen: beliebig viele Config Entries, keine Einschränkung auf eine Instanz (FR-CFG-02).
@@ -35,7 +35,8 @@ Texte: `strings.json`, `translations/en.json`, `translations/de.json` (gleiche S
 ### Eingang: Plan (FR-PLAN-01)
 
 Ein oder mehrere Sensoren (konfigurierbar). Referenz: der geplante Fluss der HAEO-Verbindung Haus → Knoten
-Klima (`sensor.klima_power_source_target`), bei zwei HAEO-Verbindungen beide. Nicht die
+Klima (`sensor.<verbindung>_source_to_target_power`, HAEO 0.4.1; Format geprüft am 23.10.2026: kW, `forecast` als
+`{time, value}` mit Zeitzone, Schritte 1 min bis 1 h), bei zwei HAEO-Verbindungen beide. Nicht die
 Ladeleistung der Batterie: Am Knoten Klima hängt auch die Last Wärmebedarf, die HAEO direkt versorgen kann
 (Topologie in `README.md`). Mehrere Sensoren werden je Zeitpunkt addiert
 (`core.plan.combine`); der Summenplan ist so alt wie sein ältester Teil und endet mit dem kürzesten.

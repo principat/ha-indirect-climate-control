@@ -41,8 +41,10 @@ Therefore set up in this order:
    more, the room counts as open as soon as one is open). Units can
    be changed or removed one by one. Each indoor unit gets its own device with diagnostic sensors (see below).
 4. **Set up HAEO** with the sensors of Climate Control, see [Connecting HAEO](#connecting-haeo).
-5. **Connect the plan** – *Reconfigure* the installation and select the HAEO sensor with the planned power
-   (`sensor.klima_power_source_target`). From now on Climate Control follows the plan.
+5. **Connect the plan** – *Configure → Planner output (planned power)* and select the HAEO sensor with the planned power
+   (`sensor.<connection>_source_to_target_power`, e.g. `sensor.connection_klima_standard_source_to_target_power`;
+   HAEO 0.4.1 shows it as "Connection … {source} to {target} power", search for the connection name).
+   With two power stages select both connections. From now on Climate Control follows the plan.
 6. Optional: **Configure** opens a menu of parameter groups: control, state of charge, protection and fallback,
    planner model.
 
@@ -176,8 +178,8 @@ database (history) to keep it small.
 
 ### Still to check
 
-- Whether the output sensors of HAEO connections use exactly this format. Climate Control also reads
-  `start_time` and time→value mappings.
+- Checked on 23 Oct 2026: HAEO 0.4.1 connection sensors deliver kW with a `forecast` list of `{time, value}`
+  (time zone included, steps of 1 min to 1 h); Climate Control reads them as they are.
 - Whether HAEO accepts the currency unit of the cost sensors (`<currency>/kWh`); the unit must match the field.
 - After step 5: the Climate Control sensor *Planned power* shows the planned flow house → Klima and the coming
   hours in its `forecast` attribute; binary sensor *Fallback* is off.
@@ -231,8 +233,10 @@ Deshalb in dieser Reihenfolge einrichten:
    Jedes Innengerät erhält ein eigenes Gerät mit Diagnose-Sensoren (siehe unten). Innengeräte lassen sich später
    einzeln ändern oder löschen.
 4. **HAEO einrichten** mit den Sensoren von Climate Control, siehe [HAEO anbinden](#haeo-anbinden).
-5. **Plan verbinden** – Anlage *neu konfigurieren* und den HAEO-Sensor mit der geplanten Leistung wählen
-   (`sensor.klima_power_source_target`). Ab jetzt folgt Climate Control dem Plan.
+5. **Plan verbinden** – *Konfigurieren → Planer-Ausgabe (geplante Leistung)* und den HAEO-Sensor mit der geplanten Leistung wählen
+   (`sensor.<verbindung>_source_to_target_power`, z. B. `sensor.connection_klima_standard_source_to_target_power`;
+   HAEO 0.4.1 zeigt ihn als „Connection … {source} to {target} power“, nach dem Verbindungsnamen suchen).
+   Bei zwei Leistungsstufen beide Verbindungen wählen. Ab jetzt folgt Climate Control dem Plan.
 6. Optional: **Konfigurieren** öffnet ein Menü mit Parametergruppen: Regelung, Füllstand, Schutz und Rückfall,
    Planer-Modell.
 
@@ -368,8 +372,8 @@ nicht gespeichert, damit diese klein bleibt.
 
 ### Noch zu prüfen
 
-- Ob die Ausgabesensoren der HAEO-Verbindungen genau dieses Format haben. Climate Control liest auch
-  `start_time` und Zeit→Wert-Abbildungen.
+- Geprüft am 23.10.2026: Die Verbindungssensoren von HAEO 0.4.1 liefern kW mit einer `forecast`-Liste aus
+  `{time, value}` (mit Zeitzone, Schritte 1 min bis 1 h); Climate Control liest sie unverändert.
 - Ob HAEO die Währungseinheit der Kostensensoren (`<Währung>/kWh`) akzeptiert; die Einheit muss zum Feld passen.
 - Nach Schritt 5: Sensor *Geplante Leistung* von Climate Control zeigt den geplanten Fluss Haus → Klima und
   im Attribut `forecast` die kommenden Stunden; Binärsensor *Rückfall* ist aus.

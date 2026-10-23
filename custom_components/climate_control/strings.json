@@ -27,7 +27,7 @@
           },
           "help_plan_entity": {
             "name": "Help: Planned power (planner outputs, optional at first)",
-            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
+            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (e.g. `sensor.connection_klima_standard_source_to_target_power`, shown by HAEO 0.4.1 as 'Connection … source to target power' with braces); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -59,7 +59,7 @@
           },
           "help_plan_entity": {
             "name": "Help: Planned power (planner outputs, optional at first)",
-            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (`sensor.klima_power_source_target`); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
+            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (e.g. `sensor.connection_klima_standard_source_to_target_power`, shown by HAEO 0.4.1 as 'Connection … source to target power' with braces); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -233,10 +233,26 @@
         "title": "Parameters",
         "description": "Choose a group.",
         "menu_options": {
+          "plan": "Planner output (planned power)",
           "control": "Control: thresholds and distribution",
           "soc": "State of charge (SOC)",
           "safety": "Protection and fallback",
           "planner": "Planner model (HAEO)"
+        }
+      },
+      "plan": {
+        "title": "Planner output (planned power)",
+        "data": {
+          "plan_entity": "Planned power (planner outputs, optional at first)"
+        },
+        "sections": {
+          "help_plan_entity": {
+            "name": "Help: Planned power (planner outputs, optional at first)",
+            "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (e.g. `sensor.connection_klima_standard_source_to_target_power`, shown by HAEO 0.4.1 as 'Connection … source to target power' with braces); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
         }
       },
       "control": {

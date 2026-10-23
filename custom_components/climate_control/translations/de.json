@@ -27,7 +27,7 @@
           },
           "help_plan_entity": {
             "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
-            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
+            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (z. B. `sensor.connection_klima_standard_source_to_target_power`, von HAEO 0.4.1 als „Connection … source to target power“ mit Klammern angezeigt); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -59,7 +59,7 @@
           },
           "help_plan_entity": {
             "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
-            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (`sensor.klima_power_source_target`); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
+            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (z. B. `sensor.connection_klima_standard_source_to_target_power`, von HAEO 0.4.1 als „Connection … source to target power“ mit Klammern angezeigt); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -233,10 +233,26 @@
         "title": "Parameter",
         "description": "Gruppe wählen.",
         "menu_options": {
+          "plan": "Planer-Ausgabe (geplante Leistung)",
           "control": "Regelung: Schwellen und Verteilung",
           "soc": "Füllstand (SOC)",
           "safety": "Schutz und Rückfall",
           "planner": "Planer-Modell (HAEO)"
+        }
+      },
+      "plan": {
+        "title": "Planer-Ausgabe (geplante Leistung)",
+        "data": {
+          "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
+        },
+        "sections": {
+          "help_plan_entity": {
+            "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
+            "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (z. B. `sensor.connection_klima_standard_source_to_target_power`, von HAEO 0.4.1 als „Connection … source to target power“ mit Klammern angezeigt); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          }
         }
       },
       "control": {

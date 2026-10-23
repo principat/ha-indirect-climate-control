@@ -260,7 +260,29 @@ class ClimateControlOptionsFlow(OptionsFlow):
     """All tunable parameters (functional spec, section 4), grouped into menu steps."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=list(PARAMETER_GROUPS))
+        return self.async_show_menu(step_id="init", menu_options=["plan", *PARAMETER_GROUPS])
+
+    async def async_step_plan(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Planner output: connected here as well, because it is set after the planner exists."""
+        entry = self.config_entry
+        expanded = bool(entry.options.get(OPTION_HELP, False))
+        if user_input is not None:
+            values, expanded = split_help(user_input, expanded)
+            data = {k: v for k, v in entry.data.items() if k != CONF_PLAN_ENTITY}
+            if values.get(CONF_PLAN_ENTITY):
+                data[CONF_PLAN_ENTITY] = values[CONF_PLAN_ENTITY]
+            self.hass.config_entries.async_update_entry(entry, data=data)
+            return self.async_create_entry(data={**entry.options, OPTION_HELP: expanded})
+        field = {
+            vol.Optional(CONF_PLAN_ENTITY): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", multiple=True)
+            )
+        }
+        schema = _with_help(field, (CONF_PLAN_ENTITY,), expanded)
+        current = {CONF_PLAN_ENTITY: entry.data[CONF_PLAN_ENTITY]} if entry.data.get(CONF_PLAN_ENTITY) else {}
+        return self.async_show_form(
+            step_id="plan", data_schema=self.add_suggested_values_to_schema(schema, current)
+        )
 
     async def async_step_control(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return await self._group("control", user_input)

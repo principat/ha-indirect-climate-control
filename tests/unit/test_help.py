@@ -72,4 +72,4 @@ def test_parameters_are_grouped_completely_and_once() -> None:
     assert sorted(grouped) == sorted(OPTIONS_HELP)
     for path in FILES:
         menu = json.loads(path.read_text(encoding="utf-8"))["options"]["step"]["init"]["menu_options"]
-        assert set(menu) == set(PARAMETER_GROUPS), path.name
+        assert set(menu) == {"plan", *PARAMETER_GROUPS}, path.name

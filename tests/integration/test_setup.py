@@ -142,9 +142,9 @@ async def test_all_parameters_are_options(hass: HomeAssistant, units: FakeUnits,
     entry = await setup_entry()
     menu = await hass.config_entries.options.async_init(entry.entry_id)
     assert menu["type"] == FlowResultType.MENU
-    assert menu["menu_options"] == ["control", "soc", "safety", "planner"]
+    assert menu["menu_options"] == ["plan", "control", "soc", "safety", "planner"]
     keys: set[str] = set()
-    for group in menu["menu_options"]:
+    for group in menu["menu_options"][1:]:
         form = await _open_group(hass, entry, group)
         keys |= {str(k) for k in form["data_schema"].schema if not str(k).startswith("help_")}
     assert keys == {f.name for f in fields(Parameters)}  # every parameter in a group
@@ -342,3 +342,32 @@ async def test_stored_version_1_configuration_is_migrated(hass: HomeAssistant, u
     assert entry.runtime_data.cfg.capacity_kwh_per_k == 7.0
     state = hass.states.get("sensor.cc_untergrenze")
     assert state is not None and state.attributes["friendly_name"] == "Climate Control Min Charge Level"
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_planner_output_is_set_under_configure(
+    hass: HomeAssistant, units: FakeUnits, setup_entry
+) -> None:  # noqa: ANN001
+    """The planner output is connected after the planner exists, so it is also part of the options menu."""
+    set_plan(hass, 0)
+    entry = await setup_entry()
+    hass.config_entries.async_update_entry(
+        entry, data={k: v for k, v in entry.data.items() if k != "plan_entity"}
+    )
+    await hass.async_block_till_done()
+    units.set(ROOMS[0], "fan_only", 15)
+    await run_cycle(hass)
+    assert units.mode(ROOMS[0]) == "fan_only"  # commissioning: nothing is controlled
+
+    form = await _open_group(hass, entry, "plan")
+    assert form["type"] == FlowResultType.FORM and "help_plan_entity" in _sections(form)
+    result = await hass.config_entries.options.async_configure(form["flow_id"], {"plan_entity": [PLAN]})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.data["plan_entity"] == [PLAN]
+    assert units.mode(ROOMS[0]) == "heat"  # controlled now: hard minimum protection
+
+    form = await _open_group(hass, entry, "plan")
+    result = await hass.config_entries.options.async_configure(form["flow_id"], {})
+    await hass.async_block_till_done()
+    assert "plan_entity" not in entry.data  # cleared again: back to commissioning
