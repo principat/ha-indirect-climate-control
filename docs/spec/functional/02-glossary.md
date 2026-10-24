@@ -22,3 +22,5 @@
 | Gelernte Kapazität | elektrische Energie je 0,1 K Änderung der mittleren Gerätetemperatur, aus dem Betrieb gemessen, getrennt für Heizen und Kühlen |
 | Regelbereich | Abstand zum Sollwert (je Richtung), in dem der Planer den Puffer ohne Kosten nutzen darf |
 | Absolute Grenze | Abstand zum Sollwert (je Richtung), an dem Schluss ist: unten Schutz durch Heizen, oben keine weitere Beheizung (Überlastgrenze) |
+| Leistungsschritt | eine Verstellung des Sollwerts eines Innengeräts um seine Schrittweite, Stellgröße der Lastregelung |
+| Mindeststufe | kleinste Last der Lastregelung: zwei Leistungsschritte, vorzugsweise auf zwei Geräte verteilt |
