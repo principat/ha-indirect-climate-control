@@ -39,11 +39,12 @@ Gedächtnis dafür, welche Last ein Schritt bewirkt.
    angehoben (Gerät der größten Leistungsklasse und eines der kleinsten, bei Gleichstand nach Abweichung). Liegt `P_erw` mehr als das
    Totband darüber und bleiben mindestens zwei Schritte (Mindeststufe) oder mehr als zwei gesteuerte Geräte, werden die zuletzt
    angehobenen Geräte um einen Schritt zurückgenommen.
-4. **Gelernt wird `p_i`:** Nach jeder Verstellung wird die Änderung der gemessenen Außenleistung beobachtet, sobald sie sich beruhigt
-   hat (Änderungsrate unter einer Schwelle, mit einer Obergrenze für die Wartezeit, nicht mit einem festen Fenster). Die gemessene
-   Änderung wird auf die gleichzeitig verstellten Schritte aufgeteilt und fließt als gleitender Wert in `p_i` der betroffenen Geräte
-   ein. Ausreißer (zum Beispiel ein anderes Gerät, das gleichzeitig ein- oder ausschaltet, Betriebsartwechsel) werden verworfen. Die
-   Werte bleiben über Neustarts erhalten und sind in der Diagnose sichtbar, nicht änderbar.
+4. **Gelernt wird `p_i`:** Nach jeder Verstellung wird die Außenleistung beobachtet, bis sie sich beruhigt hat (siehe
+   Beruhigung). Die Änderung gegenüber dem Wert vor der Verstellung, geteilt durch die verstellten Schritte, ist die Beobachtung für
+   die beteiligten Geräte. Beobachtungen, in die ein anderes Ereignis hineinspielt (andere Verstellung, Start oder Stopp eines
+   Geräts, Betriebsartwechsel, Fenster, Planänderung über das Totband hinaus), werden verworfen. Eine Beobachtung unter dem halben
+   Totband gilt als zu klein und lehrt nichts. Die Werte bleiben über Neustarts erhalten und sind in der Diagnose sichtbar, nicht
+   änderbar.
 5. **Startwert** `p_i = (Pmax − Pmin) / (2 × Zahl der Innengeräte)`. Beispiel: Pmax 3,3 kW, Pmin 1,3 kW, 7 Geräte: 2,0 / 14 = 0,14 kW je
    Schritt und Gerät.
 
@@ -65,9 +66,28 @@ Sprünge fallen vermutlich mit den Rampenschritten der alten Lastführung zusamm
 die zugehörigen Sollwertänderungen nicht gegengeprüft sind. Sicher ist nur: Die Außenleistung reagiert innerhalb von Sekunden bis
 einer Minute auf einen Anstoß und klingt in wenigen Minuten ab.
 
+## Beruhigung der Außenleistung (allgemein, ohne Zahlen einer bestimmten Anlage)
+
+Das Kriterium nutzt nur Größen, die die Integration für jede Anlage kennt oder selbst misst:
+
+1. **Takt:** Die Leistung wird je Regelzyklus gemittelt (Parameter `cycle_s`, Standard 60 s). Das macht das Kriterium unabhängig davon,
+   wie oft der Leistungssensor meldet.
+2. **Toleranz = Totband** (10 % von Pmin). Die Leistung gilt als beruhigt, wenn die Mittelwerte der letzten drei Regelzyklen höchstens
+   ein Totband auseinanderliegen. Die Toleranz wächst und schrumpft mit der Größe der Anlage, Watt-Schwellen gibt es nicht.
+3. **Höchstzeit:** Wird die Leistung nicht beruhigt, wird die Beobachtung verworfen (kein Lernen, der bisherige Wert bleibt). Die
+   Höchstzeit ist ein Parameter mit Standard 10 Minuten. Sie passt sich der Anlage an: Nach den ersten beruhigten Beobachtungen gilt
+   das Dreifache der beobachteten mittleren Beruhigungszeit, höchstens der Parameter und mindestens drei Regelzyklen. Eine
+   langsame Anlage bekommt so automatisch mehr Zeit, eine schnelle lernt häufiger.
+4. **Dauerhaft schwankende Leistung** (Takten, Abtauen) beruhigt sich nicht, das Lernen pausiert dann von selbst. Das ist gewollt: Es
+   gibt dann keine saubere Zuordnung der Änderung zum Schritt.
+
+Das Kriterium ist eine Annahme, bis es an Messwerten geprüft ist. Die Beobachtungen werden in der Aufzeichnung (FR-OBS-01) um Beruhigungszeit
+und Änderung ergänzt, damit man es an echten Daten prüfen kann.
+
 ## Offen vor der Umsetzung
 
-1. **Beruhigungskriterium** für das Lernen: Änderungsrate der Außenleistung unter einer Schwelle (W je Minute) und Obergrenze der
-   Wartezeit (Vorschlag 10 Minuten). Die Zahlen sollten aus den Messwerten kommen, bis dahin Annahmen.
-2. **Lernrate** und Ausreißergrenzen für `p_i`: Vorschlag wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den
+1. **Lernrate** und Ausreißergrenzen für `p_i`: Vorschlag wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den
    Startwert durch ihren Median, danach gleitend mit Anteil 0,2, höchstens ±25 % je Beobachtung).
+2. **Verworfene Beobachtungen:** Das Konzept lernt nur aus sauberen Beobachtungen. Temperaturänderungen bedienter Geräte während der
+   Beobachtung zählen als Störung, weil sie ebenfalls die Last ändern. Wenn zu viele Beobachtungen so verloren gehen, ist eine
+   Schätzung über alle Ereignisse zusammen (rekursive kleinste Quadrate je Gerät) die Alternative, sie ist aber aufwendiger.
