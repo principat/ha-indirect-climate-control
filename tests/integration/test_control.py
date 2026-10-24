@@ -66,7 +66,9 @@ async def test_setpoint_is_set_again_after_mode_change(
     heating = [e for e in ROOMS if units.mode(e) == "heat"]
     assert len(heating) == 2  # the load control serves two units for 2 kW (one step pair at a time)
     for entity_id in heating:
-        assert units.target(entity_id) == 21.5  # 20 degC + 3 power steps of 0.5, not the remembered 18
+        assert (
+            units.target(entity_id) == 19.0
+        )  # 20 - start distance 2 + 4 power steps of 0.5, not the remembered 18
         own = [c[1] for c in units.calls if c[0] == entity_id]
         assert own == ["set_hvac_mode", "set_temperature"]
     units.calls.clear()
@@ -358,7 +360,7 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
-    assert len({r["unit"] for r in heating}) == 2 and heating[0]["target_c"] == 21.5
+    assert len({r["unit"] for r in heating}) == 2 and heating[0]["target_c"] == 19.0
     size = path.stat().st_size
     await run_cycle(hass)  # nothing changed: nothing recorded
     assert path.stat().st_size == size

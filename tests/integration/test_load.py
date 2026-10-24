@@ -62,7 +62,7 @@ async def test_the_setpoint_of_a_served_unit_lies_the_steps_beyond_its_device_te
     assert result.steps and sum(result.steps.values()) >= 2
     for entity_id, steps in result.steps.items():
         step = 1.0 if entity_id == A else 0.5
-        assert units.target(entity_id) == pytest.approx(20 + steps * step)
+        assert units.target(entity_id) == pytest.approx(20 - 2 + steps * step)  # above the start threshold
     assert abs(result.expected_w - 2000) <= 130 + 170  # within the dead band and the size of a step
 
 
@@ -120,8 +120,12 @@ async def test_the_power_per_step_is_learned_from_the_outdoor_power_and_survives
         await _minute(hass, freezer, 20, 0)  # the idle power before the plant starts
     await _minute(hass, freezer, 20, 2.0)  # the plant starts, the load control sets the steps
     assert entry.runtime_data.data.result.steps
-    for watts in (400, 900, 1400, 1950, 2000, 2000, 2000, 2000):  # the outdoor power follows with a lag
+    for watts in (400, 900, 1400, 1950, 2000, 2000, 2000):  # the outdoor power follows with a lag
         await _minute(hass, freezer, watts, 2.0)
+    # a run from standby only teaches nothing; the next change of the request while it runs does
+    await _minute(hass, freezer, 2000, 3.0)
+    for watts in (2300, 2700, 2900, 2950, 2950, 2950, 2950, 2950):
+        await _minute(hass, freezer, watts, 3.0)
     model = entry.runtime_data.controller.load_model
     assert model.units, "nothing was learned"
     assert all(item.estimates >= 1 for item in model.units.values())

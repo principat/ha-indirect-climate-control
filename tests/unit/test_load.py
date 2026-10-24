@@ -10,6 +10,7 @@ from custom_components.climate_control.core.controller import Controller
 from custom_components.climate_control.core.load import (
     LoadControl,
     LoadModel,
+    expected_load_w,
     start_power_w,
 )
 from custom_components.climate_control.core.model import Mode, Season
@@ -39,7 +40,7 @@ class Plant:
         self.now = T0
 
     def cycle(self, requested_w: float, disturbed: bool = False) -> dict[str, int]:
-        target = IDLE_W + sum(self.true_w[rid] * n for rid, n in self.ctl.steps.items())
+        target = IDLE_W + expected_load_w(self.ctl.steps, self.true_w, self.cfg.p_min_w)
         self.power += (target - self.power) * self.alpha
         self.now += MIN
         self.ctl.feed(self.now, self.power, self.cfg)
@@ -65,7 +66,15 @@ def test_the_expected_load_reaches_the_request_within_the_dead_band() -> None:
     for requested in (1300.0, 2000.0, 3000.0):
         steps = ctl.update(T0, cfg, Season.HEAT, requested, ranked(cfg))
         assert abs(ctl.expected_w - requested) <= 130 + 250 / 2  # the step size bounds the accuracy
-        assert sum(steps.values()) * 250 == pytest.approx(ctl.expected_w)
+        assert sum(steps.values()) >= 2  # never below the minimum stage
+        assert ctl.expected_w == pytest.approx(
+            expected_load_w(steps, {r.id: 250.0 for r in cfg.rooms}, 1300.0)
+        )
+    assert expected_load_w({"a": 1, "b": 1}, {"a": 250.0, "b": 250.0}, 1300.0) == 1300.0  # two steps are Pmin
+    assert expected_load_w({"a": 3, "b": 1}, {"a": 400.0, "b": 100.0}, 1300.0) == pytest.approx(
+        1300.0 + 325 * 2
+    )
+    assert expected_load_w({}, {}, 1300.0) == 0.0
 
 
 @pytest.mark.req("FR-LOAD-01")
@@ -153,10 +162,14 @@ def test_the_controller_sets_the_setpoint_beyond_the_device_temperature_by_the_s
     assert result.steps and sum(result.steps.values()) >= 2
     for rid, n in result.steps.items():
         assert result.commands[rid].mode is Mode.HEAT
-        assert result.commands[rid].target_c == pytest.approx(20.0 + n * 0.5)
+        assert result.commands[rid].target_c == pytest.approx(
+            20.0 - 2.0 + n * 0.5
+        )  # above the start threshold
     idle = [rid for rid in (f"r{i}" for i in range(1, 5)) if rid not in result.steps]
     assert all(result.commands[rid].mode is Mode.FAN for rid in idle)
-    assert result.expected_w == pytest.approx(sum(250.0 * n for n in result.steps.values()))
+    assert result.expected_w == pytest.approx(
+        expected_load_w(result.steps, {r: 250.0 for r in result.steps}, 1300.0)
+    )
 
 
 @pytest.mark.req("FR-LOAD-01")
@@ -164,8 +177,8 @@ def test_the_step_size_is_set_per_unit() -> None:
     cfg = installation(replace(room("a"), step=1.0), room("b"))
     ctrl = Controller(cfg)
     result = ctrl.step(T0, plan(1500), states({"a": 20.0, "b": 20.0}))
-    assert result.commands["a"].target_c == pytest.approx(20.0 + result.steps["a"] * 1.0)
-    assert result.commands["b"].target_c == pytest.approx(20.0 + result.steps["b"] * 0.5)
+    assert result.commands["a"].target_c == pytest.approx(20.0 - 2.0 + result.steps["a"] * 1.0)
+    assert result.commands["b"].target_c == pytest.approx(20.0 - 2.0 + result.steps["b"] * 0.5)
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -287,3 +300,39 @@ def test_the_controller_restarts_the_load_control_with_the_plant_and_the_season(
     switched = ctrl.step(later + 2 * MIN, plan(2000, later), cold, season=Season.COOL)
     assert switched.season is Season.COOL and switched.steps  # a new cooling run, not the heating one
     assert all(switched.commands[rid].mode is Mode.COOL for rid in switched.steps)
+
+
+@pytest.mark.req("FR-LOAD-01")
+def test_two_units_one_step_above_the_start_threshold_are_the_minimum_stage() -> None:
+    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
+    ctrl = Controller(cfg)
+    # the units read 22: a setpoint of 22 - 2 + 0.5 = 20.5 is one step above their start threshold of 20
+    result = ctrl.step(T0, plan(1300), states({"r1": 22.0, "r2": 22.0, "r3": 22.0}))
+    assert sorted(result.steps.values()) == [1, 1]
+    assert result.expected_w == 1300.0  # the minimum stage is Pmin
+    for rid in result.steps:
+        assert result.commands[rid].target_c == 20.5  # below the reading, as the unit starts nevertheless
+    assert sum(1 for c in result.commands.values() if c.mode is Mode.HEAT) == 2
+
+
+@pytest.mark.req("FR-LOAD-01")
+def test_the_start_distance_is_set_per_unit_and_zero_puts_the_threshold_at_the_reading() -> None:
+    cfg = installation(
+        replace(room("a", setpoint=20.0), start_offset=0.0),
+        replace(room("b", setpoint=20.0), start_offset=1.0),
+    )
+    result = Controller(cfg).step(T0, plan(1300), states({"a": 22.0, "b": 22.0}))
+    assert result.commands["a"].target_c == 22.0 + 0.5  # threshold at the reading, one step above
+    assert result.commands["b"].target_c == 22.0 - 1.0 + 0.5  # threshold 1 below the reading
+
+
+@pytest.mark.req("FR-LOAD-02")
+def test_a_run_from_standby_reaches_the_minimum_stage_and_teaches_nothing() -> None:
+    cfg = rooms4()
+    ctl = LoadControl()
+    plant = Plant(ctl, cfg, {r.id: 500.0 for r in cfg.rooms})
+    for _ in range(4):
+        plant.cycle(0.0)  # standby
+    for _ in range(12):
+        plant.cycle(1300.0)  # the plant starts: Pmin is the minimum stage, a power step has not been measured
+    assert sum(ctl.steps.values()) == 2 and not ctl.model.units

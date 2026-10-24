@@ -142,6 +142,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
+            "start_offset": "Anlaufabstand (unter der Gerätetemperatur, optional)",
             "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
             "window_entity": "Fensterkontakte"
           },
@@ -209,6 +210,13 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
+            "help_start_offset": {
+              "name": "Hilfe: Anlaufabstand (unter der Gerätetemperatur, optional)",
+              "description": "Wie weit der Sollwert dieses Geräts unter der Gerätetemperatur liegen darf, bevor das Gerät beim Außengerät Leistung anfordert (Standard 2, in der Einheit der Anlage). Ein Gerät an der Decke misst zu warm und heizt schon, während seine Anzeige noch über dem Sollwert liegt. Die Lastregelung zählt ihre Leistungsschritte ab dieser Anlaufschwelle: Bei 2 ist die Schwelle ein Sollwert von Gerätetemperatur minus 2, und zwei Geräte einen Schritt darüber (minus 1,5) bringen das Außengerät auf seine Mindestleistung.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
             "help_step": {
               "name": "Hilfe: Leistungsschritt (Sollwertschritt des Geräts, optional)",
               "description": "Größe eines Leistungsschritts: Die Lastregelung verstellt den Sollwert dieses Geräts in Schritten dieser Größe (Abstand in der Einheit der Anlage, Standard 0,5). Den Sollwertschritt wählen, den das Gerät annimmt. Ein Gerät zieht mehr Leistung, je weiter sein Sollwert über der Gerätetemperatur liegt; die Leistung je Schritt wird je Gerät aus dem Betrieb gelernt.",
@@ -237,6 +245,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
+            "start_offset": "Anlaufabstand (unter der Gerätetemperatur, optional)",
             "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
             "window_entity": "Fensterkontakte"
           },
@@ -293,6 +302,13 @@
             "help_area_m2": {
               "name": "Hilfe: Fläche",
               "description": "Gewicht des Raums in den flächengewichteten Grenzen für den Planer und bei der Aufteilung der Pufferkapazität auf die Räume (Diagnosewerte).",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_start_offset": {
+              "name": "Hilfe: Anlaufabstand (unter der Gerätetemperatur, optional)",
+              "description": "Wie weit der Sollwert dieses Geräts unter der Gerätetemperatur liegen darf, bevor das Gerät beim Außengerät Leistung anfordert (Standard 2, in der Einheit der Anlage). Ein Gerät an der Decke misst zu warm und heizt schon, während seine Anzeige noch über dem Sollwert liegt. Die Lastregelung zählt ihre Leistungsschritte ab dieser Anlaufschwelle: Bei 2 ist die Schwelle ein Sollwert von Gerätetemperatur minus 2, und zwei Geräte einen Schritt darüber (minus 1,5) bringen das Außengerät auf seine Mindestleistung.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }

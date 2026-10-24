@@ -11,7 +11,8 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (zwei Gerätestufen) |
 | Schrittweite Sollwert | 0,5 K | Schritt, in dem der Lastregler den Sollwert eines Innengeräts verstellt; je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
-| Mindeststufe Lastregler | 2 Leistungsschritte | Untergrenze beim Nachregeln nach unten, vorzugsweise auf zwei Geräte verteilt |
+| Anlaufabstand | 2 K | je Innengerät einstellbar (optional); Abstand, um den die Anlaufschwelle unter der Gerätetemperatur liegt |
+| Mindeststufe Lastregler | 2 Leistungsschritte | Pmin; Untergrenze beim Nachregeln nach unten, vorzugsweise auf zwei Geräte verteilt |
 | Startwert Last je Schritt | (Pmax − Pmin) / (2 × Zahl der Innengeräte) | je Innengerät, gilt bis zur ersten Messung |
 | Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |

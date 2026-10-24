@@ -18,53 +18,51 @@ Gedächtnis dafür, welche Last ein Schritt bewirkt.
   vorzugsweise auf zwei Geräte verteilt (Mindeststufe).
 - **Totband bleibt: 10 % von Pmin** um die angeforderte Leistung.
 - **Bezug ist die angeforderte Leistung** (mindestens Pmin im Betrieb, FR-PLAN-03), nicht die reine Planleistung.
-- **Reihenfolge:** zuerst der Sollwert (bis zur absoluten Grenze des Raums, nach unten bis Gerätetemperatur + 0), dann die Zahl der
-  Geräte.
+- **Reihenfolge:** zuerst der Sollwert (bis zur absoluten Grenze des Raums), dann die Zahl der Geräte.
 - **Zurücksetzen** beim Stopp der Anlage und beim Wechsel der Betriebsart auf den Standard.
 - **Die Leistungsänderung je Schritt wird je Innengerät gelernt.** Ein 1,6-kW-Gerät zieht weniger als ein 2,8-kW-Gerät. Die
   Lüfterstufe braucht keinen eigenen Schlüssel, sie steckt in der gelernten Geräteleistung. Eine Änderung der Lüfterleistung würde
   den Komfort beeinflussen und kommt deshalb als Stellgröße nicht in Frage.
-- **Startwert je Gerät:** (Pmax − Pmin) geteilt durch die doppelte Zahl der Innengeräte. Die Leistung verteilt sich damit über die
-  Geräte, der Anteil ist aber überschätzt, die Hälfte lässt dem Gerät eine Reserve.
+- **Anlauf (Messung des Nutzers):** Bei einem Sollwert von 20 °C läuft ein Gerät schon bei einer Anzeige von 22 °C an (Gerät an der
+  Decke). Zwei Geräte mit je einem Schritt über dieser Schwelle bringen das Außengerät auf Pmin (etwa 1,3 kW elektrisch).
+- **Startwert je Gerät** für Schritte über der Mindeststufe: (Pmax − Pmin) geteilt durch die doppelte Zahl der Innengeräte. Die
+  Leistung verteilt sich damit über die Geräte, der Anteil ist aber überschätzt, die Hälfte lässt dem Gerät eine Reserve.
 
-## Mechanismus (Vorschlag)
+## Mechanismus
 
-1. **Lücke je bedientem Gerät:** `g = Zielwert − Gerätetemperatur` in der Einheit der Anlage. Das Gerät zieht Leistung, solange `g`
-   über null liegt. Der Regelzyklus führt den Zielwert bereits nach (Gerätetemperatur + Offset), die Lastregelung verändert den Offset
-   je Gerät in Schritten seiner Schrittweite (`step`, optional je Innengerät, Standard 0,5 der Temperatureinheit).
-2. **Erwartete Last** `P_erw = Σ p_i × Schritte_i` über alle bedienten Geräte, mit dem gelernten `p_i` je Gerät. Die Rechnung wird bei
-   jedem Ereignis neu gemacht: Änderung der Gerätetemperatur eines bedienten Geräts, Änderung des Plans, Start oder Stopp eines
-   Geräts. Es gibt kein festes Fenster.
-3. **Entscheidung:** Liegt `P_erw` mehr als das Totband unter der angeforderten Leistung, werden zwei Geräte um je einen Schritt
-   angehoben (Gerät der größten Leistungsklasse und eines der kleinsten, bei Gleichstand nach Abweichung). Liegt `P_erw` mehr als das
-   Totband darüber und bleiben mindestens zwei Schritte (Mindeststufe) oder mehr als zwei gesteuerte Geräte, werden die zuletzt
+1. **Anlaufschwelle und Schritte.** Ein Innengerät an der Decke misst zu warm und läuft schon an, wenn seine Anzeige um den
+   Anlaufabstand `start_offset` (Standard 2, je Innengerät, in der Einheit der Anlage) über dem Sollwert liegt, bei einem Sollwert von
+   20 °C also bei 22 °C. Die Anlaufschwelle liegt daher beim Heizen **unter** der Gerätetemperatur: `Sollwert = Gerätetemperatur −
+   Anlaufabstand + n × Schrittweite`, begrenzt durch die absolute Grenze des Raums. `n` sind die Leistungsschritte des Geräts, die
+   Schrittweite `step` ist je Innengerät einstellbar (Standard 0,5). Im Kühlbetrieb gilt es gespiegelt (Annahme, nicht gemessen).
+   Ein früherer Stand setzte den Sollwert auf Gerätetemperatur + n × Schrittweite, das waren schon 8 Schritte über der Schwelle und
+   trieb die Leistung auf über 2 kW.
+2. **Mindeststufe = Pmin.** Zwei Geräte mit je einem Schritt (Sollwert Gerätetemperatur − 1,5) fordern genug Leistung, damit das
+   Außengerät mit etwa Pmin läuft. Die erwartete Last ist `0` ohne Schritt, `Pmin` bei höchstens zwei Schritten und darüber
+   `Pmin + p̄ × (Σ Schritte − 2)`, mit `p̄` als nach Schritten gewichtetem Mittel der gelernten Leistung je Schritt der bedienten Geräte
+   (`core/load.py: expected_load_w`). Die Rechnung wird bei jedem Ereignis neu gemacht: Änderung der Gerätetemperatur eines bedienten
+   Geräts, Änderung des Plans, Start oder Stopp eines Geräts. Es gibt kein festes Fenster.
+3. **Entscheidung:** Liegt die erwartete Last mehr als das Totband unter der angeforderten Leistung, werden zwei Geräte um je einen
+   Schritt angehoben (Gerät der größten Leistungsklasse und eines der kleinsten, bei Gleichstand nach Abweichung). Liegt sie mehr als
+   das Totband darüber und bleiben mindestens zwei Schritte (Mindeststufe) oder mehr als zwei gesteuerte Geräte, werden die zuletzt
    angehobenen Geräte um einen Schritt zurückgenommen.
-4. **Gelernt wird `p_i`:** Nach jeder Verstellung wird die Außenleistung beobachtet, bis sie sich beruhigt hat (siehe
-   Beruhigung). Die Änderung gegenüber dem Wert vor der Verstellung, geteilt durch die verstellten Schritte, ist die Beobachtung für
-   die beteiligten Geräte. Beobachtungen, in die ein anderes Ereignis hineinspielt (andere Verstellung, Start oder Stopp eines
-   Geräts, Betriebsartwechsel, Fenster, Planänderung über das Totband hinaus), werden verworfen. Eine Beobachtung unter dem halben
-   Totband gilt als zu klein und lehrt nichts. Die Werte bleiben über Neustarts erhalten und sind in der Diagnose sichtbar, nicht
-   änderbar.
-5. **Startwert** `p_i = (Pmax − Pmin) / (2 × Zahl der Innengeräte)`. Beispiel: Pmax 3,3 kW, Pmin 1,3 kW, 7 Geräte: 2,0 / 14 = 0,14 kW je
-   Schritt und Gerät.
-
-### Anmerkung zum Startwert
-
-Die Formel unterschätzt vermutlich, was ein Schritt bewirkt, wenn man die einzelne Beobachtung vom 23.10. nimmt (siehe unten):
-Zwei Schritte brachten kurzzeitig rund 0,9 kW, das wären 0,45 kW je Schritt. Das ist aber ein Spitzenwert, der binnen
-anderthalb Minuten wieder abklang, der beruhigte Wert je Schritt ist unbekannt und wird erst gemessen. Ein zu kleiner Startwert führt
-dazu, dass der Regler anfangs mehr Schritte macht als nötig, die Anlage zieht dann etwas mehr als angefordert. Ein zu großer führt
-zu zu wenigen Schritten und damit zu Unterschreitung und Takten. Die Formel liegt also auf der unkritischen Seite, solange der
-gelernte Wert nach wenigen Verstellungen übernimmt. Ein anderer Vorschlag ist nicht nötig.
+4. **Gelernt wird `p_i`** nur oberhalb der Mindeststufe: Nach jeder Verstellung eines laufenden Außengeräts wird die Außenleistung
+   beobachtet, bis sie sich beruhigt hat (siehe Beruhigung). Die gemessene Änderung geteilt durch die erwartete bestimmt einen Faktor,
+   mit dem die Werte der beteiligten Geräte skaliert werden. Ein Lauf aus dem Stillstand erreicht nur die Mindeststufe (Pmin) und
+   lehrt nichts. Beobachtungen, in die ein anderes Ereignis hineinspielt (andere Verstellung, Start oder Stopp eines Geräts,
+   Betriebsartwechsel, Fenster, Raum unter Schutz), werden verworfen, ebenso solche unter dem halben Totband. Die Werte bleiben über
+   Neustarts erhalten und sind in der Diagnose sichtbar, nicht änderbar.
+5. **Startwert** `p_i = (Pmax − Pmin) / (2 × Zahl der Innengeräte)` je Schritt oberhalb der Mindeststufe. Beispiel: Pmax 3,3 kW, Pmin
+   1,3 kW, 7 Geräte: 2,0 / 14 = 0,14 kW je Schritt und Gerät.
 
 ## Erster Blick auf die vorhandenen Daten (ungeprüft)
 
-Der Verlauf der Außenleistung vom 23.10.2026, 11:12 bis 13:58 Uhr (Recorder, 750 Werte), zeigt ein wiederkehrendes Muster: Etwa alle
-25 bis 30 Minuten springt die Leistung binnen 30 bis 60 Sekunden von rund 1,0 kW auf 1,9 bis 2,1 kW und fällt innerhalb von 1 bis
-1,5 Minuten wieder auf 0,85 bis 1,0 kW. Dazwischen schwankt sie in einem Takt von etwa 5 Minuten zwischen 0,95 und 1,3 kW. Die
-Sprünge fallen vermutlich mit den Rampenschritten der alten Lastführung zusammen (Lastgrenze 1350 W), das ist **nicht belegt**, weil
-die zugehörigen Sollwertänderungen nicht gegengeprüft sind. Sicher ist nur: Die Außenleistung reagiert innerhalb von Sekunden bis
-einer Minute auf einen Anstoß und klingt in wenigen Minuten ab.
+Der Lauf vom 24.10.2026, 21:01 bis 21:11 Uhr (Version 0.7.0, die Sollwerte lagen 2 K über der Gerätetemperatur), zeigte: Die
+Außenleistung stand nach dem Start zweieinhalb Minuten bei etwa 1,22 kW und stieg dann auf 1,6 kW und 2,19 kW, obwohl nur 1,3 kW
+angefordert waren. Erklärung des Nutzers: Das waren acht Schritte über der Anlaufschwelle für ein Gerät statt der zwei der Mindeststufe.
+Die zuvor vermutete Ursache (der Verdichter baut bei konstantem Abstand weiter Leistung auf) ist damit nicht nötig. Vom 23.10. gibt es
+außerdem einen Verlauf mit Sprüngen von 1,0 auf 1,9 bis 2,1 kW, der vermutlich zu den Rampenschritten der alten Lastführung gehörte
+(nicht belegt).
 
 ## Beruhigung der Außenleistung (allgemein, ohne Zahlen einer bestimmten Anlage)
 
@@ -86,8 +84,11 @@ und Änderung ergänzt, damit man es an echten Daten prüfen kann.
 
 ## Offen (Annahmen, bis zur Prüfung an Messwerten)
 
-1. **Lernrate** und Ausreißergrenzen für `p_i`: Vorschlag wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den
-   Startwert durch ihren Median, danach gleitend mit Anteil 0,2, höchstens ±25 % je Beobachtung).
-2. **Verworfene Beobachtungen:** Das Konzept lernt nur aus sauberen Beobachtungen. Temperaturänderungen bedienter Geräte während der
-   Beobachtung zählen als Störung, weil sie ebenfalls die Last ändern. Wenn zu viele Beobachtungen so verloren gehen, ist eine
-   Schätzung über alle Ereignisse zusammen (rekursive kleinste Quadrate je Gerät) die Alternative, sie ist aber aufwendiger.
+1. **Lernrate** und Ausreißergrenzen für `p_i`: wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den Startwert durch
+   ihren Median, danach gleitend mit Anteil 0,2, höchstens ±25 % je Beobachtung).
+2. **Anlaufschwelle im Kühlbetrieb:** gespiegelt angenommen (Sollwert Anlaufabstand über der Anzeige). Ob ein Gerät an der Decke beim
+   Kühlen so anläuft, ist nicht gemessen.
+3. **Rückführung auf die Messung** (Absenken, wenn die Außenleistung dauerhaft über der Anforderung liegt): Vorschlag, noch nicht
+   freigegeben. Mit dem Anlaufabstand ist sie vielleicht unnötig, das zeigen die ersten Läufe.
+4. **Verworfene Beobachtungen:** Das Konzept lernt nur aus sauberen Beobachtungen. Wenn zu viele verloren gehen, ist eine Schätzung
+   über alle Ereignisse zusammen (rekursive kleinste Quadrate je Gerät) die Alternative.

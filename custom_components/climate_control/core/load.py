@@ -1,7 +1,8 @@
 """FR-LOAD-01 / FR-LOAD-02: load control on temperature events, power per step learned per indoor unit.
 
 The control variable is the number of power steps `n` of each served unit: its setpoint lies `n x step`
-beyond its device temperature. The expected load is the sum of the learned power per step times `n`.
+above its start threshold, which is the start distance below the device temperature. Two steps on two units
+(the minimum stage) bring the outdoor unit to Pmin, every further step adds the learned power per step.
 The controller compares it with the requested power and changes the steps of two units at a time (one of the
 largest and one of the smallest power class), first the setpoints, then the number of units. A dead band
 around the request, a floor of two steps and the absolute limits of the rooms bound it. It runs on every
@@ -15,7 +16,7 @@ steps updates the power per step of the units involved. Disturbed observations a
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from statistics import mean, median
@@ -37,6 +38,21 @@ MAX_ITERATIONS = 200
 def start_power_w(cfg: InstallationConfig) -> float:
     """FR-LOAD-02: (Pmax - Pmin) spread over twice the number of units."""
     return (cfg.p_max_w - cfg.p_min_w) / (2 * len(cfg.rooms))
+
+
+def expected_load_w(steps: Mapping[str, int], power: Mapping[str, float], p_min_w: float) -> float:
+    """Outdoor power for the steps: Pmin at the minimum stage (two steps), each further step adds power.
+
+    A further step counts with the mean power per step of the served units weighted by their steps.
+    Without a step there is no load.
+    """
+    total = sum(steps.values())
+    if total <= 0:
+        return 0.0
+    if total <= MIN_STAGE:
+        return p_min_w
+    mean_w = sum(power[rid] * n for rid, n in steps.items()) / total
+    return p_min_w + mean_w * (total - MIN_STAGE)
 
 
 @dataclass
@@ -120,6 +136,7 @@ class _Observation:
     started: datetime
     before_w: float
     changed: dict[str, int]  # change of steps per unit that this observation attributes the power change to
+    expected_delta_w: float  # change of the outdoor power the model expected for it
     means: list[float] = field(default_factory=list)
 
 
@@ -184,9 +201,8 @@ class LoadControl:
         self, obs: _Observation, after_w: float, now: datetime, cfg: InstallationConfig, dead: float
     ) -> None:
         delta_w = after_w - obs.before_w
-        expected = {rid: self._power(cfg, rid) * dn for rid, dn in obs.changed.items()}
-        total = sum(expected.values())
-        if total == 0 or abs(delta_w) < dead / 2:
+        total = obs.expected_delta_w
+        if abs(total) < dead / 2 or abs(delta_w) < dead / 2:
             return
         factor = delta_w / total
         if not FACTOR_MIN <= factor <= FACTOR_MAX:
@@ -218,21 +234,30 @@ class LoadControl:
         before = {r.id: self.steps.get(r.id, 0) for r in ranked}
         limit = {r.id: max(1, int(r.charge_limit(season) / r.step + 1e-9)) for r in ranked}
         power = {r.id: self._power(cfg, r.id) for r in ranked}
-        after = self._adjust(before, limit, power, ranked, requested_w, dead)
+        after = self._adjust(before, limit, power, ranked, requested_w, dead, cfg.p_min_w)
         changed = {rid: after[rid] - before[rid] for rid in after if after[rid] != before[rid]}
         if changed:
-            self._begin(now, changed)
+            # a run that starts from standby only reaches the minimum stage (Pmin): nothing to learn from it
+            expected_delta = expected_load_w(after, power, cfg.p_min_w) - expected_load_w(
+                before, power, cfg.p_min_w
+            )
+            self._begin(now, changed, expected_delta if sum(before.values()) > 0 else 0.0)
         self.steps = {rid: n for rid, n in after.items() if n > 0}
-        self.expected_w = sum(power[rid] * n for rid, n in after.items())
+        self.expected_w = expected_load_w(after, power, cfg.p_min_w)
         return dict(self.steps)
 
-    def _begin(self, now: datetime, changed: dict[str, int]) -> None:
+    def _begin(self, now: datetime, changed: dict[str, int], expected_delta_w: float) -> None:
         # A new adjustment while another observation is pending disturbs it: both are dropped.
         pending = self._observation is not None
         self._observation = None
-        if pending or len(self._recent) < SETTLE_CYCLES:
+        if pending or len(self._recent) < SETTLE_CYCLES or expected_delta_w == 0:
             return
-        self._observation = _Observation(started=now, before_w=float(median(self._recent)), changed=changed)
+        self._observation = _Observation(
+            started=now,
+            before_w=float(median(self._recent)),
+            changed=changed,
+            expected_delta_w=expected_delta_w,
+        )
 
     def _adjust(
         self,
@@ -242,17 +267,18 @@ class LoadControl:
         ranked: Sequence[RoomConfig],
         requested_w: float,
         dead: float,
+        p_min_w: float,
     ) -> dict[str, int]:
         def expected(n: Mapping[str, int]) -> float:
-            return sum(power[rid] * v for rid, v in n.items())
+            return expected_load_w(n, power, p_min_w)
 
         n = dict(steps)
         for _ in range(MAX_ITERATIONS):
             error = requested_w - expected(n)
             if error > dead:
-                candidate = self._raise(n, limit, power, ranked, requested_w)
+                candidate = self._raise(n, limit, expected, ranked, requested_w)
             elif error < -dead:
-                candidate = self._lower(n, power, ranked, requested_w)
+                candidate = self._lower(n, expected, ranked, requested_w)
             else:
                 break
             if candidate is None or abs(requested_w - expected(candidate)) >= abs(error):
@@ -264,7 +290,7 @@ class LoadControl:
         self,
         n: Mapping[str, int],
         limit: Mapping[str, int],
-        power: Mapping[str, float],
+        expected: Callable[[Mapping[str, int]], float],
         ranked: Sequence[RoomConfig],
         requested_w: float,
     ) -> dict[str, int] | None:
@@ -278,7 +304,7 @@ class LoadControl:
             candidate = dict(n)
             for r in option:
                 candidate[r.id] += 1
-            error = abs(requested_w - sum(power[rid] * v for rid, v in candidate.items()))
+            error = abs(requested_w - expected(candidate))
             if error < best_error:
                 best, best_error = candidate, error
         return best
@@ -286,7 +312,7 @@ class LoadControl:
     def _lower(
         self,
         n: Mapping[str, int],
-        power: Mapping[str, float],
+        expected: Callable[[Mapping[str, int]], float],
         ranked: Sequence[RoomConfig],
         requested_w: float,
     ) -> dict[str, int] | None:
@@ -305,7 +331,7 @@ class LoadControl:
                 candidate[r.id] -= 1
             if not _floor_ok(candidate, ranked):
                 continue
-            error = abs(requested_w - sum(power[rid] * v for rid, v in candidate.items()))
+            error = abs(requested_w - expected(candidate))
             if error < best_error:
                 best, best_error = candidate, error
         return best

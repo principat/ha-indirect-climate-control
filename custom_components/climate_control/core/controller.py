@@ -193,8 +193,9 @@ class Controller:
                 self._load.reset()
             for r in active:
                 if unit_steps.get(r.id, 0) > 0:
-                    # FR-LOAD-01: the setpoint lies `steps x step` beyond the device reading, within the limit
-                    target = temps[r.id] + sign * unit_steps[r.id] * r.step
+                    # FR-LOAD-01: `steps x step` above the start threshold (start distance below the
+                    # device reading when heating), never beyond the limit
+                    target = temps[r.id] + sign * (unit_steps[r.id] * r.step - r.start_offset)
                     limit = r.setpoint_c + sign * r.charge_limit(season)
                     targets[r.id] = Command(main_mode, min(target, limit) if sign > 0 else max(target, limit))
                 else:

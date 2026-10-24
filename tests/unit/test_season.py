@@ -102,14 +102,15 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
     result = _cool(Controller(installation()), warm, 1.1)
     assert result.running and result.requested_w == 1300
     assert result.served == ("a", "b")  # 2 x 700 W >= 1300 W, a (+2) before b (+1)
-    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 22.0
-    assert result.commands["b"].target_c == 21.0
+    # mirrored: one step each above the start threshold, which lies the start distance above the reading
+    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 23.0 + 2.0 - 0.5
+    assert result.commands["b"].target_c == 22.0 + 2.0 - 0.5
     assert result.commands["c"].mode is Mode.FAN  # not served: neutral
 
 
 @pytest.mark.req("FR-SEAS-02")
 def test_cooling_target_never_goes_below_the_absolute_limit_below_the_setpoint() -> None:
-    cfg = installation(room("a", setpoint=21), room("b"), room("c"))
+    cfg = installation(replace(room("a", setpoint=21), start_offset=0.0), room("b"), room("c"))
     # absolute limit below the setpoint is 3: the room is already there
     result = _cool(Controller(cfg), {"a": 18.0, "b": 22.0, "c": 22.0}, 1.5)
     assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible

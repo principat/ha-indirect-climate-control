@@ -41,6 +41,7 @@ from .const import (
     ROOM_POWER,
     ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
+    ROOM_START_OFFSET,
     ROOM_STEP,
     ROOM_WINDOW,
     SUBENTRY_ROOM,
@@ -146,6 +147,9 @@ def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
             ),
             vol.Optional(ROOM_LIMIT_UP, default=RoomConfig.limit_up): _number(
                 symbol, step=0.5, minimum=0.5, maximum=15
+            ),
+            vol.Optional(ROOM_START_OFFSET, default=RoomConfig.start_offset): _number(
+                symbol, step=0.5, minimum=0, maximum=10
             ),
             vol.Optional(ROOM_STEP, default=RoomConfig.step): _number(
                 symbol, step=0.1, minimum=0.1, maximum=5

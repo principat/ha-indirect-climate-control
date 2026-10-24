@@ -142,6 +142,7 @@
             "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
+            "start_offset": "Start distance (below the device temperature, optional)",
             "step": "Power step (setpoint step of the unit, optional)",
             "window_entity": "Window contacts"
           },
@@ -209,9 +210,16 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
+            "help_start_offset": {
+              "name": "Help: Start distance (below the device temperature, optional)",
+              "description": "How far below the device temperature the setpoint of this unit may lie before the unit starts to ask the outdoor unit for power (default 2, in the unit of the installation). A unit on the ceiling reads too warm and starts heating while its reading is still above the setpoint. The load control counts its power steps from this start threshold: with 2, a setpoint of the device temperature minus 2 is the threshold and two units one step above it (minus 1.5) bring the outdoor unit to its minimum power.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
             "help_step": {
               "name": "Help: Power step (setpoint step of the unit, optional)",
-              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
+              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size above its start threshold (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -237,6 +245,7 @@
             "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
+            "start_offset": "Start distance (below the device temperature, optional)",
             "step": "Power step (setpoint step of the unit, optional)",
             "window_entity": "Window contacts"
           },
@@ -297,9 +306,16 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
+            "help_start_offset": {
+              "name": "Help: Start distance (below the device temperature, optional)",
+              "description": "How far below the device temperature the setpoint of this unit may lie before the unit starts to ask the outdoor unit for power (default 2, in the unit of the installation). A unit on the ceiling reads too warm and starts heating while its reading is still above the setpoint. The load control counts its power steps from this start threshold: with 2, a setpoint of the device temperature minus 2 is the threshold and two units one step above it (minus 1.5) bring the outdoor unit to its minimum power.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
             "help_step": {
               "name": "Help: Power step (setpoint step of the unit, optional)",
-              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
+              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size above its start threshold (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }

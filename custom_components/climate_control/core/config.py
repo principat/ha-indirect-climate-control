@@ -38,6 +38,9 @@ class RoomConfig:
     limit_down: float = 3.0  # absolute limit below the setpoint: protection heats even without plan
     limit_up: float = 3.0  # absolute limit above the setpoint: no further heating (overload limit)
     step: float = 0.5  # FR-LOAD-01: size of a power step, the setpoint step of this unit (plant's unit)
+    start_offset: float = (
+        2.0  # FR-LOAD-01: the unit starts to ask for power once its setpoint is this far below its reading
+    )
 
     # The buffer is charged towards "up" when heating and towards "down" when cooling (FR-SEAS-02).
     def discharge_band(self, season: Season) -> float:
@@ -145,8 +148,8 @@ class InstallationConfig:
             raise ConfigError("capacity must be positive")
         self.params.validate()
         for r in self.rooms:
-            if r.step <= 0:
-                raise ConfigError(f"{r.id}: power step must be positive")
+            if r.step <= 0 or r.start_offset < 0:
+                raise ConfigError(f"{r.id}: power step must be positive and the start distance not negative")
             if not 0 < r.band_down <= r.limit_down or not 0 < r.band_up <= r.limit_up:
                 raise ConfigError(f"{r.id}: 0 < control range <= absolute limit required in both directions")
 
