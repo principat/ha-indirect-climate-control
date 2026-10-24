@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from pathlib import Path
 from typing import Any
 
@@ -168,6 +169,16 @@ def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> No
         assert _state(sim, unit)["attributes"]["temperature"] == 21.0
 
 
+def _wait_loaded(ha: requests.Session, entry_id: str, timeout: float = 30) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        entries = ha.get(_url(ha, "/api/config/config_entries/entry"), timeout=30).json()
+        if any(e["entry_id"] == entry_id and e["state"] == "loaded" for e in entries):
+            return
+        time.sleep(0.1)
+    raise AssertionError(f"entry {entry_id} did not load again")
+
+
 def _set_option(ha: requests.Session, entry_id: str, group: str, name: str, value: float) -> None:
     """Change one parameter through the real options dialog (menu -> group form)."""
     flow = _post(ha, "/api/config/config_entries/options/flow", {"handler": entry_id})
@@ -176,6 +187,7 @@ def _set_option(ha: requests.Session, entry_id: str, group: str, name: str, valu
     assert flow["type"] == "form", flow
     flow = _post(ha, f"/api/config/config_entries/options/flow/{flow['flow_id']}", {name: value})
     assert flow["type"] == "create_entry", flow
+    _wait_loaded(ha, entry_id)  # a changed option reloads the entry in the background
 
 
 def _wait_then_fall_back(sim: requests.Session, entry: dict[str, Any]) -> None:

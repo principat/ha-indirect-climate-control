@@ -484,3 +484,41 @@ async def test_entry_without_outdoor_power_sensor_gets_a_repair_until_it_is_set(
     assert result["reason"] == "reconfigure_successful"
     await hass.async_block_till_done()
     assert registry.async_get_issue(DOMAIN, f"outdoor_power_missing_{entry.entry_id}") is None
+
+
+@pytest.mark.req("FR-CFG-01")
+async def test_an_indoor_unit_added_while_the_entry_is_being_set_up_is_not_lost(
+    hass: HomeAssistant, units: FakeUnits, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The change lands between building the control and finishing the setup: it must still reload."""
+    from homeassistant.config_entries import ConfigSubentry
+
+    from custom_components.climate_control.coordinator import ClimateControlCoordinator
+
+    set_plan(hass, 0)
+    units.set("climate.extra", "fan_only", 20)
+    entry = MockConfigEntry(domain=DOMAIN, title="Klima", version=3, data=dict(INSTALLATION))
+    entry.add_to_hass(hass)
+    original = ClimateControlCoordinator.async_load_learned
+
+    async def load_and_add(self: ClimateControlCoordinator) -> None:
+        await original(self)
+        if entry.subentries:  # the reload sees the unit already
+            return
+        hass.config_entries.async_add_subentry(
+            entry,
+            ConfigSubentry(
+                data=room_data("climate.extra"),
+                subentry_type="room",
+                title="Extra",
+                unique_id="climate.extra",
+            ),
+        )
+
+    monkeypatch.setattr(ClimateControlCoordinator, "async_load_learned", load_and_add)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    monkeypatch.undo()
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.runtime_data.cfg is not None
+    assert [r.id for r in entry.runtime_data.cfg.rooms] == ["climate.extra"]  # reloaded with the new unit
