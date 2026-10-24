@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from homeassistant.components.climate.const import (
@@ -42,11 +43,13 @@ from .const import (
 from .core.config import InstallationConfig, Parameters, valid_setpoint
 from .core.controller import Controller, CycleResult
 from .core.diagnostics import RoomDiagnostics, room_diagnostics
+from .core.journal import Journal, UnitRecord
 from .core.learning import CapacityLearner, Learned
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
 from .data import as_list, build_config, room_data
+from .record_file import append_records
 
 type ClimateControlConfigEntry = ConfigEntry[ClimateControlCoordinator]
 
@@ -85,6 +88,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._power_entity: str | None = entry.data.get(CONF_OUTDOOR_POWER) or None
         self._areas: dict[str, float] = {r.id: r.area_m2 for r in self.cfg.rooms} if self.cfg else {}
         self.learner = CapacityLearner()
+        self._journal = Journal()
+        self._journal_path = Path(hass.config.path(DOMAIN, f"{entry.entry_id}.jsonl"))
         self._learned_dirty = False  # changed since the last write
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
@@ -132,6 +137,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         for entity_id, command in result.commands.items():
             await self._apply(entity_id, command)
         self._learn(now, season, result.running, rooms)
+        await self._record(now, result)
         current = replace(
             self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
         )
@@ -140,6 +146,35 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         return CycleData(
             result, planner, plan, room_diagnostics(current, result.temperatures, season), season, learned
         )
+
+    async def _record(self, now: datetime, result: CycleResult) -> None:
+        """FR-OBS-01: start, stop and the state of every indoor unit, written only when something changed."""
+        assert self.cfg is not None
+        units: dict[str, UnitRecord] = {}
+        for room in self.cfg.rooms:
+            state = self.hass.states.get(room.id)
+            if state is None:
+                continue
+            attrs = state.attributes
+            units[room.id] = UnitRecord(
+                mode=state.state,
+                temperature_c=attrs.get(ATTR_CURRENT_TEMPERATURE),
+                target_c=attrs.get(ATTR_TEMPERATURE),
+                fan=attrs.get("fan_mode"),
+            )
+        context = {
+            "season": str(result.season),
+            "soc_pct": result.soc_pct,
+            "planned_w": result.planned_w,
+            "requested_w": result.requested_w,
+            "fallback": result.fallback,
+        }
+        rows = self._journal.record(now, result.running, units, context)
+        if rows:
+            try:
+                await self.hass.async_add_executor_job(append_records, self._journal_path, rows)
+            except OSError as err:
+                LOGGER.warning("Could not write the operating data to %s: %s", self._journal_path, err)
 
     def _read_season(self) -> Season:
         """FR-SEAS-01: heating unless the optional switch is on. Missing or unavailable switch = heating."""

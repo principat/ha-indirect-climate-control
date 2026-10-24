@@ -30,7 +30,7 @@
 | FR-CFG-02 | Mehrere voneinander unabhängige Anlagen können gleichzeitig betrieben werden. | beschlossen | integration |
 | FR-CFG-03 | Über jedem Einstellungsfeld mit nicht trivialem Inhalt steht ein einklappbarer Erklärtext, mit dem der Nutzer die Einstellung ohne weitere Unterlagen pflegen kann. Ein Schalter legt fest, ob die Erklärtexte beim Öffnen der Einstellungen auf- oder zugeklappt sind. | beschlossen | unit,integration |
 | FR-OBS-02 | Für jedes Innengerät werden zur Diagnose angezeigt: Abweichung zum Sollwert, Wärmebedarf bis zum Sollwert und verbleibende Speicherkapazität bis zur Überlastgrenze. | beschlossen | unit,integration |
-| FR-OBS-01 | Betriebsdaten (Start, Stopp, Gerätetemperatur, Sollwert, Modus, Lüfterstufe) werden fortlaufend aufgezeichnet. | Vorschlag | integration |
+| FR-OBS-01 | Start und Stopp der Anlage (mit Füllstand, geplanter und angeforderter Leistung und Betriebsart) sowie Gerätetemperatur, Sollwert, Modus und Lüfterstufe jedes Innengeräts werden bei jeder Änderung dauerhaft aufgezeichnet. Der Speicherbedarf ist begrenzt. | beschlossen | unit,integration |
 | NF-CFG-01 | Die Konfiguration wird gegen eine echte Instanz der Zielplattform geprüft, nicht nur gegen Mocks. | beschlossen | e2e |
 | NF-TEST-01 | Jede Anforderung mit Status beschlossen ist auf allen genannten Ebenen getestet. | beschlossen | unit |
 | NF-REL-01 | Veröffentlichung, Versionsnummer und Änderungsprotokoll entstehen automatisch aus den Commit-Nachrichten. | beschlossen | unit |
@@ -52,3 +52,5 @@ dann in den Zielmodus, danach werden die Sollwerte neu gesetzt.
 **FR-SEAS-01/02 Kühlbetrieb.** Gegeben der Schalter steht auf ein. Dann kühlen die bedienten Geräte, der SOC steigt, wenn die Gerätetemperaturen sinken, und der Planer erhält die gespiegelten Grenzen. Fällt der Schalter aus oder fehlt er, wird geheizt. Beim Umschalten gehen alle Geräte erst in den neutralen Modus, dann in den Zielmodus.
 
 **FR-PLNR-02 Lernfenster.** Gegeben die Anlage läuft und die mittlere Gerätetemperatur steigt um 0,1 K. Dann entsteht noch keine Schätzung. Erst bei einer Änderung von mindestens 0,35 K im Fenster wird die Energie je 0,1 K berechnet und der gelernte Wert angepasst.
+
+**FR-OBS-01 Aufzeichnung.** Gegeben die Anlage startet und ein Innengerät wechselt in den Heizmodus. Dann entstehen ein Eintrag für den Start mit Füllstand und Leistung und ein Eintrag für das Gerät. Ändert sich nichts, entsteht nichts. Ist der Speicher voll, ersetzt er den ältesten Teil.

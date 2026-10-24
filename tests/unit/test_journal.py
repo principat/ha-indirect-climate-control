@@ -1,0 +1,63 @@
+"""FR-OBS-01: operating data is recorded when something changes."""
+
+import json
+from datetime import timedelta
+from pathlib import Path
+
+import pytest
+
+from custom_components.climate_control.core.journal import Journal, UnitRecord
+from custom_components.climate_control.record_file import append_records
+
+from .helpers import T0
+
+CONTEXT = {"season": "heat", "soc_pct": 40.0, "planned_w": 1500.0, "requested_w": 1300.0, "fallback": False}
+FAN = UnitRecord("fan_only", 20.0, None, "auto")
+
+
+@pytest.mark.req("FR-OBS-01")
+def test_the_first_cycle_records_the_starting_state() -> None:
+    rows = Journal().record(T0, False, {"a": FAN, "b": FAN}, CONTEXT)
+    assert [r["event"] for r in rows] == ["plant", "unit", "unit"]
+    assert rows[0]["running"] is False and rows[0]["soc_pct"] == 40.0
+    assert rows[1] == {"time": T0.isoformat(), "event": "unit", "unit": "a", **FAN.__dict__}
+
+
+@pytest.mark.req("FR-OBS-01")
+def test_nothing_changed_nothing_recorded() -> None:
+    journal = Journal()
+    journal.record(T0, False, {"a": FAN}, CONTEXT)
+    assert journal.record(T0 + timedelta(minutes=1), False, {"a": FAN}, CONTEXT) == []
+
+
+@pytest.mark.req("FR-OBS-01")
+def test_start_and_stop_carry_the_reasons_and_each_changed_unit_is_recorded_alone() -> None:
+    journal = Journal()
+    journal.record(T0, False, {"a": FAN, "b": FAN}, CONTEXT)
+    heat = UnitRecord("heat", 20.0, 21.0, "auto")
+    later = T0 + timedelta(minutes=5)
+    started = journal.record(later, True, {"a": heat, "b": FAN}, {**CONTEXT, "season": "cool"})
+    assert [(r["event"], r.get("unit")) for r in started] == [("plant", None), ("unit", "a")]
+    assert started[0]["running"] is True and started[0]["season"] == "cool"
+    assert started[1]["mode"] == "heat" and started[1]["target_c"] == 21.0 and started[1]["fan"] == "auto"
+    warmer = UnitRecord("heat", 20.5, 21.0, "auto")  # the device temperature moved: recorded
+    assert [
+        r["unit"]
+        for r in journal.record(later + timedelta(minutes=5), True, {"a": warmer, "b": FAN}, CONTEXT)
+    ] == ["a"]
+    stopped = journal.record(later + timedelta(minutes=15), False, {"a": warmer, "b": FAN}, CONTEXT)
+    assert [r["event"] for r in stopped] == ["plant"] and stopped[0]["running"] is False
+
+
+@pytest.mark.req("FR-OBS-01")
+def test_the_file_has_one_json_line_per_record_and_a_limited_size(tmp_path: Path) -> None:
+    path = tmp_path / "sub" / "entry.jsonl"
+    rows = [{"time": "t", "event": "unit", "unit": "a", "mode": "heat"}]
+    append_records(path, rows, max_bytes=200)
+    append_records(path, rows, max_bytes=200)
+    assert [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] == rows * 2
+    for _ in range(10):
+        append_records(path, rows, max_bytes=200)
+    assert path.stat().st_size <= 200 + 100  # rotated: the full file moved on, a new one started
+    assert path.with_suffix(".jsonl.1").exists()
+    assert len(list(path.parent.iterdir())) == 2  # never more than the current and the previous file

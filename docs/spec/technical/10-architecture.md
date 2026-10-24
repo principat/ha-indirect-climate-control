@@ -73,4 +73,13 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 | Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |
 
-Nicht umgesetzt (Status nicht `beschlossen`): FR-DIST-03 (offen), FR-LOAD-01 und FR-OBS-01 (Vorschlag).
+Nicht umgesetzt (Status nicht `beschlossen`): FR-DIST-03 (offen), FR-LOAD-01 (Vorschlag).
+
+## Aufzeichnung (FR-OBS-01)
+
+`core/journal.py` vergleicht je Zyklus den Zustand (Anlage läuft, Modus, Gerätetemperatur, Sollwert, Lüfterstufe je Innengerät)
+mit dem letzten und liefert nur Änderungen als Einträge: `plant` bei Start/Stopp (mit SOC, geplanter und angeforderter Leistung,
+Betriebsart, Rückfall) und `unit` je geändertem Gerät. Der erste Zyklus schreibt den Ausgangszustand. `record_file.py` hängt die
+Einträge als JSON-Zeilen an `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` an (Executor, seltene Schreibzugriffe wegen
+der SD-Karte) und ersetzt bei mehr als 1 MB die Vorgängerdatei `.jsonl.1`, es bleiben also höchstens etwa 2 MB. Der Recorder von
+Home Assistant bleibt unberührt, die Datei ergänzt ihn um Lüfterstufe und die Gründe der Anlage.

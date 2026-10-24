@@ -329,3 +329,32 @@ async def test_started_plant_keeps_running_for_the_minimum_run_time(
     set_plan(hass, 2.0)  # no minimum pause: the plant may start again right away
     await run_cycle(hass)
     assert _state(hass, running).state == "on"
+
+
+@pytest.mark.req("FR-OBS-01")
+async def test_operating_data_is_recorded_when_something_changes(
+    hass: HomeAssistant, units: FakeUnits, setup_entry
+) -> None:  # noqa: ANN001
+    import json
+    from pathlib import Path
+
+    set_plan(hass, 2.0)
+    entry = await setup_entry()
+    path = Path(hass.config.path("climate_control", f"{entry.entry_id}.jsonl"))
+    await hass.async_block_till_done()
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
+    assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
+    heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
+    assert {r["unit"] for r in heating} == set(ROOMS) and heating[0]["target_c"] == 21.0
+    size = path.stat().st_size
+    await run_cycle(hass)  # nothing changed: nothing recorded
+    assert path.stat().st_size == size
+    units.set(A, "heat", 21, units.target(A))  # the device temperature of one unit moved
+    await run_cycle(hass)
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert rows[-1]["unit"] == A and rows[-1]["temperature_c"] == 21
+    grown = path.stat().st_size
+    assert grown > size
+    await run_cycle(hass)
+    assert path.stat().st_size == grown

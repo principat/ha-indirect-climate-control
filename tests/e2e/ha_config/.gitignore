@@ -9,3 +9,4 @@ blueprints/
 automations.yaml
 scripts.yaml
 scenes.yaml
+climate_control/
