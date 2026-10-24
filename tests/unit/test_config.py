@@ -30,9 +30,10 @@ def test_core_has_no_plant_defaults() -> None:
         {"p_min_w": 4000},
         {"capacity_kwh_per_k": 0},
         {"params": Parameters(stop_ratio=0.9)},
-        {"rooms": (replace(room("a"), comfort_max_c=29.0),)},
-        {"rooms": (replace(room("a"), overload_max_c=31.0),)},
-        {"params": Parameters(soc_min_c=30)},
+        {"rooms": (replace(room("a"), band_down=4.0),)},  # control range wider than the absolute limit
+        {"rooms": (replace(room("a"), limit_up=1.0),)},
+        {"rooms": (replace(room("a"), band_up=0.0),)},
+        {"params": Parameters(soc_below_k=0)},
         {"params": Parameters(neutral_mode=Mode.HEAT)},
     ],
 )

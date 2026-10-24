@@ -94,16 +94,16 @@ def test_open_window_also_overrides_fallback() -> None:
 @pytest.mark.req("FR-SAFE-02")
 def test_below_hard_minimum_heats_without_plan_demand() -> None:
     ctrl = Controller(installation())
-    result = ctrl.step(T0, plan(0), states({"a": 18.0, "b": 19.0, "c": 21.0}))
+    result = ctrl.step(T0, plan(0), states({"a": 17.0, "b": 18.0, "c": 21.0}))
     assert not result.running
     assert result.commands["a"] == result.commands["a"].__class__(Mode.HEAT, 21.0)
-    assert result.commands["b"].mode == Mode.FAN  # exactly at the hard minimum: no protection
+    assert result.commands["b"].mode == Mode.FAN  # exactly at the absolute limit (3 below): no protection
 
 
 @pytest.mark.req("FR-SAFE-02")
 def test_hard_minimum_wins_over_cooling() -> None:
     ctrl = Controller(installation(overheat_s=0))
-    result = ctrl.step(T0, plan(0), states({"a": 18.0, "b": 25.0, "c": 21.0}))
+    result = ctrl.step(T0, plan(0), states({"a": 17.0, "b": 25.0, "c": 21.0}))
     assert result.commands["a"].mode == Mode.HEAT and result.commands["b"].mode == Mode.FAN
 
 
@@ -164,7 +164,7 @@ def test_soc_follows_worst_room_relative_to_own_setpoint() -> None:
     cfg = installation(room("a", setpoint=22.0), room("b", setpoint=18.0))
     result = Controller(cfg).step(T0, plan(0), states({"a": 21.0, "b": 19.0}))
     assert result.worst_room == "a"  # 1 K below its setpoint, b is 1 K above its own
-    assert result.soc_pct == pytest.approx(40.0)
+    assert result.soc_pct == pytest.approx(33.33, abs=0.01)  # 1 below its setpoint: 40 % - 6.67 %
 
 
 @pytest.mark.req("FR-SOC-02")
@@ -172,7 +172,7 @@ def test_soc_outlier_is_ignored() -> None:
     ctrl = Controller(installation(room("a")))
     ctrl.step(T0, plan(0), states({"a": 21.0}))
     result = ctrl.step(T0 + MIN, plan(0), states({"a": 14.0}))
-    assert result.soc_pct == pytest.approx(40.0)
+    assert result.soc_pct == pytest.approx(40.0)  # the outlier is ignored: still on the setpoint
 
 
 @pytest.mark.req("FR-GEN-01")
@@ -192,7 +192,7 @@ def test_variable_setpoint_is_used_by_safety_and_fallback() -> None:
 def test_overload_limit_is_per_room() -> None:
     from dataclasses import replace
 
-    cool_room = replace(room("a"), comfort_max_c=21.0, overload_max_c=22.0)
+    cool_room = replace(room("a"), band_up=1.0, limit_up=1.0)  # absolute limit 1 above the setpoint of 21
     ctrl = Controller(installation(cool_room, room("b"), heat_offset_k=3.0))
     result = ctrl.step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a reached its own overload limit

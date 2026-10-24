@@ -5,7 +5,7 @@
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
 | Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Temperatureeinheit (`temperature_unit`: `celsius` Standard oder `fahrenheit`, FR-UNIT-01), Pmin, Pmax, Leistungssensor des Außengeräts (Pflicht, `outdoor_power_entity`; fehlt er in älteren Einträgen, erinnert eine Reparaturmeldung), Kühlen-Schalter optional (`season_entity`: `switch`, `binary_sensor`, `input_boolean`; aus oder fehlend = Heizen), Planer-Sensor(en) optional | `entry.data`, Titel |
-| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
+| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest, Ersatzwert), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn plausibel: 5–30 °C bzw. 41–86 °F), optional Regelbereich und absolute Grenze (`band_down`, `band_up`, `limit_down`, `limit_up`, Standard 2/2/3/3, in der Einheit der Anlage), Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow: Menü mit `plan` (Planer-Sensor, schreibt `entry.data`) und den Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
 
@@ -61,19 +61,19 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 | --- | --- | --- |
 | `soc` | % | Current Charge Percentage, Attribut `worst_room`; im Kühlbetrieb gespiegelt (FR-SEAS-02) |
 | `capacity` | kWh | Capacity = gelernte Kapazität je K der aktuellen Betriebsart (Startwert 3) × Skalenbreite |
-| `min_charge` | % | Min Charge Percentage (flächengewichteter Sollwert, nachts abgesenkt), mit Prognose |
-| `undercharge` | % | Undercharge Percentage (hartes Minimum, nachts abgesenkt), mit Prognose |
-| `max_charge` | % | Max Charge Percentage (Obergrenze ohne Aufschlag) |
-| `overcharge` | % | Overcharge Percentage (Überlastgrenze) |
+| `min_charge` | % | Min Charge Percentage (unteres Ende des Regelbereichs, flächengewichtet, nachts abgesenkt), mit Prognose |
+| `undercharge` | % | Undercharge Percentage (absolute Grenze unten, nachts abgesenkt), mit Prognose |
+| `max_charge` | % | Max Charge Percentage (oberes Ende des Regelbereichs) |
+| `overcharge` | % | Overcharge Percentage (absolute Grenze oben) |
 | `undercharge_cost` / `overcharge_cost` | Währung/kWh | Undercharge/Overcharge Cost |
 | `efficiency` | % | Charge/Discharge efficiency |
 | `max_discharge_power` | kW | Max Discharge Power |
 | `max_charge_power` | kW | Max Power der einen Verbindung Haus → Klima (Grundvariante, = Pmax) |
 | `charge_cost` | Währung/kWh | Aufschlag Spätladen, mit fallender Prognose |
 
-Im Kühlbetrieb (FR-SEAS-02) sind alle Grenzen gespiegelt: Überlastgrenze und Obergrenze ohne Aufschlag am Sollwert des Raums,
-flächengewichtet, hartes Maximum statt Minimum, die Nachtabsenkung lockert die Grenze nach oben; Werte außerhalb der Skala werden
-auf 0 bis 100 % begrenzt.
+Alle Prozentwerte liegen relativ zum Sollwert auf der SOC-Skala (Sollwert 40 %, 6,67 % je Grad; Werte außerhalb 0 bis 100 % werden
+begrenzt). Im Kühlbetrieb (FR-SEAS-02) tauschen die Seiten: Regelbereich und absolute Grenze über dem Sollwert sind dann die
+Entladeseite (Min Charge, Undercharge), die unter dem Sollwert die Ladeseite (Max Charge, Overcharge).
 
 ### Status
 
@@ -113,6 +113,9 @@ Aufrufe `climate.set_hvac_mode` und `climate.set_temperature` (blocking). Gelese
 - Config-Entry-Version 2 (`async_migrate_entry`): entfernt `stage1_w` und `capacity_kwh_per_k` aus den Daten,
   verschiebt `comfort_max_c`/`overload_max_c` aus den Optionen in jedes Innengerät (eigene Werte haben Vorrang),
   entfernt `power_class` aus den Innengeräten.
+- Config-Entry-Version 4: `comfort_max_c`/`overload_max_c` der Innengeräte und `soc_min_c`, `soc_max_c`, `hard_min_below_k` der Optionen
+  entfallen (FR-BAND-01, relative SOC-Skala); es gelten die Standardwerte (Regelbereich 2, absolute Grenze 3), alte absolute
+  Werte werden nicht umgerechnet.
 - Config-Entry-Version 3: Fensterkontakte eines Innengeräts werden als Liste gespeichert (vor 0.3 ein einzelner
   Text). Eine Mehrfachauswahl braucht eine Liste als Vorgabewert, sonst lässt sich das Feld im Dialog nicht mehr
   ändern; das Formular wandelt zusätzlich einen noch gespeicherten Einzelwert um.

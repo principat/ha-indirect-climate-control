@@ -109,7 +109,7 @@ def test_stale_plan_waits_like_a_missing_plan() -> None:
 @pytest.mark.req("FR-SAFE-02")
 def test_hard_minimum_heats_at_once_while_waiting_and_in_fallback() -> None:
     ctrl = _three_groups()
-    temps = {"a": 20.0, "b": 20.0, "c": 18.0}  # c is below the hard minimum (21 - 2 K)
+    temps = {"a": 20.0, "b": 20.0, "c": 17.0}  # c is below the absolute limit (21 - 3)
     result = ctrl.step(T0, None, states(temps))
     assert not result.fallback and _heating(result) == {"c"}
     result = ctrl.step(T0 + DELAY * MIN, None, states(temps))

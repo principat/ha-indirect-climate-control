@@ -56,8 +56,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ClimateControlConfigEn
     """Version 1 -> 2: settings moved or removed in 0.2/0.3 are cleaned up in stored entries.
 
     Version 2 -> 3: window contacts are stored as a list (single id before 0.3).
+    Version 3 -> 4: fixed room limits and the absolute SOC scale are dropped (FR-BAND-01).
     """
-    if entry.version > 3:
+    if entry.version > 4:
         return False  # downgrade from a newer version
     if entry.version == 1:
         data = {k: v for k, v in entry.data.items() if k not in _OBSOLETE_DATA}
@@ -80,6 +81,16 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ClimateControlConfigEn
                 hass.config_entries.async_update_subentry(entry, subentry, data=room)
         hass.config_entries.async_update_entry(entry, version=3)
         LOGGER.info("Migrated %s to configuration version 3", entry.title)
+    if entry.version == 3:
+        # FR-BAND-01: fixed room temperatures and the absolute SOC scale give way to distances to setpoint.
+        # The new defaults apply (control range 2, absolute limit 3); the old absolute values are dropped.
+        for subentry in entry.subentries.values():
+            if subentry.subentry_type == SUBENTRY_ROOM and any(k in subentry.data for k in _OBSOLETE_ROOM_V4):
+                room = {k: v for k, v in subentry.data.items() if k not in _OBSOLETE_ROOM_V4}
+                hass.config_entries.async_update_subentry(entry, subentry, data=room)
+        options = {k: v for k, v in entry.options.items() if k not in _OBSOLETE_OPTIONS_V4}
+        hass.config_entries.async_update_entry(entry, options=options, version=4)
+        LOGGER.info("Migrated %s to configuration version 4", entry.title)
     return True
 
 
@@ -87,6 +98,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ClimateControlConfigEn
 _OBSOLETE_DATA = ("stage1_w", "capacity_kwh_per_k")
 # Moved from the installation parameters to each indoor unit in 0.3.
 _ROOM_LIMITS = ("comfort_max_c", "overload_max_c")
+# Replaced in version 4 by control range and absolute limit per indoor unit, and a relative SOC scale.
+_OBSOLETE_ROOM_V4 = ("comfort_max_c", "overload_max_c")
+_OBSOLETE_OPTIONS_V4 = ("soc_min_c", "soc_max_c", "hard_min_below_k")
 # Derived from the nominal power since 0.3.
 _OBSOLETE_ROOM = ("power_class",)
 

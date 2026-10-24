@@ -12,15 +12,15 @@ from .helpers import T0, installation, plan, room, states
 def test_deviation_heat_demand_and_storage_per_room() -> None:
     # capacity 3.5 kWh/K split by area: a 30 m2 -> 2.625 kWh/K, b 10 m2 -> 0.875 kWh/K
     cfg = installation(
-        room("a", setpoint=21.0, area=30), replace(room("b", setpoint=20.0, area=10), overload_max_c=25.0)
+        room("a", setpoint=21.0, area=30), replace(room("b", setpoint=20.0, area=10), limit_up=5.0)
     )
     diag = room_diagnostics(cfg, {"a": 19.0, "b": 22.0})
     assert diag["a"].deviation_k == 2.0
     assert diag["a"].heat_demand_kwh == pytest.approx(5.25)
-    assert diag["a"].storage_kwh == pytest.approx(2.625 * 9)  # up to 28 degC
+    assert diag["a"].storage_kwh == pytest.approx(2.625 * 5)  # up to the absolute limit 3 above the setpoint
     assert diag["b"].deviation_k == -2.0
     assert diag["b"].heat_demand_kwh == pytest.approx(-1.75)  # stored above the setpoint
-    assert diag["b"].storage_kwh == pytest.approx(0.875 * 3)  # up to its own 25 degC
+    assert diag["b"].storage_kwh == pytest.approx(0.875 * 3)  # up to its own limit 5 above its setpoint
 
 
 @pytest.mark.req("FR-OBS-02")

@@ -286,21 +286,47 @@ async def test_without_planner_output_nothing_is_controlled(hass: HomeAssistant,
 async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUnits) -> None:
     set_plan(hass, 0)
     entry = await _create_installation(hass)
-    result = await _add_room(hass, entry, ROOMS[0], comfort_max_c=26.0, overload_max_c=25.0)
+    result = await _add_room(
+        hass, entry, ROOMS[0], band_up=4.0, limit_up=3.0
+    )  # control range beyond the limit
     assert result["type"] == FlowResultType.FORM and result["errors"] == {"base": "room_limits"}
     result = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], room_data(ROOMS[0], comfort_max_c=22.0, overload_max_c=25.0)
+        result["flow_id"], room_data(ROOMS[0], band_down=1.0, band_up=1.5, limit_down=2.5, limit_up=4.0)
     )
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     room = entry.runtime_data.cfg.room(ROOMS[0])
-    assert (room.comfort_max_c, room.overload_max_c) == (22.0, 25.0)
+    assert (room.band_down, room.band_up, room.limit_down, room.limit_up) == (1.0, 1.5, 2.5, 4.0)
     keys = [
         str(k)
         for g in ("control", "soc", "safety", "planner")
         for k in (await _open_group(hass, entry, g))["data_schema"].schema
     ]
-    assert "overload_max_c" not in keys and "comfort_max_c" not in keys
+    assert not {"overload_max_c", "comfort_max_c", "hard_min_below_k", "soc_min_c", "soc_max_c"} & set(keys)
+    assert {"soc_below_k", "soc_above_k"} <= set(keys)
+
+
+@pytest.mark.req("FR-BAND-01")
+async def test_the_band_fields_are_optional_and_default_to_the_standard_values(
+    hass: HomeAssistant, units: FakeUnits
+) -> None:
+    set_plan(hass, 0)
+    entry = await _create_installation(hass)
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "room"), context={"source": "user"}
+    )
+    defaults = {
+        str(m): m.default()
+        for m in result["data_schema"].schema
+        if str(m) in ("band_down", "band_up", "limit_down", "limit_up")
+    }
+    assert defaults == {"band_down": 2.0, "band_up": 2.0, "limit_down": 3.0, "limit_up": 3.0}
+    minimal = {"entity_id": ROOMS[0], "name": "A", "setpoint_c": 21.0, "nominal_power_w": 700, "area_m2": 10}
+    result = await hass.config_entries.subentries.async_configure(result["flow_id"], minimal)
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    room = entry.runtime_data.cfg.room(ROOMS[0])
+    assert (room.band_down, room.band_up, room.limit_down, room.limit_up) == (2.0, 2.0, 3.0, 3.0)
 
 
 @pytest.mark.req("FR-GEN-01")
@@ -333,13 +359,15 @@ async def test_stored_version_1_configuration_is_migrated(hass: HomeAssistant, u
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.version == 3
+    assert entry.version == 4
     assert "stage1_w" not in entry.data and "capacity_kwh_per_k" not in entry.data
     assert entry.options == {"tie_band_k": 0.5}
     rooms = [dict(s.data) for s in entry.subentries.values()]
     assert "power_class" not in rooms[0]
-    assert (rooms[0]["comfort_max_c"], rooms[0]["overload_max_c"]) == (23.0, 27.0)  # from the old options
-    assert (rooms[1]["comfort_max_c"], rooms[1]["overload_max_c"]) == (22.0, 25.0)  # own values win
+    # version 4: the fixed temperatures are gone, the standard distances to the setpoint apply
+    assert all("comfort_max_c" not in r and "overload_max_c" not in r for r in rooms)
+    room = entry.runtime_data.cfg.room(ROOMS[0])
+    assert (room.band_down, room.band_up, room.limit_down, room.limit_up) == (2.0, 2.0, 3.0, 3.0)
     assert entry.runtime_data.cfg.capacity_kwh_per_k == 3.0
     state = hass.states.get("sensor.cc_untergrenze")
     assert state is not None and state.attributes["friendly_name"] == "Climate Control Min Charge Level"
@@ -442,7 +470,7 @@ async def test_single_window_contact_is_migrated_to_a_list(hass: HomeAssistant, 
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert entry.version == 3
+    assert entry.version == 4
     rooms = [dict(s.data) for s in entry.subentries.values()]
     assert rooms[0]["window_entity"] == ["binary_sensor.fs_terrassentur_contact"]
     assert "window_entity" not in rooms[1]

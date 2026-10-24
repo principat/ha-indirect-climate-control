@@ -22,8 +22,10 @@ ROOM_POWER = "nominal_power_w"
 ROOM_AREA = "area_m2"
 ROOM_WINDOW = "window_entity"
 ROOM_SETPOINT_ENTITY = "setpoint_entity"
-ROOM_COMFORT_MAX = "comfort_max_c"
-ROOM_OVERLOAD_MAX = "overload_max_c"
+ROOM_BAND_DOWN = "band_down"  # FR-BAND-01: control range and absolute limit, distances to the setpoint
+ROOM_BAND_UP = "band_up"
+ROOM_LIMIT_DOWN = "limit_down"
+ROOM_LIMIT_UP = "limit_up"
 
 SERVICE_RUN_CYCLE = "run_cycle"
 SERVICE_RESET_LEARNED = "reset_learned_capacity"

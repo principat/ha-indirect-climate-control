@@ -16,7 +16,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Help: Temperature unit",
-            "description": "Unit of all temperatures of the air conditioners: device temperatures, setpoints, room limits and the SOC scale. Celsius is the default. With Fahrenheit the SOC scale of 15 to 30 °C counts as 59 to 86 °F and the temperature fields of the indoor units and of the SOC scale are entered in °F. Temperature differences (offsets, bands, thresholds) stay in kelvin. Everything else works unchanged. After changing the unit check the setpoints and limits of the indoor units: they are not converted.",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, SOC scale, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -72,7 +72,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Help: Temperature unit",
-            "description": "Unit of all temperatures of the air conditioners: device temperatures, setpoints, room limits and the SOC scale. Celsius is the default. With Fahrenheit the SOC scale of 15 to 30 °C counts as 59 to 86 °F and the temperature fields of the indoor units and of the SOC scale are entered in °F. Temperature differences (offsets, bands, thresholds) stay in kelvin. Everything else works unchanged. After changing the unit check the setpoints and limits of the indoor units: they are not converted.",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, SOC scale, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -136,8 +136,10 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge → Max Charge Level",
-            "overload_max_c": "Overload limit → Overcharge percentage",
+            "band_down": "Control range below the setpoint → Min Charge Level",
+            "band_up": "Control range above the setpoint → Max Charge Level",
+            "limit_down": "Absolute limit below the setpoint → Undercharge percentage",
+            "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
@@ -152,7 +154,7 @@
             },
             "help_setpoint_c": {
               "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
-              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
+              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 K above it for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -164,16 +166,30 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge → Max Charge Level",
-              "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
+            "help_band_down": {
+              "name": "Help: Control range below the setpoint → Min Charge Level",
+              "description": "How far below the current setpoint the temperature of this room may fall while the planner uses the buffer freely (distance in the unit of the installation, default 2). Below it the penalty zone starts. The limits follow the setpoint; for the planner the values of all rooms are averaged by area. While cooling the sides swap: the range above the setpoint is then the one the buffer is emptied into.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_overload_max_c": {
-              "name": "Help: Overload limit → Overcharge percentage",
-              "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
+            "help_band_up": {
+              "name": "Help: Control range above the setpoint → Max Charge Level",
+              "description": "How far above the current setpoint the temperature may rise while the planner charges the buffer without surcharge (default 2). Between this value and the absolute limit the planner applies the overload surcharge.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_limit_down": {
+              "name": "Help: Absolute limit below the setpoint → Undercharge percentage",
+              "description": "Distance below the current setpoint where it is definitely over (default 3, at least the control range). Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_limit_up": {
+              "name": "Help: Absolute limit above the setpoint → Overcharge percentage",
+              "description": "Distance above the current setpoint where it is definitely over (default 3, at least the control range). The room is not heated any further and the target sent to the unit never exceeds it (overload limit).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -207,8 +223,10 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge → Max Charge Level",
-            "overload_max_c": "Overload limit → Overcharge percentage",
+            "band_down": "Control range below the setpoint → Min Charge Level",
+            "band_up": "Control range above the setpoint → Max Charge Level",
+            "limit_down": "Absolute limit below the setpoint → Undercharge percentage",
+            "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
@@ -216,7 +234,7 @@
           "sections": {
             "help_setpoint_c": {
               "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
-              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the hard minimum (setpoint − 2 K → heat even without plan), overheating (setpoint + 3 K for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
+              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 K above it for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -228,16 +246,30 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge → Max Charge Level",
-              "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
+            "help_band_down": {
+              "name": "Help: Control range below the setpoint → Min Charge Level",
+              "description": "How far below the current setpoint the temperature of this room may fall while the planner uses the buffer freely (distance in the unit of the installation, default 2). Below it the penalty zone starts. The limits follow the setpoint; for the planner the values of all rooms are averaged by area. While cooling the sides swap: the range above the setpoint is then the one the buffer is emptied into.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_overload_max_c": {
-              "name": "Help: Overload limit → Overcharge percentage",
-              "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
+            "help_band_up": {
+              "name": "Help: Control range above the setpoint → Max Charge Level",
+              "description": "How far above the current setpoint the temperature may rise while the planner charges the buffer without surcharge (default 2). Between this value and the absolute limit the planner applies the overload surcharge.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_limit_down": {
+              "name": "Help: Absolute limit below the setpoint → Undercharge percentage",
+              "description": "Distance below the current setpoint where it is definitely over (default 3, at least the control range). Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_limit_up": {
+              "name": "Help: Absolute limit above the setpoint → Overcharge percentage",
+              "description": "Distance above the current setpoint where it is definitely over (default 3, at least the control range). The room is not heated any further and the target sent to the unit never exceeds it (overload limit).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -268,7 +300,7 @@
       },
       "error": {
         "already_configured": "This indoor unit is already configured.",
-        "room_limits": "Required: SOC scale 0 % < upper bound without surcharge < overload limit <= SOC scale 100 %."
+        "room_limits": "Required: control range <= absolute limit, below and above the setpoint."
       },
       "abort": {
         "reconfigure_successful": "Indoor unit updated."
@@ -309,8 +341,8 @@
           "start_ratio": "Start threshold (share of Pmin)",
           "stop_ratio": "Stop threshold (share of Pmin)",
           "min_run_s": "Minimum run time of the plant (s)",
-          "tie_band_k": "Tie band (K)",
-          "heat_offset_k": "Heating offset above device temperature (K)",
+          "tie_band_k": "Tie band",
+          "heat_offset_k": "Heating offset above device temperature",
           "neutral_mode": "Neutral mode",
           "cycle_s": "Control cycle (s)"
         },
@@ -337,14 +369,14 @@
             }
           },
           "help_tie_band_k": {
-            "name": "Help: Tie band (K)",
+            "name": "Help: Tie band",
             "description": "Deviations (setpoint − device temperature) less than this apart count as equal. Equal rooms are served together, grouped by power class. Default 1 K (resolution of the units).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_heat_offset_k": {
-            "name": "Help: Heating offset above device temperature (K)",
+            "name": "Help: Heating offset above device temperature",
             "description": "A served unit gets its device temperature plus this offset as setpoint (at most the overload limit). A larger offset means more power per unit. Default 1 K.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -369,22 +401,22 @@
       "soc": {
         "title": "State of charge (SOC)",
         "data": {
-          "soc_min_c": "SOC scale 0 %",
-          "soc_max_c": "SOC scale 100 %",
+          "soc_below_k": "SOC scale below the setpoint",
+          "soc_above_k": "SOC scale above the setpoint",
           "soc_smoothing_s": "SOC smoothing (s)",
-          "outlier_k": "Outlier limit per cycle (K)"
+          "outlier_k": "Outlier limit per cycle"
         },
         "sections": {
-          "help_soc_min_c": {
-            "name": "Help: SOC scale 0 %",
-            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C (Fahrenheit: 59 °F).",
+          "help_soc_below_k": {
+            "name": "Help: SOC scale below the setpoint",
+            "description": "Distance below the setpoint of the worst room that corresponds to 0 % SOC (default 6). The setpoint itself is at 6 / (6 + 9) = 40 %, every degree is 6.67 %. The scale only damps the SOC; it is relative to each room's own setpoint.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_soc_max_c": {
-            "name": "Help: SOC scale 100 %",
-            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C (Fahrenheit: 86 °F).",
+          "help_soc_above_k": {
+            "name": "Help: SOC scale above the setpoint",
+            "description": "Distance above the setpoint that corresponds to 100 % SOC (default 9). The capacity sent to the planner is the capacity per degree times the width of the scale (below plus above).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -397,7 +429,7 @@
             }
           },
           "help_outlier_k": {
-            "name": "Help: Outlier limit per cycle (K)",
+            "name": "Help: Outlier limit per cycle",
             "description": "If a device temperature jumps by more than this within one cycle, the value is discarded. If the next cycle confirms the new value, it is accepted. Default 2 K.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -408,23 +440,15 @@
       "safety": {
         "title": "Protection and fallback",
         "data": {
-          "hard_min_below_k": "Hard minimum below setpoint → Undercharge percentage (K)",
-          "overheat_k": "Overheating above setpoint (K)",
+          "overheat_k": "Overheating above setpoint",
           "overheat_s": "Overheating duration (s)",
           "plan_max_age_s": "Maximum plan age (s)",
           "fallback_delay_s": "Wait before fallback (s)",
           "fallback_step_s": "Fallback step interval (s)"
         },
         "sections": {
-          "help_hard_min_below_k": {
-            "name": "Help: Hard minimum below setpoint → Undercharge percentage (K)",
-            "description": "Hard minimum = setpoint minus this value. Below it the room is heated even without plan. It is also the lower end of the penalty zone in the planner model. Default 2 K.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
           "help_overheat_k": {
-            "name": "Help: Overheating above setpoint (K)",
+            "name": "Help: Overheating above setpoint",
             "description": "A room at least this much above its setpoint counts as overheated. Default 3 K.",
             "data": {
               "help_expanded": "Expand help texts when opening"
@@ -446,7 +470,7 @@
           },
           "help_fallback_delay_s": {
             "name": "Help: Wait before fallback (s)",
-            "description": "If the plan is missing or outdated (planner failed, Home Assistant just restarted), the units stay as they are for this long; the protection rules (hard minimum, window contacts, overheating) still apply. If the plan returns in time, nothing changes. The building is slow, so waiting is harmless. Default 600 s (10 min).",
+            "description": "If the plan is missing or outdated (planner failed, Home Assistant just restarted), the units stay as they are for this long; the protection rules (absolute limit, window contacts, overheating) still apply. If the plan returns in time, nothing changes. The building is slow, so waiting is harmless. Default 600 s (10 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -467,8 +491,8 @@
           "discharge_limit_w": "Buffer discharge limit → Max discharge power (W)",
           "night_start_h": "Night setback start (hour)",
           "night_end_h": "Night setback end (hour)",
-          "night_setback_k": "Night setback of Min Charge Level and Undercharge percentage (K)",
-          "undercharge_cost": "Penalty between setpoint and hard minimum → Undercharge cost (per kWh)",
+          "night_setback_k": "Night setback of Min Charge Level and Undercharge percentage",
+          "undercharge_cost": "Penalty between the control range and the absolute limit → Undercharge cost (per kWh)",
           "overcharge_cost": "Overload surcharge → Overcharge cost (per kWh)",
           "late_charge_surcharge": "Late charge surcharge → Charge cost (per kWh)",
           "planner_horizon_h": "Planner forecast horizon (h)"
@@ -503,15 +527,15 @@
             }
           },
           "help_night_setback_k": {
-            "name": "Help: Night setback of Min Charge Level and Undercharge percentage (K)",
-            "description": "Lower bound and hard minimum for the planner are lowered by this much at night. The protection of the hard minimum in the room stays unchanged. Default 1 K (assumption, not fixed in the functional spec).",
+            "name": "Help: Night setback of Min Charge Level and Undercharge percentage",
+            "description": "Lower bounds of the control range and the absolute limit for the planner are lowered by this much at night. The protection at the absolute limit in the room stays unchanged. Default 1 K (assumption, not fixed in the functional spec).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_undercharge_cost": {
-            "name": "Help: Penalty between setpoint and hard minimum → Undercharge cost (per kWh)",
-            "description": "Penalty per kWh when the planner discharges the buffer between setpoint and hard minimum. Default 0.003 (slightly below that of the car charging).",
+            "name": "Help: Penalty between the control range and the absolute limit → Undercharge cost (per kWh)",
+            "description": "Penalty per kWh when the planner discharges the buffer between the control range and the absolute limit. Default 0.003 (slightly below that of the car charging).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

@@ -59,7 +59,7 @@ async def test_an_unavailable_or_off_switch_means_heating(hass: HomeAssistant, u
 async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mode(
     hass: HomeAssistant, units: FakeUnits
 ) -> None:
-    for entity_id, temperature in ((A, 24), (B, 23), (C, 22)):
+    for entity_id, temperature in ((A, 25), (B, 23), (C, 22)):
         units.set(entity_id, "fan_only", temperature)
     set_plan(hass, 2.0)
     hass.states.async_set(SWITCH, "on")
@@ -67,9 +67,11 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     assert {units.mode(e) for e in ROOMS} == {"cool"}
     assert units.target(A) == 21.0  # beyond the hard maximum: cooled to the setpoint
     soc = hass.states.get("sensor.climate_control_state_of_charge")
-    assert soc is not None and float(soc.state) == pytest.approx(40.0)  # 24 degC on the mirrored scale
+    assert soc is not None and float(soc.state) == pytest.approx(13.33, abs=0.01)  # 4 above the setpoint
     assert soc.attributes["worst_room"] == A
-    assert _value(hass, "sensor.climate_control_overcharge_percentage") == 100.0  # mirrored limit clamped
+    assert _value(hass, "sensor.climate_control_overcharge_percentage") == pytest.approx(
+        60.0, abs=0.01
+    )  # charge side is below
 
     hass.states.async_set(SWITCH, "off")  # back to heating
     for entity_id, temperature in ((A, 18), (B, 18), (C, 18)):

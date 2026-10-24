@@ -11,12 +11,18 @@ from .config import Parameters, RoomConfig
 from .model import Season
 
 
-def temperature_to_soc(t: float, p: Parameters, season: Season = Season.HEAT) -> float:
-    """Linear SOC scale, clamped. Heating: min = 0 %, max = 100 %. Cooling: mirrored (FR-SEAS-02)."""
-    soc = (t - p.soc_min_c) / (p.soc_max_c - p.soc_min_c) * 100.0
-    if season is Season.COOL:
-        soc = 100.0 - soc
+def soc_position(offset: float, p: Parameters) -> float:
+    """SOC (clamped) of a point `offset` degrees towards the charged side of the setpoint (FR-SOC-01).
+
+    The setpoint is `soc_below_k / scale` of the way up (40 % by default); every degree is the same share.
+    """
+    soc = (p.soc_below_k + offset) / p.scale_k * 100.0
     return min(100.0, max(0.0, soc))
+
+
+def deviation_to_soc(deviation: float, p: Parameters) -> float:
+    """SOC of a room whose temperature is `deviation` degrees on the discharged side of its setpoint."""
+    return soc_position(-deviation, p)
 
 
 def worst_room(
@@ -27,7 +33,7 @@ def worst_room(
     Rooms past their setpoint can never be the worst while another room lags behind,
     so overheated rooms do not distort the SOC.
     """
-    return min(readings, key=lambda rt: season.sign * (rt[1] - rt[0].setpoint_c), default=None)
+    return max(readings, key=lambda rt: season.sign * (rt[0].setpoint_c - rt[1]), default=None)
 
 
 class OutlierFilter:

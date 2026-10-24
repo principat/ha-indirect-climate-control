@@ -87,7 +87,7 @@ async def test_open_window_room_is_not_heated(hass: HomeAssistant, units: FakeUn
 
 @pytest.mark.req("FR-SAFE-02")
 async def test_hard_minimum_heats_without_plan(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
-    units.set(B, "fan_only", 18)
+    units.set(B, "fan_only", 17)  # 4 below the setpoint: beyond the absolute limit of 3
     set_plan(hass, 0)
     await setup_entry()
     assert _state(hass, "binary_sensor.climate_control_running").state == "off"
@@ -123,7 +123,7 @@ async def test_no_cooling_while_heating(
     freezer: FrozenDateTimeFactory,  # noqa: ANN001
 ) -> None:
     units.set(C, "fan_only", 24)
-    units.set(A, "fan_only", 18)
+    units.set(A, "fan_only", 17)
     set_plan(hass, 0)
     await setup_entry({"overheat_s": 0})
     assert units.mode(A) == "heat" and units.mode(C) == "fan_only"
@@ -257,7 +257,8 @@ async def test_setpoint_can_come_from_an_entity(hass: HomeAssistant, units: Fake
     hass.states.async_set("input_number.setpoint_a", "unavailable")
     await run_cycle(hass)
     assert units.target(A) == 21.0  # fixed setpoint as substitute
-    assert float(_state(hass, "sensor.climate_control_min_charge_level").state) < min_charge
+    # the limits follow the setpoint, so the percentage the planner sees does not move with it
+    assert float(_state(hass, "sensor.climate_control_min_charge_level").state) == min_charge
 
 
 @pytest.mark.req("FR-OBS-02")
@@ -283,7 +284,9 @@ async def test_diagnostic_sensors_per_indoor_unit(hass: HomeAssistant, units: Fa
     assert float(_state(hass, room_entities["room_deviation"]).state) == 2.0
     # default capacity 3 kWh/K, three rooms of 10 m2 -> 1 kWh/K per room
     assert float(_state(hass, room_entities["room_heat_demand"]).state) == pytest.approx(1 * 2, abs=0.001)
-    assert float(_state(hass, room_entities["room_storage"]).state) == pytest.approx(1 * 9, abs=0.001)
+    assert float(_state(hass, room_entities["room_storage"]).state) == pytest.approx(
+        1 * 5, abs=0.001
+    )  # up to 3 above the setpoint, 2 below it
 
 
 @pytest.mark.req("FR-SAFE-01")

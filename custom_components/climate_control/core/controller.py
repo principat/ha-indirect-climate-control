@@ -11,7 +11,7 @@ from .distribution import rank, select
 from .model import WITH_SETPOINT, Command, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
-from .soc import OutlierFilter, SocSmoother, temperature_to_soc, worst_room
+from .soc import OutlierFilter, SocSmoother, deviation_to_soc, worst_room
 from .threshold import ThresholdConfig, decide
 
 
@@ -49,11 +49,6 @@ class Controller:
         """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
         since = self._run_since
         return since is not None and (now - since).total_seconds() < self.cfg.params.min_run_s
-
-    @staticmethod
-    def _overload_c(room: RoomConfig, season: Season) -> float:
-        """The room's overload limit in the direction of the season (cooling: mirrored at the setpoint)."""
-        return room.overload_max_c if season is Season.HEAT else room.mirrored(room.overload_max_c)
 
     def step(
         self,
@@ -95,7 +90,8 @@ class Controller:
         soc: float | None = None
         worst = worst_room(((r, temps[r.id]) for r in active), season)
         if worst is not None:
-            soc = round(self._smoother.add(now, temperature_to_soc(worst[1], p, season)), 2)
+            deviation = sign * (worst[0].setpoint_c - worst[1])
+            soc = round(self._smoother.add(now, deviation_to_soc(deviation, p)), 2)
 
         for r in active:
             if sign * (temps[r.id] - r.setpoint_c) >= p.overheat_k:
@@ -138,7 +134,8 @@ class Controller:
             }
         else:
             # FR-PLAN-02/03/04: the plan alone decides whether the outdoor unit runs.
-            eligible = [r for r in active if sign * (self._overload_c(r, season) - temps[r.id]) > 0]
+            # a room at its absolute limit on the charged side is not heated (or cooled) any further
+            eligible = [r for r in active if sign * (temps[r.id] - r.setpoint_c) < r.charge_limit(season)]
             decision = decide(planned_w or 0.0, self.running, self._threshold)
             run, requested_w = decision.run, decision.power_w
             if run and not self.running:
@@ -162,7 +159,7 @@ class Controller:
             for r in active:
                 if r in served:
                     target = temps[r.id] + sign * p.heat_offset_k
-                    limit = self._overload_c(r, season)
+                    limit = r.setpoint_c + sign * r.charge_limit(season)
                     targets[r.id] = Command(main_mode, min(target, limit) if sign > 0 else max(target, limit))
                 else:
                     targets[r.id] = Command(p.neutral_mode)
@@ -170,7 +167,7 @@ class Controller:
         # FR-SAFE-02: past the hard limit (heating: below the minimum, cooling: above the maximum)
         # a room is served regardless of the plan, also while waiting.
         for r in active:
-            if sign * (r.setpoint_c - temps[r.id]) > p.hard_min_below_k:
+            if sign * (r.setpoint_c - temps[r.id]) > r.discharge_limit(season):
                 current = targets[r.id]
                 held = current.target_c if current.mode == main_mode else None
                 target = sign * max(sign * r.setpoint_c, sign * (held if held is not None else r.setpoint_c))

@@ -40,7 +40,7 @@ from .const import (
     ROOM_WINDOW,
     STORAGE_VERSION,
 )
-from .core.config import InstallationConfig, Parameters, valid_setpoint
+from .core.config import SETPOINT_MAX_C, SETPOINT_MIN_C, InstallationConfig, Parameters, valid_setpoint
 from .core.controller import Controller, CycleResult
 from .core.diagnostics import RoomDiagnostics, room_diagnostics
 from .core.journal import Journal, UnitRecord
@@ -48,7 +48,7 @@ from .core.learning import CapacityLearner, Learned
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
-from .core.units import from_celsius, to_celsius
+from .core.units import from_celsius
 from .data import as_list, build_config, installation_unit, room_data
 from .record_file import append_records
 
@@ -86,6 +86,10 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             r[ROOM_ENTITY]: as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
         }
         self._unit = installation_unit(entry.data)
+        self._setpoint_bounds = (
+            from_celsius(SETPOINT_MIN_C, self._unit),
+            from_celsius(SETPOINT_MAX_C, self._unit),
+        )
         self._season_entity: str | None = entry.data.get(CONF_SEASON) or None
         self._power_entity: str | None = entry.data.get(CONF_OUTDOOR_POWER) or None
         self._areas: dict[str, float] = {r.id: r.area_m2 for r in self.cfg.rooms} if self.cfg else {}
@@ -219,11 +223,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         return setpoints
 
     def _setpoint_value(self, raw: object) -> float | None:
-        """A setpoint entity's value in the plant's unit, as degrees Celsius, or None if not plausible."""
-        try:
-            return valid_setpoint(to_celsius(float(raw), self._unit))  # type: ignore[arg-type]
-        except TypeError, ValueError:
-            return None
+        """A setpoint entity's value (in the plant's unit), or None if not plausible."""
+        return valid_setpoint(raw, *self._setpoint_bounds)
 
     def _read_plan(self) -> Plan | None:
         """FR-PLAN-01: planned power now and ahead, summed over all planner outputs.
@@ -255,14 +256,13 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         except ValueError:
             mode = None
         temperature = state.attributes.get(ATTR_CURRENT_TEMPERATURE)
-        celsius = to_celsius(float(temperature), self._unit) if temperature is not None else None
-        return RoomState(mode, celsius, window_open)
+        return RoomState(mode, float(temperature) if temperature is not None else None, window_open)
 
     async def _apply(self, entity_id: str, command: Command) -> None:
         state = self.hass.states.get(entity_id)
         if state is None:
             return
-        target = from_celsius(command.target_c, self._unit) if command.target_c is not None else None
+        target = command.target_c
         try:
             switched = state.state != command.mode
             if switched:

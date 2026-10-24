@@ -38,7 +38,7 @@ Therefore set up in this order:
 3. **Add indoor units** – in the three-dot menu (⋮) of the installation entry, *"Add indoor unit"* once per
    unit: climate entity, room name,
    setpoint (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
-   upper bound without surcharge and overload limit (room dependent, default 24 / 28 °C),
+   optional control range and absolute limit around the setpoint (default 2 / 3 in the unit of the plant, below and above),
    nominal power (units with equal nominal power form a power class), area, optional window contacts (one or
    more, the room counts as open as soon as one is open). Units can
    be changed or removed one by one. Each indoor unit gets its own device with diagnostic sensors (see below).
@@ -54,7 +54,7 @@ Above every non-trivial field there is a collapsible **"Help: …"** section exp
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
-**Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: all temperatures of the units (device temperatures, setpoints, room limits, the SOC scale) are then °F and the SOC scale of 15–30 °C counts as 59–86 °F. Temperature differences in the parameters (offset, band, thresholds) stay in kelvin. Setpoints and limits already entered are not converted when the unit is changed.
+**Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: device temperatures and setpoints are then °F. All distances (control range, absolute limit, SOC scale, offset, band, thresholds) are numbers in the unit of the plant with the same start values: 1 K becomes 1 °C or 1 °F. Setpoints already entered are not converted when the unit is changed.
 
 **Heating or cooling.** The plant heats by default. An optional switch (switch, binary sensor or input boolean) in the
 installation selects cooling: off = heating, on = cooling; without the entity, or while it is unavailable, the plant heats.
@@ -74,7 +74,7 @@ Concept: `docs/spec/technical/50-capacity-learning.md`.
 | --- | --- |
 | Deviation from setpoint (K) | setpoint minus device temperature; positive = room too cold |
 | Heat demand (kWh_el) | electrical energy up to the setpoint; negative = energy stored above the setpoint |
-| Storage capacity (kWh_el) | electrical energy the room can still take up to its overload limit |
+| Storage capacity (kWh_el) | electrical energy the room can still take up to its absolute limit |
 
 The energy values split the buffer capacity among the rooms by area (assumption).
 
@@ -151,16 +151,16 @@ are those of HAEO 0.4.1 (HAEO is English only). Lower and upper limits form pair
 | --- | --- | --- | --- |
 | Battery | Capacity | *&lt;installation&gt;* Capacity | buffer capacity, kWh |
 | Battery | State of Charge | *&lt;installation&gt;* State of Charge | SOC of the worst room |
-| Battery | Min Charge Level | *&lt;installation&gt;* Min Charge Level | area-weighted setpoints, lowered at night, forecast |
-| Battery | Max Charge Level | *&lt;installation&gt;* Max Charge Level | area-weighted upper bounds without surcharge of the rooms |
+| Battery | Min Charge Level | *&lt;installation&gt;* Min Charge Level | area-weighted lower end of the control ranges, lowered at night, forecast |
+| Battery | Max Charge Level | *&lt;installation&gt;* Max Charge Level | area-weighted upper end of the control ranges |
 | Battery | Charge efficiency | *&lt;installation&gt;* Charge efficiency | buffer efficiency |
 | Battery | Discharge efficiency | helper `100` | – |
 | Battery | Max discharge power | *&lt;installation&gt;* Max discharge power | buffer discharge limit |
 | Battery | Max charge power | leave empty | limited by the connection |
 | Battery | Charge cost | *&lt;installation&gt;* Charge cost | late charge surcharge, falls over the horizon, forecast |
-| Battery partitions | Undercharge percentage | *&lt;installation&gt;* Undercharge percentage | area-weighted hard minimum, lowered at night, forecast |
-| Battery partitions | Undercharge cost | *&lt;installation&gt;* Undercharge cost | penalty between setpoint and hard minimum |
-| Battery partitions | Overcharge percentage | *&lt;installation&gt;* Overcharge percentage | area-weighted overload limits of the rooms |
+| Battery partitions | Undercharge percentage | *&lt;installation&gt;* Undercharge percentage | area-weighted absolute limit below the setpoint, lowered at night, forecast |
+| Battery partitions | Undercharge cost | *&lt;installation&gt;* Undercharge cost | penalty between control range and absolute limit |
+| Battery partitions | Overcharge percentage | *&lt;installation&gt;* Overcharge percentage | area-weighted absolute limit above the setpoint |
 | Battery partitions | Overcharge cost | *&lt;installation&gt;* Overcharge cost | overload surcharge |
 | Connection Klima | Max Power Source to Target | *&lt;installation&gt;* Max Power Source to Target | Pmax |
 | Connection Klima | Max Power Target to Source | helper `0` | no feed-in into the house |
@@ -242,7 +242,7 @@ Deshalb in dieser Reihenfolge einrichten:
 3. **Innengeräte hinzufügen** – im Drei-Punkte-Menü (⋮) des Anlagen-Eintrags *„Innengerät hinzufügen“*, je Gerät
    einmal: Klimagerät,
    Raumname, Sollwert (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der
-   Ersatzwert), Obergrenze ohne Aufschlag und Überlastgrenze (raumabhängig, Standard 24 / 28 °C),
+   Ersatzwert), optional Regelbereich und absolute Grenze um den Sollwert (Standard 2 / 3 in der Einheit der Anlage, unten und oben),
    Nennleistung (Geräte gleicher Nennleistung bilden eine Leistungsklasse), Fläche, optional Fensterkontakte
    (einer oder mehrere, der Raum gilt als offen, sobald einer offen ist).
    Jedes Innengerät erhält ein eigenes Gerät mit Diagnose-Sensoren (siehe unten). Innengeräte lassen sich später
@@ -259,7 +259,7 @@ Deshalb in dieser Reihenfolge einrichten:
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
-**Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen, Sollwerte, Raumgrenzen, SOC-Skala) sind dann °F, und die SOC-Skala von 15–30 °C gilt als 59–86 °F. Temperaturdifferenzen in den Parametern (Offset, Band, Schwellen) bleiben in Kelvin. Bereits eingegebene Sollwerte und Grenzen werden beim Wechsel der Einheit nicht umgerechnet.
+**Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen und Sollwerte) sind dann °F. Alle Abstände (Regelbereich, absolute Grenze, SOC-Skala, Offset, Band, Schwellen) sind Zahlen in der Einheit der Anlage mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Bereits eingegebene Sollwerte werden beim Wechsel der Einheit nicht umgerechnet.
 
 **Heizen oder Kühlen.** Standard ist Heizen. Ein optionaler Schalter (Schalter, Binärsensor oder Ein/Aus-Helfer) in der
 Anlage wählt das Kühlen: aus = Heizen, ein = Kühlen; ohne Entität oder solange sie nicht verfügbar ist, wird geheizt.
@@ -279,7 +279,7 @@ Alltag nicht angeboten. Konzept: `docs/spec/technical/50-capacity-learning.md`.
 | --- | --- |
 | Abweichung zum Sollwert (K) | Sollwert minus Gerätetemperatur; positiv = Raum zu kalt |
 | Wärmebedarf (kWh_el) | elektrische Energie bis zum Sollwert; negativ = über dem Sollwert gespeicherte Energie |
-| Speicherkapazität (kWh_el) | elektrische Energie, die der Raum bis zu seiner Überlastgrenze noch aufnehmen kann |
+| Speicherkapazität (kWh_el) | elektrische Energie, die der Raum bis zu seiner absoluten Grenze noch aufnehmen kann |
 
 Die Energiewerte teilen die Pufferkapazität nach Fläche auf die Räume auf (Annahme).
 
@@ -358,16 +358,16 @@ sind die von HAEO 0.4.1 (HAEO gibt es nur auf Englisch). Untere und obere Grenze
 | --- | --- | --- | --- |
 | Batterie | Capacity | *&lt;Anlage&gt;* Capacity | Pufferkapazität, kWh |
 | Batterie | State of Charge | *&lt;Anlage&gt;* State of Charge | Füllstand des schlechtesten Raums |
-| Batterie | Min Charge Level | *&lt;Anlage&gt;* Min Charge Level | flächengewichtete Sollwerte, nachts abgesenkt, Prognose |
-| Batterie | Max Charge Level | *&lt;Anlage&gt;* Max Charge Level | flächengewichtete Obergrenzen ohne Aufschlag der Räume |
+| Batterie | Min Charge Level | *&lt;Anlage&gt;* Min Charge Level | flächengewichtetes unteres Ende der Regelbereiche, nachts abgesenkt, Prognose |
+| Batterie | Max Charge Level | *&lt;Anlage&gt;* Max Charge Level | flächengewichtetes oberes Ende der Regelbereiche |
 | Batterie | Charge efficiency | *&lt;Anlage&gt;* Charge efficiency | Wirkungsgrad des Puffers |
 | Batterie | Discharge efficiency | Helfer `100` | – |
 | Batterie | Max discharge power | *&lt;Anlage&gt;* Max discharge power | Entladegrenze des Puffers |
 | Batterie | Max charge power | leer lassen | begrenzt durch die Verbindung |
 | Batterie | Charge cost | *&lt;Anlage&gt;* Charge cost | Aufschlag Spätladen, fällt über den Horizont, Prognose |
-| Batterie-Partitionen | Undercharge percentage | *&lt;Anlage&gt;* Undercharge percentage | flächengewichtetes hartes Minimum, nachts abgesenkt, Prognose |
-| Batterie-Partitionen | Undercharge cost | *&lt;Anlage&gt;* Undercharge cost | Strafwert zwischen Sollwert und hartem Minimum |
-| Batterie-Partitionen | Overcharge percentage | *&lt;Anlage&gt;* Overcharge percentage | flächengewichtete Überlastgrenzen der Räume |
+| Batterie-Partitionen | Undercharge percentage | *&lt;Anlage&gt;* Undercharge percentage | flächengewichtete absolute Grenze unter dem Sollwert, nachts abgesenkt, Prognose |
+| Batterie-Partitionen | Undercharge cost | *&lt;Anlage&gt;* Undercharge cost | Strafwert zwischen Regelbereich und absoluter Grenze |
+| Batterie-Partitionen | Overcharge percentage | *&lt;Anlage&gt;* Overcharge percentage | flächengewichtete absolute Grenze über dem Sollwert |
 | Batterie-Partitionen | Overcharge cost | *&lt;Anlage&gt;* Overcharge cost | Aufschlag Überlast |
 | Verbindung Klima | Max Power Source to Target | *&lt;Anlage&gt;* Max Power Source to Target | Pmax |
 | Verbindung Klima | Max Power Target to Source | Helfer `0` | keine Einspeisung ins Haus |

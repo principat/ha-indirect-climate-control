@@ -6,7 +6,6 @@ a time), all parameters as options. Several installations can be configured side
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import fields
 from typing import Any
 
@@ -33,20 +32,22 @@ from .const import (
     CONF_UNIT,
     DOMAIN,
     ROOM_AREA,
-    ROOM_COMFORT_MAX,
+    ROOM_BAND_DOWN,
+    ROOM_BAND_UP,
     ROOM_ENTITY,
+    ROOM_LIMIT_DOWN,
+    ROOM_LIMIT_UP,
     ROOM_NAME,
-    ROOM_OVERLOAD_MAX,
     ROOM_POWER,
     ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
     ROOM_WINDOW,
     SUBENTRY_ROOM,
 )
-from .core.config import ConfigError, Parameters
+from .core.config import ConfigError, Parameters, RoomConfig
 from .core.model import Mode
-from .core.units import TemperatureUnit, from_celsius, to_celsius
-from .data import as_list, build_config, core_parameters, installation_unit, ui_parameters
+from .core.units import TemperatureUnit, from_celsius
+from .data import as_list, build_config, installation_unit
 from .help import (
     HELP_KEY,
     OPTION_HELP,
@@ -126,11 +127,18 @@ def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
             vol.Optional(ROOM_SETPOINT_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["input_number", "number", "sensor"])
             ),
-            vol.Required(ROOM_COMFORT_MAX, default=from_celsius(24.0, unit)): _number(
-                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(35, unit)
+            # FR-BAND-01: optional distances to the current setpoint, in the plant's unit
+            vol.Optional(ROOM_BAND_DOWN, default=RoomConfig.band_down): _number(
+                symbol, step=0.5, minimum=0.5, maximum=15
             ),
-            vol.Required(ROOM_OVERLOAD_MAX, default=from_celsius(28.0, unit)): _number(
-                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(35, unit)
+            vol.Optional(ROOM_BAND_UP, default=RoomConfig.band_up): _number(
+                symbol, step=0.5, minimum=0.5, maximum=15
+            ),
+            vol.Optional(ROOM_LIMIT_DOWN, default=RoomConfig.limit_down): _number(
+                symbol, step=0.5, minimum=0.5, maximum=15
+            ),
+            vol.Optional(ROOM_LIMIT_UP, default=RoomConfig.limit_up): _number(
+                symbol, step=0.5, minimum=0.5, maximum=15
             ),
             vol.Required(ROOM_POWER): _number("W"),
             vol.Required(ROOM_AREA, default=10): _number("m²", step=0.5),
@@ -142,14 +150,13 @@ def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
     return items
 
 
-def _room_errors(values: dict[str, Any], options: Mapping[str, Any], unit: TemperatureUnit) -> dict[str, str]:
-    """Room limits must lie on the SOC scale: scale min < comfort max < overload max <= scale max."""
-    p = core_parameters(options, unit)
-    comfort = to_celsius(values[ROOM_COMFORT_MAX], unit)
-    overload = to_celsius(values[ROOM_OVERLOAD_MAX], unit)
-    if not p.soc_min_c < comfort < overload <= p.soc_max_c:
-        return {"base": "room_limits"}
-    return {}
+def _room_errors(values: dict[str, Any]) -> dict[str, str]:
+    """The control range must lie inside the absolute limit, in both directions."""
+    down = values.get(ROOM_BAND_DOWN, RoomConfig.band_down) <= values.get(
+        ROOM_LIMIT_DOWN, RoomConfig.limit_down
+    )
+    up = values.get(ROOM_BAND_UP, RoomConfig.band_up) <= values.get(ROOM_LIMIT_UP, RoomConfig.limit_up)
+    return {} if down and up else {"base": "room_limits"}
 
 
 def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
@@ -159,7 +166,7 @@ def _installation_errors(values: dict[str, Any]) -> dict[str, str]:
 
 
 class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
-    VERSION = 3
+    VERSION = 4
 
     def __init__(self) -> None:
         self._help = False
@@ -241,7 +248,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
             entity_id = values[ROOM_ENTITY]
-            errors = _room_errors(values, self._get_entry().options, self._unit())
+            errors = _room_errors(values)
             if any(s.unique_id == entity_id for s in self._get_entry().subentries.values()):
                 errors[ROOM_ENTITY] = "already_configured"
             elif not errors:
@@ -258,7 +265,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
-            errors = _room_errors(values, self._get_entry().options, self._unit())
+            errors = _room_errors(values)
             if not errors:
                 data = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
                 return self.async_update_and_abort(
@@ -274,7 +281,7 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         )
 
 
-def _options_fields(current: Parameters, names: tuple[str, ...]) -> dict[Any, Any]:
+def _options_fields(current: Parameters, names: tuple[str, ...], unit: TemperatureUnit) -> dict[Any, Any]:
     items: dict[Any, Any] = {}
     for name in names:
         value = getattr(current, name)
@@ -287,6 +294,8 @@ def _options_fields(current: Parameters, names: tuple[str, ...]) -> dict[Any, An
             )
         elif isinstance(value, int):
             items[vol.Required(f.name, default=value)] = vol.Coerce(int)
+        elif f.name.endswith("_k"):  # FR-UNIT-01: temperature differences are given in the plant's unit
+            items[vol.Required(f.name, default=value)] = _number(unit.symbol, step=0.1, minimum=0, maximum=30)
         else:
             items[vol.Required(f.name, default=value)] = vol.Coerce(float)
     return items
@@ -335,7 +344,7 @@ class ClimateControlOptionsFlow(OptionsFlow):
     async def _group(self, group: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
         names = PARAMETER_GROUPS[group]
         expanded = bool(self.config_entry.options.get(OPTION_HELP, False))
-        current = ui_parameters(self.config_entry.options, installation_unit(self.config_entry.data))
+        current = Parameters.from_mapping(dict(self.config_entry.options))
         errors: dict[str, str] = {}
         if user_input is not None:
             values, expanded = split_help(user_input, expanded)
@@ -347,5 +356,6 @@ class ClimateControlOptionsFlow(OptionsFlow):
                 errors["base"] = "invalid_parameters"
             else:
                 return self.async_create_entry(data={**merged, OPTION_HELP: expanded})
-        schema = _with_help(_options_fields(current, names), names, expanded)
+        unit = installation_unit(self.config_entry.data)
+        schema = _with_help(_options_fields(current, names, unit), names, expanded)
         return self.async_show_form(step_id=group, data_schema=schema, errors=errors)

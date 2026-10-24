@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, replace
 
-from .model import NEUTRAL, Mode
+from .model import NEUTRAL, Mode, Season
 
 
 class ConfigError(ValueError):
@@ -16,28 +16,40 @@ SETPOINT_MIN_C = 5.0
 SETPOINT_MAX_C = 30.0
 
 
-def valid_setpoint(raw: object) -> float | None:
-    """Setpoint from a variable source, or None if not a plausible number."""
+def valid_setpoint(raw: object, low: float = SETPOINT_MIN_C, high: float = SETPOINT_MAX_C) -> float | None:
+    """Setpoint from a variable source, or None if not a plausible number (bounds in the plant's unit)."""
     try:
         value = float(raw)  # type: ignore[arg-type]
     except TypeError, ValueError:
         return None
-    return value if SETPOINT_MIN_C <= value <= SETPOINT_MAX_C else None
+    return value if low <= value <= high else None
 
 
 @dataclass(frozen=True)
 class RoomConfig:
     id: str
     name: str
-    setpoint_c: float
+    setpoint_c: float  # in the plant's temperature unit (FR-UNIT-01); the control only uses differences
     nominal_power_w: float
     area_m2: float = 1.0
-    comfort_max_c: float = 24.0  # upper bound without surcharge (room dependent)
-    overload_max_c: float = 28.0  # highest temperature the buffer may be charged to (room dependent)
+    # FR-BAND-01: distances to the current setpoint, in the plant's unit
+    band_down: float = 2.0  # control range below the setpoint: the planner may use the buffer freely
+    band_up: float = 2.0
+    limit_down: float = 3.0  # absolute limit below the setpoint: protection heats even without plan
+    limit_up: float = 3.0  # absolute limit above the setpoint: no further heating (overload limit)
 
-    def mirrored(self, temperature_c: float) -> float:
-        """FR-SEAS-02: a heating limit mirrored around the setpoint is the matching cooling limit."""
-        return 2 * self.setpoint_c - temperature_c
+    # The buffer is charged towards "up" when heating and towards "down" when cooling (FR-SEAS-02).
+    def discharge_band(self, season: Season) -> float:
+        return self.band_down if season is Season.HEAT else self.band_up
+
+    def charge_band(self, season: Season) -> float:
+        return self.band_up if season is Season.HEAT else self.band_down
+
+    def discharge_limit(self, season: Season) -> float:
+        return self.limit_down if season is Season.HEAT else self.limit_up
+
+    def charge_limit(self, season: Season) -> float:
+        return self.limit_up if season is Season.HEAT else self.limit_down
 
     @property
     def power_class(self) -> float:
@@ -57,9 +69,8 @@ class Parameters:
     outlier_k: float = 2.0
     overheat_k: float = 3.0
     overheat_s: float = 3600.0
-    hard_min_below_k: float = 2.0
-    soc_min_c: float = 15.0
-    soc_max_c: float = 30.0
+    soc_below_k: float = 6.0  # SOC scale: 0 % at this distance below the setpoint (FR-SOC-01)
+    soc_above_k: float = 9.0  # 100 % at this distance above it
     efficiency_pct: float = 92.0
     discharge_limit_w: float = 3500.0
     night_start_h: int = 21
@@ -93,14 +104,19 @@ class Parameters:
     def validate(self) -> None:
         if not 0 < self.stop_ratio <= self.start_ratio:
             raise ConfigError("0 < stop ratio <= start ratio required")
-        if not self.soc_min_c < self.soc_max_c:
-            raise ConfigError("SOC scale min < SOC scale max required")
+        if self.soc_below_k <= 0 or self.soc_above_k <= 0:
+            raise ConfigError("SOC scale below and above the setpoint must be positive")
         if self.neutral_mode not in NEUTRAL:
             raise ConfigError("neutral mode must be fan or off")
         if self.fallback_delay_s < 0 or self.fallback_step_s <= 0:
             raise ConfigError("fallback delay >= 0 and fallback step > 0 required")
         if self.min_run_s < 0:
             raise ConfigError("minimum run time must not be negative")
+
+    @property
+    def scale_k(self) -> float:
+        """Width of the SOC scale in degrees of the plant's unit."""
+        return self.soc_below_k + self.soc_above_k
 
 
 @dataclass(frozen=True)
@@ -122,12 +138,9 @@ class InstallationConfig:
         if self.capacity_kwh_per_k <= 0:
             raise ConfigError("capacity must be positive")
         self.params.validate()
-        p = self.params
         for r in self.rooms:
-            if not p.soc_min_c < r.comfort_max_c < r.overload_max_c <= p.soc_max_c:
-                raise ConfigError(
-                    f"{r.id}: SOC scale min < comfort max < overload max <= SOC scale max required"
-                )
+            if not 0 < r.band_down <= r.limit_down or not 0 < r.band_up <= r.limit_up:
+                raise ConfigError(f"{r.id}: 0 < control range <= absolute limit required in both directions")
 
     @property
     def class_order(self) -> tuple[float, ...]:

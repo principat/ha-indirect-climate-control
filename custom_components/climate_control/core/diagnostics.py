@@ -29,10 +29,9 @@ def room_diagnostics(
             continue
         capacity = cfg.capacity_kwh_per_k * r.area_m2 / area
         deviation = season.sign * (r.setpoint_c - t)
-        overload_c = r.overload_max_c if season is Season.HEAT else r.mirrored(r.overload_max_c)
         result[r.id] = RoomDiagnostics(
             deviation_k=round(deviation, 2),
             heat_demand_kwh=round(capacity * deviation, 3),
-            storage_kwh=round(max(0.0, capacity * season.sign * (overload_c - t)), 3),
+            storage_kwh=round(max(0.0, capacity * (r.charge_limit(season) + deviation)), 3),
         )
     return result

@@ -259,7 +259,7 @@ def test_indoor_units_are_changed_and_removed_one_by_one(ha: requests.Session, e
 @pytest.mark.req("FR-SEAS-01")
 def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: requests.Session) -> None:
     try:
-        for reading in (22, 24):  # the plausibility filter takes a step of 2 K per cycle at most
+        for reading in (22, 24, 25):  # the plausibility filter takes a step of 2 per cycle at most
             for unit in UNITS:
                 _service(sim, SIM, "set_reading", unit=unit.split(".", 1)[1], temperature=reading)
             _cycle(sim)
@@ -268,7 +268,7 @@ def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: reques
         _cycle(sim)
         cooling = [u for u in UNITS if _state(sim, u)["state"] == "cool"]
         assert cooling and not [u for u in UNITS if _state(sim, u)["state"] == "heat"]
-        for unit in cooling:  # 3 K too warm: cooled to the setpoint, set again after the mode change
+        for unit in cooling:  # 4 above the setpoint: beyond the absolute limit, cooled to the setpoint
             assert _state(sim, unit)["attributes"]["temperature"] == SETPOINT
         # The state of charge runs the other way: warm rooms are a low cold store (heating would show 40 %).
         assert float(_state(sim, "sensor.climate_control_state_of_charge")["state"]) < 60.0
@@ -289,8 +289,8 @@ def test_cooling_mirrors_the_values_sent_to_the_planner(sim: requests.Session) -
     try:
         _service(sim, "input_boolean", "turn_on", entity_id=SWITCH)
         _cycle(sim)
-        # the mirrored limit of the heating overload limit lies beyond the 15 degC end of the scale
-        assert float(_state(sim, "sensor.climate_control_overcharge_percentage")["state"]) == 100.0
+        # cooling charges downwards: the absolute limit below the setpoint is the overload limit (60 %)
+        assert float(_state(sim, "sensor.climate_control_overcharge_percentage")["state"]) == 60.0
         # the learned capacities are diagnostic sensors with their start value
         for key in ("heating", "cooling"):
             assert float(_state(sim, f"sensor.climate_control_learned_capacity_{key}")["state"]) > 0

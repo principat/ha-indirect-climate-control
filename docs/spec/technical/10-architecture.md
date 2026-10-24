@@ -27,24 +27,26 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 
 ## Datenfluss je Zyklus (`Controller.step`)
 
-0. Temperatureinheit (FR-UNIT-01): Der Kern rechnet immer in °C. Der Adapter wandelt an den Rändern um: Gerätetemperatur und
-   Sollwert-Entität °F → °C beim Lesen (`core/units.py`, `coordinator.py`), Zielwerte °C → °F (ganze Grad) beim Senden, Sollwerte,
-   Raumgrenzen und SOC-Skala (`soc_min_c`, `soc_max_c`) in `data.build_config` (`core_parameters`). Gespeichert wird in der Einheit der
-   Anlage, Standardwerte der Skala im Dialog sind bei °F 59 und 86 (`ui_parameters`). Differenzen (K) bleiben unverändert.
+0. Temperatureinheit (FR-UNIT-01): Der Kern kennt keine Einheit. Er arbeitet nur mit Differenzen von Temperaturen und Sollwerten
+   und läuft deshalb in der Einheit der Anlage, ohne Umrechnung. Abstände (Regelbereich, Grenzen, Skala, Offset, Band, Schwellen)
+   sind Zahlen in dieser Einheit, die Startwerte bleiben gleich. Die Einheit zählt nur bei absoluten Werten im Adapter: Vorgabe und
+   Bereich des Sollwerts (`core/units.py`: 5–30 °C bzw. 41–86 °F, Plausibilität der Sollwert-Entität) und die Beschriftung der Felder.
 0. Betriebsart `season` (FR-SEAS-01): Schalter an = Kühlen, sonst Heizen (auch ohne Schalter oder bei `unavailable`).
    `Season.sign` (+1 Heizen, −1 Kühlen) spiegelt Abweichung, SOC, Grenzen und Schutz; ein Wechsel setzt Glättung, Lauf und
-   Zeitgeber zurück. Überlastgrenze im Kühlen = `RoomConfig.mirrored(overload_max_c)` (Spiegelung am Sollwert).
+   Zeitgeber zurück. Im Kühlen tauschen die Seiten (`RoomConfig.discharge_band/charge_band/discharge_limit/charge_limit(season)`):
+   Entladen heißt dann wärmer als der Sollwert.
 1. Gerätetemperatur je Raum lesen, unverändert (0,5-K-Schritte) übernehmen, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
-3. SOC = Skala(Temperatur des Raums mit kleinster Differenz Temperatur − eigener Sollwert), Median über 15 min.
+3. SOC (FR-SOC-01): Raum mit der größten Abweichung zu seinem aktuellen Sollwert; SOC = 40 % − 6,67 % × Abweichung
+   (`soc_below_k` / (`soc_below_k` + `soc_above_k`), Steigung 100 / Breite), begrenzt auf 0 bis 100 %, Median über 15 min.
 4. Überhitzungs-Zeitgeber je Raum führen.
 5. Plan fehlt oder veraltet → zuerst Warten (`fallback_delay_s`, 600 s): Geräte unverändert, Schutz gilt. Danach Rückfall:
    schrittweise (`fallback_step_s`, 120 s) je eine Gruppe gleicher Nennleistung auf Heizen mit Standard-Sollwert,
    größte Abweichung zuerst; laufende Geräte bleiben an. Kommt der Plan zurück, beginnt beim nächsten Ausfall
-   die Wartezeit von vorn. Hartes Minimum und Überhitzung gelten in jedem Zweig, Fenster überschreiben alles.
+   die Wartezeit von vorn. Absolute Grenze unten und Überhitzung gelten in jedem Zweig, Fenster überschreiben alles.
    Sonst: Schwellenentscheidung mit Hysterese und Mindestlaufzeit der Anlage (`min_run_s`, 600 s ab jedem Start, Halten
-   mit mindestens Pmin, nur solange ein Raum unter seiner Überlastgrenze liegt, Zeitgeber nur bei Aus → An neu, keine Mindestpause), bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
-   höchstens Überlastgrenze), übrige neutral; hartes Minimum → Heizen; Überhitzung ≥ Dauer und kein Heizziel → Kühlen.
+   mit mindestens Pmin, nur solange ein Raum unter seiner absoluten Grenze auf der Ladeseite liegt, Zeitgeber nur bei Aus → An neu, keine Mindestpause), bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
+   höchstens Sollwert + absolute Grenze), übrige neutral; absolute Grenze unten überschritten → Heizen; Überhitzung ≥ Dauer und kein Heizziel → Kühlen.
 6. Offenes Fenster → neutral (überschreibt alles, auch den Rückfall).
 7. `next_modes` gegen die aktuellen Modi: bei Konflikt zuerst alle nicht neutralen Geräte neutral.
 8. Befehle nur für Heizen/Kühlen mit Sollwert.
@@ -62,23 +64,22 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 
 | Thema | Umsetzung | Parameter |
 | --- | --- | --- |
-| SOC-Bezug auf eigenen Sollwert (offener Punkt) | eigener Sollwert wählt den schlechtesten Raum, die Skala gilt für dessen absolute Temperatur | – |
+| SOC relativ zum Sollwert | Abweichung zum aktuellen Sollwert des schlechtesten Raums, Sollwert = 40 %, feste Steigung für alle Räume | `soc_below_k`, `soc_above_k` |
 | Gleichstand „innerhalb des Bandes" | Differenz zur größten Abweichung der Stufe < Band | `tie_band_k` |
 | Leistung je Gerät | Sollwert = Gerätetemperatur + Offset | `heat_offset_k` = 1 K |
 | Zahl der Geräte | ganze Gruppen, bis Summe der Nennleistungen ≥ Anforderung | Nennleistung je Innengerät |
 | Ausreißer | einmal verworfen, bei Bestätigung im nächsten Zyklus übernommen | `outlier_k` |
 | Fenster offen | Gerät neutral, nicht im SOC, nicht verteilt, auch im Rückfall | – |
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |
-| Nachtabsenkung | senkt Untergrenze und hartes Minimum für den Planer um 1 K; Raumschutz unverändert | `night_setback_k` |
-| Obergrenze ohne Aufschlag | 24 °C je Innengerät; für den Planer flächengewichtet gemittelt (wie die Überlastgrenze) | `comfort_max_c` je Innengerät |
+| Nachtabsenkung | senkt Untergrenze und absolute Grenze unten für den Planer um 1; Raumschutz unverändert | `night_setback_k` |
+| Regelbereich, absolute Grenze (FR-BAND-01) | je Innengerät, Abstand zum aktuellen Sollwert (Standard 2 / 3, unten und oben); für den Planer flächengewichtet; Schutz nutzt die Grenze des Raums | `band_down/up`, `limit_down/up` je Innengerät |
 | Aufschlag Überlast | 0,003 je kWh | `overcharge_cost` |
 | Pufferkapazität | Startwert 3 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
 | Aufschlag Spätladen „fällt mit der Zeit" | linear vom Startwert auf 0 über den Horizont, damit bei gleichem Preis später geladen wird | `late_charge_surcharge` |
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 | Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |
 
-Nicht umgesetzt (Status nicht `beschlossen`): FR-LOAD-01 (Vorschlag). Noch nicht umgesetzt, aber beschlossen: Temperaturdifferenzen in der
-Einheit der Anlage (FR-UNIT-01, bisher K).
+Nicht umgesetzt (Status nicht `beschlossen`): FR-LOAD-01 (Vorschlag).
 
 ## Aufzeichnung (FR-OBS-01)
 
