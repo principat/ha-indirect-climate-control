@@ -1,3 +1,14 @@
+## [0.7.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.6.0...v0.7.0) (2026-10-24)
+
+### Features
+
+* change the outdoor unit power sensor and the cooling switch in the options ([1702432](https://github.com/principat/ha-indirect-climate-control/commit/17024322cc58c075802e4e76ad0b5d0559a34e07))
+* load control on temperature events with the power per step learned per indoor unit ([6fb2e18](https://github.com/principat/ha-indirect-climate-control/commit/6fb2e180cf4e92c18b5b22634d36ca2ff7c78a91))
+
+### Bug Fixes
+
+* reconfiguring no longer reloads the entry twice ([c81d7cd](https://github.com/principat/ha-indirect-climate-control/commit/c81d7cddca92ea14149469b79942857c08b897c4))
+
 ## [0.6.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.5.0...v0.6.0) (2026-10-24)
 
 ### Features
