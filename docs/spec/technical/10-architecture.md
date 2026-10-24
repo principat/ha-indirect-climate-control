@@ -66,8 +66,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | --- | --- | --- |
 | SOC relativ zum Sollwert | Abweichung zum aktuellen Sollwert des schlechtesten Raums, Sollwert = 40 %, feste Steigung für alle Räume | `soc_below_k`, `soc_above_k` |
 | Gleichstand „innerhalb des Bandes" | Differenz zur größten Abweichung der Stufe < Band | `tie_band_k` |
-| Leistung je Gerät | Sollwert = Gerätetemperatur + Offset | `heat_offset_k` = 1 K |
-| Zahl der Geräte | ganze Gruppen, bis Summe der Nennleistungen ≥ Anforderung | Nennleistung je Innengerät |
+| Last (FR-LOAD-01/02) | Lastregelung `core/load.py`: Sollwert = Gerätetemperatur + Schritte × Schrittweite, erwartete Last = Σ gelernte Leistung je Schritt × Schritte, zwei Geräte je Schritt, Totband, Mindeststufe; Lernen je Innengerät nach Beruhigung der Außenleistung (siehe 60-load-control.md) | `step` je Innengerät, `load_deadband_ratio`, `load_settle_max_s` |
 | Ausreißer | einmal verworfen, bei Bestätigung im nächsten Zyklus übernommen | `outlier_k` |
 | Fenster offen | Gerät neutral, nicht im SOC, nicht verteilt, auch im Rückfall | – |
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |
@@ -79,7 +78,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 | Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |
 
-Nicht umgesetzt (Status nicht `beschlossen`): FR-LOAD-01 (Vorschlag).
+Alle beschlossenen Anforderungen sind umgesetzt.
 
 ## Aufzeichnung (FR-OBS-01)
 

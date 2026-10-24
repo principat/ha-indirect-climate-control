@@ -1,7 +1,7 @@
-# 60 Lastregelung über Temperaturereignisse (Konzept, nicht umgesetzt)
+# 60 Lastregelung über Temperaturereignisse
 
-Status: **Vorschlag zur Freigabe**, Stand 24.10.2026. Grundlage sind FR-LOAD-01 und FR-LOAD-02 (Fachspec, Status Vorschlag) und die
-Vorgaben des Nutzers aus diesem Gespräch. Umsetzung steht aus.
+Status: **freigegeben und umgesetzt am 24.10.2026** (`core/load.py`, Anbindung in `controller.py` und `coordinator.py`). Grundlage
+sind FR-LOAD-01 und FR-LOAD-02 und die Vorgaben des Nutzers aus diesem Gespräch. Das Konzept ist an Messwerten noch nicht geprüft.
 
 ## Warum keine festen Zeitfenster
 
@@ -84,7 +84,7 @@ Das Kriterium nutzt nur Größen, die die Integration für jede Anlage kennt ode
 Das Kriterium ist eine Annahme, bis es an Messwerten geprüft ist. Die Beobachtungen werden in der Aufzeichnung (FR-OBS-01) um Beruhigungszeit
 und Änderung ergänzt, damit man es an echten Daten prüfen kann.
 
-## Offen vor der Umsetzung
+## Offen (Annahmen, bis zur Prüfung an Messwerten)
 
 1. **Lernrate** und Ausreißergrenzen für `p_i`: Vorschlag wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den
    Startwert durch ihren Median, danach gleitend mit Anteil 0,2, höchstens ±25 % je Beobachtung).

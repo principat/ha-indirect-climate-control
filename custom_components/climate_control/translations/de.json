@@ -142,6 +142,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
+            "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -203,7 +204,14 @@
             },
             "help_area_m2": {
               "name": "Hilfe: Fläche",
-              "description": "Gewicht des Raums in den Untergrenzen für den Planer: Die Untergrenze ist der flächengewichtete Mittelwert der Sollwerte, große Räume zählen also stärker.",
+              "description": "Gewicht des Raums in den flächengewichteten Grenzen für den Planer und bei der Aufteilung der Pufferkapazität auf die Räume (Diagnosewerte).",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_step": {
+              "name": "Hilfe: Leistungsschritt (Sollwertschritt des Geräts, optional)",
+              "description": "Größe eines Leistungsschritts: Die Lastregelung verstellt den Sollwert dieses Geräts in Schritten dieser Größe (Abstand in der Einheit der Anlage, Standard 0,5). Den Sollwertschritt wählen, den das Gerät annimmt. Ein Gerät zieht mehr Leistung, je weiter sein Sollwert über der Gerätetemperatur liegt; die Leistung je Schritt wird je Gerät aus dem Betrieb gelernt.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -229,6 +237,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
+            "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -283,7 +292,14 @@
             },
             "help_area_m2": {
               "name": "Hilfe: Fläche",
-              "description": "Gewicht des Raums in den Untergrenzen für den Planer: Die Untergrenze ist der flächengewichtete Mittelwert der Sollwerte, große Räume zählen also stärker.",
+              "description": "Gewicht des Raums in den flächengewichteten Grenzen für den Planer und bei der Aufteilung der Pufferkapazität auf die Räume (Diagnosewerte).",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_step": {
+              "name": "Hilfe: Leistungsschritt (Sollwertschritt des Geräts, optional)",
+              "description": "Größe eines Leistungsschritts: Die Lastregelung verstellt den Sollwert dieses Geräts in Schritten dieser Größe (Abstand in der Einheit der Anlage, Standard 0,5). Den Sollwertschritt wählen, den das Gerät annimmt. Ein Gerät zieht mehr Leistung, je weiter sein Sollwert über der Gerätetemperatur liegt; die Leistung je Schritt wird je Gerät aus dem Betrieb gelernt.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -366,7 +382,8 @@
           "stop_ratio": "Abschaltschwelle (Anteil von Pmin)",
           "min_run_s": "Mindestlaufzeit der Anlage (s)",
           "tie_band_k": "Gleichstand-Band",
-          "heat_offset_k": "Heiz-Offset über Gerätetemperatur",
+          "load_deadband_ratio": "Totband der Lastregelung (Anteil von Pmin)",
+          "load_settle_max_s": "Höchstzeit für die Beruhigung der Außenleistung (s)",
           "neutral_mode": "Neutraler Modus",
           "cycle_s": "Regelzyklus (s)"
         },
@@ -399,9 +416,16 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_heat_offset_k": {
-            "name": "Hilfe: Heiz-Offset über Gerätetemperatur",
-            "description": "Ein bedientes Gerät erhält als Sollwert seine Gerätetemperatur plus diesen Offset (höchstens die Überlastgrenze). Größerer Offset bedeutet mehr Leistung je Gerät. Standard 1 K.",
+          "help_load_deadband_ratio": {
+            "name": "Hilfe: Totband der Lastregelung (Anteil von Pmin)",
+            "description": "Anteil von Pmin um die angeforderte Leistung, innerhalb dessen die Lastregelung nichts verstellt. Zugleich die Toleranz, innerhalb der die Außenleistung nach einer Verstellung als beruhigt gilt. Standard 0,1 (10 %).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_load_settle_max_s": {
+            "name": "Hilfe: Höchstzeit für die Beruhigung der Außenleistung (s)",
+            "description": "Nach einer Verstellung wartet die Lastregelung, bis sich die Außenleistung beruhigt hat, um die Leistung je Schritt zu lernen. Beruhigt sie sich in dieser Zeit nicht, wird nichts gelernt. Die Wartezeit passt sich der Anlage an (das Dreifache der üblichen Beruhigungszeit, höchstens dieser Wert). Standard 600 s (10 min).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -669,6 +693,9 @@
       },
       "room_heat_demand": {
         "name": "Wärmebedarf"
+      },
+      "room_step_power": {
+        "name": "Leistung je Schritt"
       },
       "room_storage": {
         "name": "Speicherkapazität"

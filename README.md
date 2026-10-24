@@ -61,6 +61,8 @@ settings are opened. Several installations can be set up side by side.
 
 **Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: device temperatures and setpoints are then °F. All distances (control range, absolute limit, SOC scale, offset, band, thresholds) are numbers in the unit of the plant with the same start values: 1 K becomes 1 °C or 1 °F. Setpoints already entered are not converted when the unit is changed.
 
+**Load control.** The outdoor unit's power follows the requested power by moving the setpoints of the indoor units in power steps (optional per unit, default 0.5 in the unit of the plant). It reacts to temperature changes of the served units, not to fixed time windows. A step moves two units, one of the largest and one of the smallest power class; setpoints first, then more units. Nothing is adjusted within a dead band of 10 % of Pmin, and the plant never runs below two power steps. The power per step is learned per indoor unit from the settled outdoor power (diagnostic sensor *Power per step* on each indoor unit); until then (Pmax − Pmin) / (2 × number of units) applies. Concept: `docs/spec/technical/60-load-control.md`.
+
 **Heating or cooling.** The plant heats by default. An optional switch (switch, binary sensor or input boolean) in the
 installation selects cooling: off = heating, on = cooling; without the entity, or while it is unavailable, the plant heats.
 Cooling mirrors everything: the buffer is a cold store (SOC 30 °C = 0 %, 15 °C = 100 %), the units cool, and the limits
@@ -271,6 +273,8 @@ Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt 
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
 **Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen und Sollwerte) sind dann °F. Alle Abstände (Regelbereich, absolute Grenze, SOC-Skala, Offset, Band, Schwellen) sind Zahlen in der Einheit der Anlage mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Bereits eingegebene Sollwerte werden beim Wechsel der Einheit nicht umgerechnet.
+
+**Lastregelung.** Die Leistung des Außengeräts folgt der angeforderten Leistung, indem die Sollwerte der Innengeräte in Leistungsschritten verstellt werden (optional je Gerät, Standard 0,5 in der Einheit der Anlage). Sie reagiert auf Temperaturänderungen der bedienten Geräte, nicht auf feste Zeitfenster. Ein Schritt verstellt zwei Geräte, eines der größten und eines der kleinsten Leistungsklasse, erst die Sollwerte, dann weitere Geräte. Innerhalb eines Totbands von 10 % von Pmin wird nichts verstellt, und die Anlage läuft nie unter zwei Leistungsschritten. Die Leistung je Schritt wird je Innengerät aus der beruhigten Außenleistung gelernt (Diagnose-Sensor *Leistung je Schritt* am Innengerät), bis dahin gilt (Pmax − Pmin) / (2 × Zahl der Geräte). Konzept: `docs/spec/technical/60-load-control.md`.
 
 **Heizen oder Kühlen.** Standard ist Heizen. Ein optionaler Schalter (Schalter, Binärsensor oder Ein/Aus-Helfer) in der
 Anlage wählt das Kühlen: aus = Heizen, ein = Kühlen; ohne Entität oder solange sie nicht verfügbar ist, wird geheizt.

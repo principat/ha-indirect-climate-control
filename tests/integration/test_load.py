@@ -1,0 +1,133 @@
+"""Integration level: load control (FR-LOAD-01) and the power per step learned per unit (FR-LOAD-02)."""
+
+from datetime import timedelta
+from typing import Any
+
+import pytest
+from freezegun.api import FrozenDateTimeFactory
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
+
+from custom_components.climate_control.const import DOMAIN, SERVICE_RESET_LEARNED
+
+from .fakes import ROOMS, FakeUnits, run_cycle, set_plan
+
+A, B, C = ROOMS
+POWER = "sensor.outdoor_power"
+
+
+async def _minute(hass: HomeAssistant, freezer: FrozenDateTimeFactory, watts: float, kw: float) -> None:
+    freezer.tick(timedelta(minutes=1))
+    set_plan(hass, kw)
+    hass.states.async_set(POWER, str(watts), {"unit_of_measurement": "W"})
+    await run_cycle(hass)
+
+
+@pytest.mark.req("FR-LOAD-01")
+async def test_the_step_size_is_an_optional_field_of_the_indoor_unit_in_the_unit_of_the_plant(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 0)
+    entry = await setup_entry()
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "room"), context={"source": "user"}
+    )
+    schema = {str(m): (m, v) for m, v in result["data_schema"].schema.items()}
+    marker, selector = schema["step"]
+    assert marker.default() == 0.5 and selector.config["unit_of_measurement"] == "°C"
+    assert "help_step" in schema
+    minimal = {
+        "entity_id": "climate.extra",
+        "name": "X",
+        "setpoint_c": 21.0,
+        "nominal_power_w": 700,
+        "area_m2": 10,
+    }
+    added = await hass.config_entries.subentries.async_configure(
+        result["flow_id"], minimal
+    )  # the field is optional
+    assert added["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.runtime_data.cfg.room("climate.extra").step == 0.5
+
+
+@pytest.mark.req("FR-LOAD-01")
+async def test_the_setpoint_of_a_served_unit_lies_the_steps_beyond_its_device_temperature(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 2.0)
+    entry = await setup_entry(a={"step": 1.0})
+    result = entry.runtime_data.data.result
+    assert result.steps and sum(result.steps.values()) >= 2
+    for entity_id, steps in result.steps.items():
+        step = 1.0 if entity_id == A else 0.5
+        assert units.target(entity_id) == pytest.approx(20 + steps * step)
+    assert abs(result.expected_w - 2000) <= 130 + 170  # within the dead band and the size of a step
+
+
+@pytest.mark.req("FR-LOAD-02")
+async def test_the_power_per_step_is_a_diagnostic_sensor_per_indoor_unit_with_the_start_value(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 0)
+    entry = await setup_entry()
+    registry = er.async_get(hass)
+    sensors = [
+        e
+        for e in registry.entities.values()
+        if e.config_entry_id == entry.entry_id and e.translation_key == "room_step_power"
+    ]
+    assert len(sensors) == len(ROOMS)
+    assert {e.entity_category for e in sensors} == {er.EntityCategory.DIAGNOSTIC}
+    for sensor in sensors:
+        assert float(hass.states.get(sensor.entity_id).state) == pytest.approx(
+            2000 / 6
+        )  # (Pmax - Pmin) / (2 x 3)
+
+
+@pytest.mark.req("FR-LOAD-02")
+async def test_the_power_per_step_is_learned_from_the_outdoor_power_and_survives_a_restart(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry: Any,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
+) -> None:
+    set_plan(hass, 0)
+    hass.states.async_set(POWER, "20", {"unit_of_measurement": "W"})
+    entry = await setup_entry()
+    for _ in range(4):
+        await _minute(hass, freezer, 20, 0)  # the idle power before the plant starts
+    await _minute(hass, freezer, 20, 2.0)  # the plant starts, the load control sets the steps
+    assert entry.runtime_data.data.result.steps
+    for watts in (400, 900, 1400, 1950, 2000, 2000, 2000, 2000):  # the outdoor power follows with a lag
+        await _minute(hass, freezer, watts, 2.0)
+    model = entry.runtime_data.controller.load_model
+    assert model.units, "nothing was learned"
+    assert all(item.estimates >= 1 for item in model.units.values())
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    stored = hass_storage[f"{DOMAIN}.{entry.entry_id}.learned"]["data"]["load"]
+    assert set(stored) == set(model.units)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert set(entry.runtime_data.controller.load_model.units) == set(stored)  # restored
+
+
+@pytest.mark.req("FR-LOAD-02")
+async def test_the_reset_service_also_resets_the_power_per_step(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 0)
+    entry = await setup_entry()
+    model = entry.runtime_data.controller.load_model
+    for value in (300.0, 400.0, 500.0):
+        model.update_unit(
+            A,
+            value,
+            entry.runtime_data.data.result.planned_w and None or __import__("datetime").datetime.now(),
+        )
+    assert model.power(A, 333.0) == 400.0
+    await hass.services.async_call(DOMAIN, SERVICE_RESET_LEARNED, blocking=True)
+    await hass.async_block_till_done()
+    assert not model.units

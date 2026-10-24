@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .config import InstallationConfig, RoomConfig
-from .distribution import rank, select
+from .distribution import rank
+from .load import LoadControl, LoadModel
 from .model import WITH_SETPOINT, Command, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
@@ -28,6 +29,8 @@ class CycleResult:
     plan_missing_s: float = 0.0  # how long the plan has been missing or stale (0 = plan valid)
     temperatures: dict[str, float] = field(default_factory=dict)  # filtered device temperatures used
     season: Season = Season.HEAT
+    steps: dict[str, int] = field(default_factory=dict)  # power steps per served unit (FR-LOAD-01)
+    expected_w: float = 0.0  # load expected from the learned power per step
 
 
 class Controller:
@@ -44,11 +47,29 @@ class Controller:
         self._run_since: datetime | None = None
         self._season = Season.HEAT
         self.running = False
+        self.load_model = LoadModel()
+        self._load = LoadControl(self.load_model)
+        self._disturbance: tuple[object, ...] = ()
 
     def _held(self, now: datetime) -> bool:
         """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
         since = self._run_since
         return since is not None and (now - since).total_seconds() < self.cfg.params.min_run_s
+
+    def _disturbance_of(
+        self,
+        cfg: InstallationConfig,
+        rooms: Mapping[str, RoomState],
+        active: list[RoomConfig],
+        temps: Mapping[str, float],
+        season: Season,
+    ) -> tuple[object, ...]:
+        """What else moves the load besides the load control: protection, open windows, the season."""
+        protected = frozenset(
+            r.id for r in active if season.sign * (r.setpoint_c - temps[r.id]) > r.discharge_limit(season)
+        )
+        windows = frozenset(rid for rid, s in rooms.items() if s.window_open)
+        return (protected, windows, season)
 
     def step(
         self,
@@ -57,6 +78,7 @@ class Controller:
         rooms: Mapping[str, RoomState],
         setpoints: Mapping[str, float] | None = None,
         season: Season = Season.HEAT,
+        outdoor_power_w: float | None = None,
     ) -> CycleResult:
         """`setpoints` overrides the configured setpoint of a room for this cycle (variable source).
 
@@ -72,6 +94,7 @@ class Controller:
             self._overheat_since.clear()
             self._run_since = None
             self.running = False
+            self._load.reset()
         sign = season.sign
         main_mode = season.mode
         temps: dict[str, float] = {}
@@ -99,6 +122,7 @@ class Controller:
             else:
                 self._overheat_since.pop(r.id, None)
 
+        self._load.feed(now, outdoor_power_w, cfg)  # the load control watches the outdoor power every cycle
         targets: dict[str, Command] = {}
         planned_w = plan.power_at(now) if plan is not None else None
         plan_missing = plan is None or plan.is_stale(now, p.plan_max_age_s)
@@ -115,6 +139,7 @@ class Controller:
         served: tuple[RoomConfig, ...] = ()
         if plan_missing and not fallback:
             # Waiting: units stay as they are (the protection rules below still apply).
+            self._load.reset()
             targets = {r.id: Command(rooms[r.id].mode) for r in active}  # type: ignore[arg-type]
         elif fallback:
             # Fallback: units are switched to the season's mode (heating or cooling) with their standard
@@ -122,6 +147,7 @@ class Controller:
             # Running units stay on.
             self.running = False
             self._run_since = None
+            self._load.reset()
             tiers = rank(
                 [(r, sign * (r.setpoint_c - temps[r.id])) for r in active], p.tie_band_k, cfg.class_order
             )
@@ -149,16 +175,26 @@ class Controller:
             if not run:
                 self._run_since = None
             self.running = run
+            unit_steps: dict[str, int] = {}
             if run:
                 tiers = rank(
                     [(r, sign * (r.setpoint_c - temps[r.id])) for r in eligible],
                     p.tie_band_k,
                     cfg.class_order,
                 )
-                served = select(tiers, requested_w)
+                ranked = [r for tier in tiers for group in tier for r in group]
+                disturbance = self._disturbance_of(cfg, rooms, active, temps, season)
+                unit_steps = self._load.update(
+                    now, cfg, season, requested_w, ranked, disturbance != self._disturbance
+                )
+                self._disturbance = disturbance
+                served = tuple(r for r in ranked if unit_steps.get(r.id, 0) > 0)
+            else:
+                self._load.reset()
             for r in active:
-                if r in served:
-                    target = temps[r.id] + sign * p.heat_offset_k
+                if unit_steps.get(r.id, 0) > 0:
+                    # FR-LOAD-01: the setpoint lies `steps x step` beyond the device reading, within the limit
+                    target = temps[r.id] + sign * unit_steps[r.id] * r.step
                     limit = r.setpoint_c + sign * r.charge_limit(season)
                     targets[r.id] = Command(main_mode, min(target, limit) if sign > 0 else max(target, limit))
                 else:
@@ -204,4 +240,6 @@ class Controller:
             plan_missing_s=missing_s,
             temperatures=temps,
             season=season,
+            steps=dict(self._load.steps),
+            expected_w=self._load.expected_w,
         )

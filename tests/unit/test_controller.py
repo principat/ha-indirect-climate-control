@@ -193,8 +193,8 @@ def test_overload_limit_is_per_room() -> None:
     from dataclasses import replace
 
     cool_room = replace(room("a"), band_up=1.0, limit_up=1.0)  # absolute limit 1 above the setpoint of 21
-    ctrl = Controller(installation(cool_room, room("b"), heat_offset_k=3.0))
+    ctrl = Controller(installation(cool_room, room("b")))
     result = ctrl.step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a reached its own overload limit
-    result = ctrl.step(T0, plan(2000), states({"a": 21.0, "b": 20.0}))
-    assert result.commands["a"].target_c == 22.0  # 21 + 3 K capped at the room's limit, not at 28
+    result = ctrl.step(T0, plan(2000), states({"a": 21.5, "b": 20.0}))
+    assert result.commands["a"].target_c == 22.0  # 21.5 + 2 steps capped at the room's own limit

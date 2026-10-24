@@ -210,6 +210,12 @@ ROOM_SENSORS: tuple[RoomSensorDescription, ...] = (
         unit=UnitOfEnergy.KILO_WATT_HOUR,
     ),
     RoomSensorDescription(
+        key="room_step_power",
+        value=lambda r: r.step_power_w,
+        unit=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+    ),
+    RoomSensorDescription(
         key="room_storage",
         value=lambda r: r.storage_kwh,
         unit=UnitOfEnergy.KILO_WATT_HOUR,

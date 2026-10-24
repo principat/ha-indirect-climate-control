@@ -42,13 +42,12 @@ def test_below_the_absolute_limit_the_room_is_heated_without_a_plan() -> None:
 
 @pytest.mark.req("FR-BAND-01")
 def test_above_the_absolute_limit_the_room_is_not_heated_any_further() -> None:
-    cfg = installation(replace(room("a"), band_up=0.5, limit_up=1.0), room("b"), heat_offset_k=3.0)
+    cfg = installation(replace(room("a"), band_up=0.5, limit_up=1.0), room("b"))
     result = Controller(cfg).step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a is 1 above its setpoint: at its limit
-    capped = Controller(cfg).step(T0, plan(2000), states({"a": 21.0, "b": 21.0}))
-    assert (
-        capped.commands["a"].target_c == 22.0 and capped.commands["b"].target_c == 24.0
-    )  # 21 + 3, capped at +1
+    near = Controller(cfg).step(T0, plan(2000), states({"a": 21.5, "b": 21.5}))
+    # a would get a setpoint of 21.5 + 2 steps of 0.5, but never beyond 1 above its setpoint of 21
+    assert near.commands["a"].target_c == 22.0 and near.commands["b"].target_c > 22.0
 
 
 @pytest.mark.req("FR-BAND-01")

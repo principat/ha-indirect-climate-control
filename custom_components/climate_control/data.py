@@ -20,6 +20,7 @@ from .const import (
     ROOM_NAME,
     ROOM_POWER,
     ROOM_SETPOINT,
+    ROOM_STEP,
     SUBENTRY_ROOM,
 )
 from .core.config import InstallationConfig, Parameters, RoomConfig
@@ -63,6 +64,7 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
             band_up=float(r.get(ROOM_BAND_UP, RoomConfig.band_up)),
             limit_down=float(r.get(ROOM_LIMIT_DOWN, RoomConfig.limit_down)),
             limit_up=float(r.get(ROOM_LIMIT_UP, RoomConfig.limit_up)),
+            step=float(r.get(ROOM_STEP, RoomConfig.step)),
         )
         for r in room_data(entry)
     )

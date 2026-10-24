@@ -1,4 +1,4 @@
-"""FR-DIST-01 / FR-DIST-02: which indoor units run for a requested power."""
+"""FR-DIST-01 / FR-DIST-02: the order in which the indoor units are served (taken by the load control)."""
 
 from __future__ import annotations
 
@@ -29,16 +29,3 @@ def rank(
         groups = [tuple(room for _, (room, _) in members if room.power_class == cls) for cls in class_order]
         tiers.append(tuple(g for g in groups if g))
     return tuple(tiers)
-
-
-def select(tiers: Sequence[Tier], requested_w: float) -> tuple[RoomConfig, ...]:
-    """Add whole groups in rank order until their nominal power covers the request."""
-    chosen: list[RoomConfig] = []
-    total = 0.0
-    for tier in tiers:
-        for group in tier:
-            if chosen and total >= requested_w:
-                return tuple(chosen)
-            chosen.extend(group)
-            total += sum(r.nominal_power_w for r in group)
-    return tuple(chosen)

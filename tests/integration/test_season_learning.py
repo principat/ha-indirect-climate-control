@@ -43,7 +43,7 @@ def _value(hass: HomeAssistant, entity_id: str) -> float:
 async def test_without_a_switch_the_plant_heats(hass: HomeAssistant, units: FakeUnits) -> None:
     set_plan(hass, 2.0)
     await _setup(hass, season=False)
-    assert {units.mode(e) for e in ROOMS} == {"heat"}
+    assert "heat" in {units.mode(e) for e in ROOMS} and "cool" not in {units.mode(e) for e in ROOMS}
 
 
 @pytest.mark.req("FR-SEAS-01")
@@ -51,7 +51,7 @@ async def test_an_unavailable_or_off_switch_means_heating(hass: HomeAssistant, u
     set_plan(hass, 2.0)
     hass.states.async_set(SWITCH, "unavailable")
     await _setup(hass)
-    assert {units.mode(e) for e in ROOMS} == {"heat"}
+    assert "heat" in {units.mode(e) for e in ROOMS} and "cool" not in {units.mode(e) for e in ROOMS}
 
 
 @pytest.mark.req("FR-SEAS-01")
@@ -64,7 +64,7 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     set_plan(hass, 2.0)
     hass.states.async_set(SWITCH, "on")
     await _setup(hass)
-    assert {units.mode(e) for e in ROOMS} == {"cool"}
+    assert {units.mode(e) for e in (A, B)} == {"cool"} and units.mode(C) == "fan_only"  # the pair of 2 kW
     assert units.target(A) == 21.0  # beyond the hard maximum: cooled to the setpoint
     soc = hass.states.get("sensor.climate_control_state_of_charge")
     assert soc is not None and float(soc.state) == pytest.approx(13.33, abs=0.01)  # 4 above the setpoint
@@ -81,7 +81,9 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     assert {units.mode(e) for e in ROOMS} == {"fan_only"}  # first neutral ...
     assert "heat" not in {c[2] for c in units.calls}
     await run_cycle(hass)
-    assert {units.mode(e) for e in ROOMS} == {"heat"}  # ... then heating
+    assert "heat" in {units.mode(e) for e in ROOMS} and "cool" not in {
+        units.mode(e) for e in ROOMS
+    }  # ... then heating
 
 
 async def _warm_up(

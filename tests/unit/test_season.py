@@ -38,7 +38,7 @@ def _modes(result) -> dict[str, Mode]:  # noqa: ANN001
 def test_heating_is_the_default() -> None:
     result = Controller(installation()).step(T0, plan(2000), states({"a": 20.0, "b": 20.0, "c": 20.0}))
     assert result.season is Season.HEAT
-    assert set(_modes(result).values()) == {Mode.HEAT}
+    assert Mode.HEAT in _modes(result).values() and Mode.COOL not in _modes(result).values()
 
 
 @pytest.mark.req("FR-SEAS-01")
@@ -113,8 +113,9 @@ def test_cooling_target_never_goes_below_the_absolute_limit_below_the_setpoint()
     # absolute limit below the setpoint is 3: the room is already there
     result = _cool(Controller(cfg), {"a": 18.0, "b": 22.0, "c": 22.0}, 1.5)
     assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible
-    near = _cool(Controller(cfg), {"a": 18.5, "b": 22.0, "c": 22.0}, 1.5)
-    assert near.commands["a"].target_c == 18.0  # 18.5 - 1 would pass the limit: held at it
+    near = _cool(Controller(cfg), {"a": 18.5, "b": 18.5, "c": 18.5}, 1.5)
+    assert "a" in near.served
+    assert near.commands["a"].target_c == 18.0  # 18.5 - 1 step would pass the limit: held at it
 
 
 @pytest.mark.req("FR-SEAS-02")

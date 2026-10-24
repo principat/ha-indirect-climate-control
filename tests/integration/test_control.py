@@ -63,9 +63,10 @@ async def test_setpoint_is_set_again_after_mode_change(
 ) -> None:  # noqa: ANN001
     set_plan(hass, 2.0)
     await setup_entry()
-    for entity_id in ROOMS:
-        assert units.mode(entity_id) == "heat"
-        assert units.target(entity_id) == 21.0  # 20 degC + 1 K offset, not the remembered 18
+    heating = [e for e in ROOMS if units.mode(e) == "heat"]
+    assert len(heating) == 2  # the load control serves two units for 2 kW (one step pair at a time)
+    for entity_id in heating:
+        assert units.target(entity_id) == 21.5  # 20 degC + 3 power steps of 0.5, not the remembered 18
         own = [c[1] for c in units.calls if c[0] == entity_id]
         assert own == ["set_hvac_mode", "set_temperature"]
     units.calls.clear()
@@ -76,8 +77,12 @@ async def test_setpoint_is_set_again_after_mode_change(
 @pytest.mark.req("FR-SAFE-01")
 async def test_open_window_room_is_not_heated(hass: HomeAssistant, units: FakeUnits, setup_entry) -> None:  # noqa: ANN001
     hass.states.async_set("binary_sensor.window_a", "on")
-    set_plan(hass, 2.0)
-    await setup_entry(a={"window_entity": "binary_sensor.window_a"})
+    set_plan(
+        hass, 3.3
+    )  # with steps of 1 the two other units cannot carry it alone: the third joins after the window
+    await setup_entry(
+        a={"window_entity": "binary_sensor.window_a", "step": 1.0}, b={"step": 1.0}, c={"step": 1.0}
+    )
     assert units.mode(A) == "fan_only"
     assert {units.mode(B), units.mode(C)} == {"heat"}
     hass.states.async_set("binary_sensor.window_a", "off")
@@ -273,7 +278,7 @@ async def test_diagnostic_sensors_per_indoor_unit(hass: HomeAssistant, units: Fa
     own = [
         e for e in ent_reg.entities.values() if e.config_entry_id == entry.entry_id and e.config_subentry_id
     ]
-    assert len(own) == 3 * len(ROOMS)
+    assert len(own) == 4 * len(ROOMS)
     assert {e.entity_category for e in own} == {er.EntityCategory.DIAGNOSTIC}
     first = next(iter(entry.subentries.values()))
     room_entities = {e.translation_key: e.entity_id for e in own if e.config_subentry_id == first.subentry_id}
@@ -297,8 +302,12 @@ async def test_any_of_several_window_contacts_opens_the_room(
 ) -> None:
     hass.states.async_set("binary_sensor.window_a1", "off")
     hass.states.async_set("binary_sensor.window_a2", "on")
-    set_plan(hass, 2.0)
-    await setup_entry(a={"window_entity": ["binary_sensor.window_a1", "binary_sensor.window_a2"]})
+    set_plan(hass, 3.3)
+    await setup_entry(
+        a={"window_entity": ["binary_sensor.window_a1", "binary_sensor.window_a2"], "step": 1.0},
+        b={"step": 1.0},
+        c={"step": 1.0},
+    )
     assert units.mode(A) == "fan_only" and units.mode(B) == "heat"
     hass.states.async_set("binary_sensor.window_a2", "off")
     await run_cycle(hass)
@@ -315,11 +324,11 @@ async def test_started_plant_keeps_running_for_the_minimum_run_time(
     running = "binary_sensor.climate_control_running"
     set_plan(hass, 2.0)
     await setup_entry()
-    assert _state(hass, running).state == "on" and {units.mode(e) for e in ROOMS} == {"heat"}
+    assert _state(hass, running).state == "on" and "heat" in {units.mode(e) for e in ROOMS}
     freezer.tick(timedelta(minutes=2))
     set_plan(hass, 0)  # the planner flips to 0, as HAEO does every other update
     await run_cycle(hass)
-    assert _state(hass, running).state == "on" and {units.mode(e) for e in ROOMS} == {"heat"}
+    assert _state(hass, running).state == "on" and "heat" in {units.mode(e) for e in ROOMS}
     assert float(_state(hass, "sensor.climate_control_requested_power").state) == 1300  # held at Pmin
     freezer.tick(timedelta(minutes=7))
     set_plan(hass, 0)
@@ -349,7 +358,7 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
-    assert {r["unit"] for r in heating} == set(ROOMS) and heating[0]["target_c"] == 21.0
+    assert len({r["unit"] for r in heating}) == 2 and heating[0]["target_c"] == 21.5
     size = path.stat().st_size
     await run_cycle(hass)  # nothing changed: nothing recorded
     assert path.stat().st_size == size

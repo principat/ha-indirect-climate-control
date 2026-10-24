@@ -69,9 +69,12 @@ def test_held_plant_serves_at_least_pmin_worth_of_rooms() -> None:
     cfg = installation(room("a", power=700), room("b", power=700), room("c", power=700))
     ctrl = Controller(cfg)
     first = _step(ctrl, 0, 3.0)
-    assert len(first.served) == 3  # 3300 W requested: all rooms
+    assert (
+        len(first.served) >= 2 and abs(first.expected_w - 3000) <= 130
+    )  # 3000 W requested, within the dead band
     held = _step(ctrl, 3, 0.0)
-    assert held.requested_w == 1300 and len(held.served) == 3  # one tier of equal deviation
+    assert held.requested_w == 1300 and len(held.served) >= 2  # Pmin and at least the two units of the floor
+    assert abs(held.expected_w - 1300) <= 130
 
 
 @pytest.mark.req("FR-SAFE-04")

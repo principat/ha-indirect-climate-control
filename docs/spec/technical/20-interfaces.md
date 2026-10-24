@@ -5,7 +5,7 @@
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
 | Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Temperatureeinheit (`temperature_unit`: `celsius` Standard oder `fahrenheit`, FR-UNIT-01), Pmin, Pmax, Leistungssensor des Außengeräts (Pflicht, `outdoor_power_entity`; fehlt er in älteren Einträgen, erinnert eine Reparaturmeldung), Kühlen-Schalter optional (`season_entity`: `switch`, `binary_sensor`, `input_boolean`; aus oder fehlend = Heizen), Planer-Sensor(en) optional | `entry.data`, Titel |
-| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest, Ersatzwert), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn plausibel: 5–30 °C bzw. 41–86 °F), optional Regelbereich und absolute Grenze (`band_down`, `band_up`, `limit_down`, `limit_up`, Standard 2/2/3/3, in der Einheit der Anlage), Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
+| Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest, Ersatzwert), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn plausibel: 5–30 °C bzw. 41–86 °F), optional Regelbereich und absolute Grenze (`band_down`, `band_up`, `limit_down`, `limit_up`, Standard 2/2/3/3, in der Einheit der Anlage), optional Leistungsschritt (`step`, Standard 0,5, der Sollwertschritt des Geräts), Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow: Menü mit `plan` (Planer-Sensor) und `sensors` (Leistungssensor des Außengeräts, Kühlen-Schalter; beide schreiben `entry.data`, ein leeres Schalterfeld entfernt ihn) sowie den Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
 
@@ -82,6 +82,8 @@ Entladeseite (Min Charge, Undercharge), die unter dem Sollwert die Ladeseite (Ma
 Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation` (K), `room_heat_demand` (kWh),
 `room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).
 
+Je Innengerät zusätzlich `room_step_power` (W): gelernte Leistung je Leistungsschritt, Startwert (Pmax − Pmin) / (2 × Zahl der Geräte) (FR-LOAD-02). Gespeichert im selben `Store` unter `load`.
+
 Gelernte Kapazität (FR-PLNR-02/03): Diagnose-Sensoren `learned_heat_capacity` und `learned_cool_capacity` (kWh/K, nur lesbar),
 Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einzelschätzungen in kWh/K). Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.
 
@@ -94,7 +96,7 @@ Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einze
 
 ## Aufzeichnung (FR-OBS-01)
 
-Datei `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` (JSON-Zeilen, Ereignisse `plant` und `unit`), Aufbau siehe
+Datei `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` (JSON-Zeilen, Ereignisse `plant` mit u. a. `expected_w` und `unit`), Aufbau siehe
 `10-architecture.md`.
 
 ## Geräte

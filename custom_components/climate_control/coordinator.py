@@ -45,6 +45,7 @@ from .core.controller import Controller, CycleResult
 from .core.diagnostics import RoomDiagnostics, room_diagnostics
 from .core.journal import Journal, UnitRecord
 from .core.learning import CapacityLearner, Learned
+from .core.load import start_power_w
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
@@ -97,6 +98,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._journal = Journal()
         self._journal_path = Path(hass.config.path(DOMAIN, f"{entry.entry_id}.jsonl"))
         self._learned_dirty = False  # changed since the last write
+        self._load_revision = 0
+        self._last_power: float | None = None
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
         )
@@ -109,19 +112,30 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         stored = await self._store.async_load()
         if stored:
             self.learner.restore(stored)
+            if self.controller is not None and isinstance(stored.get("load"), dict):
+                self.controller.load_model.restore(stored["load"])
 
     async def async_reset_learned(self) -> None:
         """FR-PLNR-03: back to the start values (service, not offered in the daily use)."""
         self.learner.reset()
+        if self.controller is not None:
+            self.controller.load_model.reset()
         self._learned_dirty = False
-        await self._store.async_save(self.learner.snapshot())
+        await self._store.async_save(self._stored())
         await self.async_request_refresh()
 
     async def async_shutdown(self) -> None:
         if self._learned_dirty:  # a reload must not lose what the delayed write has not stored yet
             self._learned_dirty = False
-            await self._store.async_save(self.learner.snapshot())
+            await self._store.async_save(self._stored())
         await super().async_shutdown()
+
+    def _stored(self) -> dict[str, Any]:
+        """What was learned: capacity per season and power per step of each unit (FR-PLNR-02, FR-LOAD-02)."""
+        data = self.learner.snapshot()
+        if self.controller is not None:
+            data["load"] = self.controller.load_model.snapshot()
+        return data
 
     @property
     def commissioning(self) -> bool:
@@ -136,13 +150,18 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         rooms = {r.id: self._room_state(r.id) for r in self.cfg.rooms}
         setpoints = self._read_setpoints()
         season = self._read_season()
-        result = self.controller.step(now, plan, rooms, setpoints, season)
+        power = self._read_power()
+        # the mean of this and the last reading stands for the cycle (no extra sampling between the cycles)
+        mean_power = power if power is None or self._last_power is None else (power + self._last_power) / 2
+        self._last_power = power
+        result = self.controller.step(now, plan, rooms, setpoints, season, mean_power)
         if self.commissioning:
             # No planner output configured yet: publish SOC and planner values, never touch the units.
             result = replace(result, commands={}, running=False, fallback=False, requested_w=0.0, served=())
         for entity_id, command in result.commands.items():
             await self._apply(entity_id, command)
-        self._learn(now, season, result.running, rooms)
+        self._learn(now, season, result.running, rooms, power)
+        self._store_load_changes()
         await self._record(now, result)
         current = replace(
             self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
@@ -151,8 +170,15 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         learned = {
             s: replace(item, bootstrap=list(item.bootstrap)) for s, item in self.learner.learned.items()
         }
+        start = start_power_w(self.cfg)
+        step_power = {r.id: self.controller.load_model.power(r.id, start) for r in self.cfg.rooms}
         return CycleData(
-            result, planner, plan, room_diagnostics(current, result.temperatures, season), season, learned
+            result,
+            planner,
+            plan,
+            room_diagnostics(current, result.temperatures, season, step_power),
+            season,
+            learned,
         )
 
     async def _record(self, now: datetime, result: CycleResult) -> None:
@@ -176,6 +202,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             "soc_pct": result.soc_pct,
             "planned_w": result.planned_w,
             "requested_w": result.requested_w,
+            "expected_w": result.expected_w,
             "fallback": result.fallback,
         }
         rows = self._journal.record(now, result.running, units, context)
@@ -191,17 +218,28 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             return Season.COOL
         return Season.HEAT
 
-    def _learn(self, now: datetime, season: Season, running: bool, rooms: dict[str, RoomState]) -> None:
-        """FR-PLNR-02: device temperatures as reported and the power."""
-        power: float | None = None
+    def _read_power(self) -> float | None:
+        """Electrical power of the outdoor unit in W, None while the sensor is missing or has no number."""
         state = self.hass.states.get(self._power_entity) if self._power_entity else None
-        if state is not None and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            try:
-                power = float(state.state)
-            except ValueError:
-                power = None
-            if power is not None and state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == "kW":
-                power *= 1000
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return None
+        try:
+            power = float(state.state)
+        except ValueError:
+            return None
+        return power * 1000 if state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == "kW" else power
+
+    def _store_load_changes(self) -> None:
+        """FR-LOAD-02: the learned power per step survives restarts."""
+        if self.controller is not None and self.controller.load_model.revision != self._load_revision:
+            self._load_revision = self.controller.load_model.revision
+            self._learned_dirty = True
+            self._store.async_delay_save(self._stored, 60)
+
+    def _learn(
+        self, now: datetime, season: Season, running: bool, rooms: dict[str, RoomState], power: float | None
+    ) -> None:
+        """FR-PLNR-02: device temperatures as reported and the power."""
         temps = {
             room_id: s.temperature_c
             for room_id, s in rooms.items()
@@ -212,7 +250,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             running = False
         if self.learner.update(now, season, running and not self.commissioning, temps, self._areas, power):
             self._learned_dirty = True
-            self._store.async_delay_save(self.learner.snapshot, 60)
+            self._store.async_delay_save(self._stored, 60)
 
     def _read_setpoints(self) -> dict[str, float]:
         """Current setpoints from configured entities. Invalid or missing values keep the fixed setpoint."""

@@ -165,8 +165,10 @@ def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> No
     heating = [u for u in UNITS if _state(sim, u)["state"] == "heat"]
     assert heating, "plan of 2 kW must start units"
     for unit in heating:
-        # The simulated unit restores its remembered 18 degC; the integration sets 20 + 1 K again.
-        assert _state(sim, unit)["attributes"]["temperature"] == 21.0
+        # The simulated unit restores its remembered 18 degC; the integration sets the device temperature of
+        # 20 plus its power steps (of 0.5) again, at most up to the absolute limit 3 above the setpoint.
+        target = _state(sim, unit)["attributes"]["temperature"]
+        assert 20.5 <= target <= SETPOINT + 3 and (target - 20) % 0.5 == 0
 
 
 def _wait_loaded(ha: requests.Session, entry_id: str, timeout: float = 30) -> None:

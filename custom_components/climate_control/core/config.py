@@ -37,6 +37,7 @@ class RoomConfig:
     band_up: float = 2.0
     limit_down: float = 3.0  # absolute limit below the setpoint: protection heats even without plan
     limit_up: float = 3.0  # absolute limit above the setpoint: no further heating (overload limit)
+    step: float = 0.5  # FR-LOAD-01: size of a power step, the setpoint step of this unit (plant's unit)
 
     # The buffer is charged towards "up" when heating and towards "down" when cooling (FR-SEAS-02).
     def discharge_band(self, season: Season) -> float:
@@ -64,7 +65,6 @@ class Parameters:
     start_ratio: float = 0.8
     stop_ratio: float = 0.5
     tie_band_k: float = 1.0
-    heat_offset_k: float = 1.0
     soc_smoothing_s: float = 900.0
     outlier_k: float = 2.0
     overheat_k: float = 3.0
@@ -84,6 +84,10 @@ class Parameters:
     neutral_mode: Mode = Mode.FAN
     cycle_s: float = 60.0
     min_run_s: float = 600.0
+    load_deadband_ratio: float = 0.1  # FR-LOAD-01: share of Pmin around the request where nothing is adjusted
+    load_settle_max_s: float = (
+        600.0  # FR-LOAD-02: longest wait for the outdoor power to settle after an adjustment
+    )
     fallback_delay_s: float = 600.0
     fallback_step_s: float = 120.0
 
@@ -112,6 +116,8 @@ class Parameters:
             raise ConfigError("fallback delay >= 0 and fallback step > 0 required")
         if self.min_run_s < 0:
             raise ConfigError("minimum run time must not be negative")
+        if not 0 <= self.load_deadband_ratio < 1 or self.load_settle_max_s <= 0:
+            raise ConfigError("load dead band in [0, 1) and a positive settling time required")
 
     @property
     def scale_k(self) -> float:
@@ -139,6 +145,8 @@ class InstallationConfig:
             raise ConfigError("capacity must be positive")
         self.params.validate()
         for r in self.rooms:
+            if r.step <= 0:
+                raise ConfigError(f"{r.id}: power step must be positive")
             if not 0 < r.band_down <= r.limit_down or not 0 < r.band_up <= r.limit_up:
                 raise ConfigError(f"{r.id}: 0 < control range <= absolute limit required in both directions")
 

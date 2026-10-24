@@ -142,6 +142,7 @@
             "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
+            "step": "Power step (setpoint step of the unit, optional)",
             "window_entity": "Window contacts"
           },
           "sections": {
@@ -203,7 +204,14 @@
             },
             "help_area_m2": {
               "name": "Help: Area",
-              "description": "Weight of the room in the lower bounds for the planner: the lower bound is the area-weighted mean of the setpoints, so large rooms count more.",
+              "description": "Weight of the room in the area-weighted limits for the planner and in the split of the buffer capacity among the rooms (diagnostic values).",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_step": {
+              "name": "Help: Power step (setpoint step of the unit, optional)",
+              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -229,6 +237,7 @@
             "limit_up": "Absolute limit above the setpoint → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
+            "step": "Power step (setpoint step of the unit, optional)",
             "window_entity": "Window contacts"
           },
           "sections": {
@@ -283,7 +292,14 @@
             },
             "help_area_m2": {
               "name": "Help: Area",
-              "description": "Weight of the room in the lower bounds for the planner: the lower bound is the area-weighted mean of the setpoints, so large rooms count more.",
+              "description": "Weight of the room in the area-weighted limits for the planner and in the split of the buffer capacity among the rooms (diagnostic values).",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_step": {
+              "name": "Help: Power step (setpoint step of the unit, optional)",
+              "description": "Size of one power step: the load control moves the setpoint of this unit in steps of this size (distance in the unit of the installation, default 0.5). Choose what the unit accepts as setpoint step. A unit draws more power the further its setpoint lies beyond its device temperature; the power per step is learned per unit from the operation.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -366,7 +382,8 @@
           "stop_ratio": "Stop threshold (share of Pmin)",
           "min_run_s": "Minimum run time of the plant (s)",
           "tie_band_k": "Tie band",
-          "heat_offset_k": "Heating offset above device temperature",
+          "load_deadband_ratio": "Load control dead band (share of Pmin)",
+          "load_settle_max_s": "Longest wait for the outdoor power to settle (s)",
           "neutral_mode": "Neutral mode",
           "cycle_s": "Control cycle (s)"
         },
@@ -399,9 +416,16 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_heat_offset_k": {
-            "name": "Help: Heating offset above device temperature",
-            "description": "A served unit gets its device temperature plus this offset as setpoint (at most the overload limit). A larger offset means more power per unit. Default 1 K.",
+          "help_load_deadband_ratio": {
+            "name": "Help: Load control dead band (share of Pmin)",
+            "description": "Share of Pmin around the requested power inside which the load control changes nothing. At the same time the tolerance for the outdoor power to count as settled after an adjustment. Default 0.1 (10 %).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_load_settle_max_s": {
+            "name": "Help: Longest wait for the outdoor power to settle (s)",
+            "description": "After an adjustment the load control waits until the outdoor power has settled to learn the power per step. If it does not settle within this time, nothing is learned. The wait adapts to the plant (three times the typical settling time, at most this value). Default 600 s (10 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -669,6 +693,9 @@
       },
       "room_heat_demand": {
         "name": "Heat demand"
+      },
+      "room_step_power": {
+        "name": "Power per step"
       },
       "room_storage": {
         "name": "Storage capacity"
