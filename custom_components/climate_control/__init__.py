@@ -17,6 +17,7 @@ from .const import (
     DOMAIN,
     LOGGER,
     ROOM_WINDOW,
+    SERVICE_RESET_LEARNED,
     SERVICE_RUN_CYCLE,
     SUBENTRY_ROOM,
 )
@@ -38,7 +39,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 coordinator: ClimateControlCoordinator = entry.runtime_data
                 await coordinator.async_refresh()
 
+    async def reset_learned(call: ServiceCall) -> None:
+        """FR-PLNR-03: only after fundamental changes to the plant."""
+        wanted = call.data.get(ATTR_CONFIG_ENTRY_ID)
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+            if wanted in (None, entry.entry_id):
+                coordinator: ClimateControlCoordinator = entry.runtime_data
+                await coordinator.async_reset_learned()
+
     hass.services.async_register(DOMAIN, SERVICE_RUN_CYCLE, run_cycle, RUN_CYCLE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_RESET_LEARNED, reset_learned, RUN_CYCLE_SCHEMA)
     return True
 
 
@@ -108,6 +118,7 @@ def _check_outdoor_power(hass: HomeAssistant, entry: ClimateControlConfigEntry) 
 async def async_setup_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> bool:
     _check_outdoor_power(hass, entry)
     coordinator = ClimateControlCoordinator(hass, entry)
+    await coordinator.async_load_learned()
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     loaded = _snapshot(entry)

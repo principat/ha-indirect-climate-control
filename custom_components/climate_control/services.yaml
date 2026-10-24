@@ -5,3 +5,11 @@ run_cycle:
       selector:
         config_entry:
           integration: climate_control
+
+reset_learned_capacity:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: climate_control

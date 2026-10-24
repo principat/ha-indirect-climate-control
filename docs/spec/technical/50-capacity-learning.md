@@ -1,6 +1,6 @@
 # 50 Pufferkapazität aus Betriebsdaten lernen (Konzept, nicht umgesetzt)
 
-Status: **freigegeben am 24.10.2026, noch nicht umgesetzt** (FR-PLNR-02/03, FR-SEAS-01/02 in der Fachspec). Vorgaben des Nutzers:
+Status: **freigegeben und umgesetzt am 24.10.2026** (`core/learning.py`, Adapter in `coordinator.py`) (FR-PLNR-02/03, FR-SEAS-01/02 in der Fachspec). Vorgaben des Nutzers:
 kurze Messzeiten, Energie je 0,1 K, Wände vernachlässigt, Mindestfenster 0,35 K, Kühlen im Sommer, Leistungssensor als Pflicht,
 keine Abhängigkeit von der Lastprognose einer anderen Integration.
 Bis dahin gilt ein fester Startwert von 3 kWh_el/K (`DEFAULT_CAPACITY_KWH_PER_K` im Adapter, nicht im Kern). Die

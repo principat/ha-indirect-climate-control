@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
+from typing import Any
 
 from homeassistant.components.climate.const import (
     ATTR_CURRENT_TEMPERATURE,
@@ -23,14 +24,26 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_PLAN_ENTITY, DOMAIN, LOGGER, ROOM_ENTITY, ROOM_SETPOINT_ENTITY, ROOM_WINDOW
+from .const import (
+    CONF_OUTDOOR_POWER,
+    CONF_PLAN_ENTITY,
+    CONF_SEASON,
+    DOMAIN,
+    LOGGER,
+    ROOM_ENTITY,
+    ROOM_SETPOINT_ENTITY,
+    ROOM_WINDOW,
+    STORAGE_VERSION,
+)
 from .core.config import InstallationConfig, Parameters, valid_setpoint
 from .core.controller import Controller, CycleResult
 from .core.diagnostics import RoomDiagnostics, room_diagnostics
-from .core.model import WITH_SETPOINT, Command, Mode, RoomState
+from .core.learning import CapacityLearner, Learned
+from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
 from .data import as_list, build_config, room_data
@@ -44,6 +57,8 @@ class CycleData:
     planner: PlannerInputs
     plan: Plan | None
     rooms: dict[str, RoomDiagnostics] = field(default_factory=dict)
+    season: Season = Season.HEAT
+    learned: dict[Season, Learned] = field(default_factory=dict)
 
 
 class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
@@ -66,9 +81,36 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._windows: dict[str, list[str]] = {
             r[ROOM_ENTITY]: as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
         }
+        self._season_entity: str | None = entry.data.get(CONF_SEASON) or None
+        self._power_entity: str | None = entry.data.get(CONF_OUTDOOR_POWER) or None
+        self._areas: dict[str, float] = {r.id: r.area_m2 for r in self.cfg.rooms} if self.cfg else {}
+        self.learner = CapacityLearner()
+        self._learned_dirty = False  # changed since the last write
+        self._store: Store[dict[str, Any]] = Store(
+            hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
+        )
         self._setpoint_entities: dict[str, str] = {
             r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY] for r in room_data(entry) if r.get(ROOM_SETPOINT_ENTITY)
         }
+
+    async def async_load_learned(self) -> None:
+        """FR-PLNR-02: the learned values survive restarts."""
+        stored = await self._store.async_load()
+        if stored:
+            self.learner.restore(stored)
+
+    async def async_reset_learned(self) -> None:
+        """FR-PLNR-03: back to the start values (service, not offered in the daily use)."""
+        self.learner.reset()
+        self._learned_dirty = False
+        await self._store.async_save(self.learner.snapshot())
+        await self.async_request_refresh()
+
+    async def async_shutdown(self) -> None:
+        if self._learned_dirty:  # a reload must not lose what the delayed write has not stored yet
+            self._learned_dirty = False
+            await self._store.async_save(self.learner.snapshot())
+        await super().async_shutdown()
 
     @property
     def commissioning(self) -> bool:
@@ -82,15 +124,51 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         plan = self._read_plan()
         rooms = {r.id: self._room_state(r.id) for r in self.cfg.rooms}
         setpoints = self._read_setpoints()
-        result = self.controller.step(now, plan, rooms, setpoints)
+        season = self._read_season()
+        result = self.controller.step(now, plan, rooms, setpoints, season)
         if self.commissioning:
             # No planner output configured yet: publish SOC and planner values, never touch the units.
             result = replace(result, commands={}, running=False, fallback=False, requested_w=0.0, served=())
         for entity_id, command in result.commands.items():
             await self._apply(entity_id, command)
-        current = self.cfg.with_setpoints(setpoints)
-        planner = planner_inputs(current, dt_util.as_local(now))
-        return CycleData(result, planner, plan, room_diagnostics(current, result.temperatures))
+        self._learn(now, season, result.running, rooms)
+        current = replace(
+            self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
+        )
+        planner = planner_inputs(current, dt_util.as_local(now), season)
+        learned = {s: replace(item, bootstrap=[]) for s, item in self.learner.learned.items()}
+        return CycleData(
+            result, planner, plan, room_diagnostics(current, result.temperatures, season), season, learned
+        )
+
+    def _read_season(self) -> Season:
+        """FR-SEAS-01: heating unless the optional switch is on. Missing or unavailable switch = heating."""
+        if self._season_entity and self.hass.states.is_state(self._season_entity, STATE_ON):
+            return Season.COOL
+        return Season.HEAT
+
+    def _learn(self, now: datetime, season: Season, running: bool, rooms: dict[str, RoomState]) -> None:
+        """FR-PLNR-02: raw device temperatures (the control rounds to whole degrees) and the power."""
+        power: float | None = None
+        state = self.hass.states.get(self._power_entity) if self._power_entity else None
+        if state is not None and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            try:
+                power = float(state.state)
+            except ValueError:
+                power = None
+            if power is not None and state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) == "kW":
+                power *= 1000
+        temps = {
+            room_id: s.temperature_c
+            for room_id, s in rooms.items()
+            if s.temperature_c is not None and s.mode is not None and not s.window_open
+        }
+        # Only a complete picture counts: a missing room changes what the mean temperature means.
+        if len(temps) < len(rooms):
+            running = False
+        if self.learner.update(now, season, running and not self.commissioning, temps, self._areas, power):
+            self._learned_dirty = True
+            self._store.async_delay_save(self.learner.snapshot, 60)
 
     def _read_setpoints(self) -> dict[str, float]:
         """Current setpoints from configured entities. Invalid or missing values keep the fixed setpoint."""

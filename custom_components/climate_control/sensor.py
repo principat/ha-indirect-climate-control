@@ -16,10 +16,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, ROOM_ENTITY, ROOM_NAME, SUBENTRY_ROOM
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator, CycleData
 from .core.diagnostics import RoomDiagnostics
+from .core.model import Season
 from .core.planner_model import Series
 from .entity import ClimateControlEntity
 
 COST = "cost"  # marker: unit is the instance currency per kWh
+KWH_PER_K = "kWh/K"
 
 
 def _forecast(series: Series) -> dict[str, Any]:
@@ -43,6 +45,16 @@ class CCSensorDescription:
     device_class: SensorDeviceClass | None = None
     state_class: SensorStateClass | None = None
     attrs: Callable[[CycleData], dict[str, Any]] | None = None
+    diagnostic: bool = False
+
+
+def _learned(season: Season) -> Callable[[CycleData], dict[str, Any]]:
+    def attrs(d: CycleData) -> dict[str, Any]:
+        item = d.learned.get(season)
+        updated = item.updated.isoformat() if item and item.updated else None
+        return {"estimates": item.estimates if item else 0, "updated": updated}
+
+    return attrs
 
 
 SENSORS: tuple[CCSensorDescription, ...] = (
@@ -104,6 +116,22 @@ SENSORS: tuple[CCSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER,
     ),
     CCSensorDescription(
+        key="learned_heat_capacity",
+        value=lambda d: d.learned[Season.HEAT].capacity_kwh_per_k if Season.HEAT in d.learned else None,
+        unit=KWH_PER_K,
+        state_class=SensorStateClass.MEASUREMENT,
+        attrs=_learned(Season.HEAT),
+        diagnostic=True,
+    ),
+    CCSensorDescription(
+        key="learned_cool_capacity",
+        value=lambda d: d.learned[Season.COOL].capacity_kwh_per_k if Season.COOL in d.learned else None,
+        unit=KWH_PER_K,
+        state_class=SensorStateClass.MEASUREMENT,
+        attrs=_learned(Season.COOL),
+        diagnostic=True,
+    ),
+    CCSensorDescription(
         key="charge_cost",
         value=lambda d: d.planner.charge_cost,
         unit=COST,
@@ -140,6 +168,8 @@ class CCSensor(ClimateControlEntity, SensorEntity):
         self._attr_native_unit_of_measurement = currency if desc.unit == COST else desc.unit
         self._attr_device_class = desc.device_class
         self._attr_state_class = desc.state_class
+        if desc.diagnostic:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     @property
     def native_value(self) -> float | str | None:

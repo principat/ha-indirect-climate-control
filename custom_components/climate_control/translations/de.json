@@ -8,6 +8,7 @@
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
           "outdoor_power_entity": "Leistung Außengerät (Sensor)",
+          "season_entity": "Kühlen-Schalter (optional)",
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "description": "Außengerät, Planer-Ausgabe optional. Danach die Innengeräte einzeln über das Drei-Punkte-Menü (⋮) dieses Eintrags → „Innengerät hinzufügen“ anlegen.",
@@ -33,6 +34,13 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
+          "help_season_entity": {
+            "name": "Hilfe: Kühlen-Schalter (optional)",
+            "description": "Optionaler Schalter, Binärsensor oder Ein/Aus-Helfer, der die Betriebsart der Anlage wählt: aus = Heizen (Standard), ein = Kühlen. Ohne Entität oder solange sie nicht verfügbar ist, wird geheizt. Im Kühlbetrieb ist die ganze Regelung gespiegelt: Der Puffer ist ein Kältespeicher, der SOC steigt, wenn die Gerätetemperaturen sinken (30 °C = 0 %, 15 °C = 100 %), die Innengeräte kühlen und die Grenzen für den Planer werden um den jeweiligen Sollwert gespiegelt. Beim Wechsel gehen zuerst alle Geräte in den neutralen Modus.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_plan_entity": {
             "name": "Hilfe: Geplante Leistung (Planer-Ausgaben, anfangs optional)",
             "description": "Bei der ersten Einrichtung leer lassen: Die Planer-Ausgabe gibt es erst, wenn der Planer mit den Sensoren dieser Integration eingerichtet ist. Solange kein Sensor gewählt ist, stellt die Anlage nur ihre Sensoren bereit und schickt keinen Befehl an die Innengeräte (auch keinen Rückfall). Danach einen oder mehrere Sensoren mit der geplanten elektrischen Leistung wählen, üblich ist der geplante Fluss der HAEO-Verbindung Haus → „Klima“ (z. B. `sensor.connection_klima_standard_source_to_target_power`, von HAEO 0.4.1 als „Connection … source to target power“ mit Klammern angezeigt); mehrere Sensoren werden addiert. Zustand = Leistung jetzt in W oder kW, Attribut `forecast` = Liste aus `time`/`value` für die folgenden Stunden. Ist ein Sensor gewählt und nicht verfügbar oder der Plan älter als das maximale Planalter (Optionen), gilt der Rückfall: Alle Innengeräte heizen auf ihren Standard-Sollwert.",
@@ -49,6 +57,7 @@
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
           "outdoor_power_entity": "Leistung Außengerät (Sensor)",
+          "season_entity": "Kühlen-Schalter (optional)",
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "sections": {
@@ -69,6 +78,13 @@
           "help_outdoor_power_entity": {
             "name": "Hilfe: Leistung Außengerät (Sensor)",
             "description": "Sensor mit der elektrischen Leistung des Außengeräts in W. Pflichtangabe: Er ist der Messwert für den Vergleich mit der geplanten Leistung und die Grundlage für das Lernen der Pufferkapazität. Den Leistungssensor des Außengeräts wählen (Wirkleistung, nicht Scheinleistung).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_season_entity": {
+            "name": "Hilfe: Kühlen-Schalter (optional)",
+            "description": "Optionaler Schalter, Binärsensor oder Ein/Aus-Helfer, der die Betriebsart der Anlage wählt: aus = Heizen (Standard), ein = Kühlen. Ohne Entität oder solange sie nicht verfügbar ist, wird geheizt. Im Kühlbetrieb ist die ganze Regelung gespiegelt: Der Puffer ist ein Kältespeicher, der SOC steigt, wenn die Gerätetemperaturen sinken (30 °C = 0 %, 15 °C = 100 %), die Innengeräte kühlen und die Grenzen für den Planer werden um den jeweiligen Sollwert gespiegelt. Beim Wechsel gehen zuerst alle Geräte in den neutralen Modus.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -572,6 +588,12 @@
       "charge_cost": {
         "name": "Charge cost"
       },
+      "learned_heat_capacity": {
+        "name": "Gelernte Kapazität Heizen"
+      },
+      "learned_cool_capacity": {
+        "name": "Gelernte Kapazität Kühlen"
+      },
       "room_deviation": {
         "name": "Abweichung zum Sollwert"
       },
@@ -590,6 +612,16 @@
     }
   },
   "services": {
+    "reset_learned_capacity": {
+      "name": "Gelernte Kapazität zurücksetzen",
+      "description": "Setzt die gelernte Pufferkapazität (Heizen und Kühlen) auf den Startwert zurück. Nur nach grundlegenden Änderungen an der Anlage sinnvoll, im Alltag nicht nötig.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Anlage",
+          "description": "Nur diese Anlage. Leer = alle Anlagen."
+        }
+      }
+    },
     "run_cycle": {
       "name": "Zyklus ausführen",
       "description": "Führt sofort einen Regelzyklus aus.",

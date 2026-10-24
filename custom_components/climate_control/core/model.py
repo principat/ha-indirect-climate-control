@@ -36,3 +36,23 @@ class Command:
 
     mode: Mode
     target_c: float | None = None
+
+
+class Season(StrEnum):
+    """Operating mode of the plant (FR-SEAS-01): heating is the default, cooling mirrors it."""
+
+    HEAT = "heat"
+    COOL = "cool"
+
+    @property
+    def sign(self) -> float:
+        """+1 while heating, -1 while cooling: multiplies temperature differences to a common direction."""
+        return 1.0 if self is Season.HEAT else -1.0
+
+    @property
+    def mode(self) -> Mode:
+        return Mode.HEAT if self is Season.HEAT else Mode.COOL
+
+    @property
+    def opposite(self) -> Mode:
+        return Mode.COOL if self is Season.HEAT else Mode.HEAT

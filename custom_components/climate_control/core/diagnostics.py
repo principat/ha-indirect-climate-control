@@ -6,16 +6,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from .config import InstallationConfig
+from .model import Season
 
 
 @dataclass(frozen=True)
 class RoomDiagnostics:
-    deviation_k: float | None  # setpoint minus device temperature
+    deviation_k: float | None  # setpoint minus device temperature (cooling: the other way round)
     heat_demand_kwh: float | None  # electrical energy up to the setpoint, negative = stored above it
     storage_kwh: float | None  # electrical energy the room can still take up to its overload limit
 
 
-def room_diagnostics(cfg: InstallationConfig, temps: Mapping[str, float]) -> dict[str, RoomDiagnostics]:
+def room_diagnostics(
+    cfg: InstallationConfig, temps: Mapping[str, float], season: Season = Season.HEAT
+) -> dict[str, RoomDiagnostics]:
     """Per room, from the temperatures the control used. The buffer capacity is split by area."""
     area = sum(r.area_m2 for r in cfg.rooms)
     result: dict[str, RoomDiagnostics] = {}
@@ -25,10 +28,11 @@ def room_diagnostics(cfg: InstallationConfig, temps: Mapping[str, float]) -> dic
             result[r.id] = RoomDiagnostics(None, None, None)
             continue
         capacity = cfg.capacity_kwh_per_k * r.area_m2 / area
-        deviation = r.setpoint_c - t
+        deviation = season.sign * (r.setpoint_c - t)
+        overload_c = r.overload_max_c if season is Season.HEAT else r.mirrored(r.overload_max_c)
         result[r.id] = RoomDiagnostics(
             deviation_k=round(deviation, 2),
             heat_demand_kwh=round(capacity * deviation, 3),
-            storage_kwh=round(max(0.0, capacity * (r.overload_max_c - t)), 3),
+            storage_kwh=round(max(0.0, capacity * season.sign * (overload_c - t)), 3),
         )
     return result

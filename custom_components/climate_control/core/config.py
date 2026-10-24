@@ -35,6 +35,10 @@ class RoomConfig:
     comfort_max_c: float = 24.0  # upper bound without surcharge (room dependent)
     overload_max_c: float = 28.0  # highest temperature the buffer may be charged to (room dependent)
 
+    def mirrored(self, temperature_c: float) -> float:
+        """FR-SEAS-02: a heating limit mirrored around the setpoint is the matching cooling limit."""
+        return 2 * self.setpoint_c - temperature_c
+
     @property
     def power_class(self) -> float:
         """Power class = group of indoor units with the same nominal power (glossary)."""

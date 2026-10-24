@@ -7,6 +7,7 @@ LOGGER = logging.getLogger(__package__)
 
 CONF_PLAN_ENTITY = "plan_entity"
 CONF_OUTDOOR_POWER = "outdoor_power_entity"
+CONF_SEASON = "season_entity"  # optional: off = heating (default), on = cooling
 CONF_P_MIN = "p_min_w"
 CONF_P_MAX = "p_max_w"
 CONF_CAPACITY = "capacity_kwh_per_k"
@@ -24,4 +25,6 @@ ROOM_COMFORT_MAX = "comfort_max_c"
 ROOM_OVERLOAD_MAX = "overload_max_c"
 
 SERVICE_RUN_CYCLE = "run_cycle"
+SERVICE_RESET_LEARNED = "reset_learned_capacity"
+STORAGE_VERSION = 1
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"

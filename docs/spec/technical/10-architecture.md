@@ -27,6 +27,9 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 
 ## Datenfluss je Zyklus (`Controller.step`)
 
+0. Betriebsart `season` (FR-SEAS-01): Schalter an = Kühlen, sonst Heizen (auch ohne Schalter oder bei `unavailable`).
+   `Season.sign` (+1 Heizen, −1 Kühlen) spiegelt Abweichung, SOC, Grenzen und Schutz; ein Wechsel setzt Glättung, Lauf und
+   Zeitgeber zurück. Überlastgrenze im Kühlen = `RoomConfig.mirrored(overload_max_c)` (Spiegelung am Sollwert).
 1. Gerätetemperatur je Raum lesen, auf ganze Grad runden, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
 3. SOC = Skala(Temperatur des Raums mit kleinster Differenz Temperatur − eigener Sollwert), Median über 15 min.
@@ -36,11 +39,16 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
    größte Abweichung zuerst; laufende Geräte bleiben an. Kommt der Plan zurück, beginnt beim nächsten Ausfall
    die Wartezeit von vorn. Hartes Minimum und Überhitzung gelten in jedem Zweig, Fenster überschreiben alles.
    Sonst: Schwellenentscheidung mit Hysterese und Mindestlaufzeit der Anlage (`min_run_s`, 600 s ab jedem Start, Halten
-   mit mindestens Pmin, Zeitgeber nur bei Aus → An neu, keine Mindestpause), bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
+   mit mindestens Pmin, nur solange ein Raum unter seiner Überlastgrenze liegt, Zeitgeber nur bei Aus → An neu, keine Mindestpause), bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
    höchstens Überlastgrenze), übrige neutral; hartes Minimum → Heizen; Überhitzung ≥ Dauer und kein Heizziel → Kühlen.
 6. Offenes Fenster → neutral (überschreibt alles, auch den Rückfall).
 7. `next_modes` gegen die aktuellen Modi: bei Konflikt zuerst alle nicht neutralen Geräte neutral.
 8. Befehle nur für Heizen/Kühlen mit Sollwert.
+
+Lernen (FR-PLNR-02, `core/learning.py`): Der Adapter füttert `CapacityLearner.update` je Zyklus mit den *rohen* Gerätetemperaturen
+(0,5-K-Schritte, nicht den gerundeten), dem Leistungssensor des Außengeräts (W oder kW) und `running`. Speicherung im `Store`
+(`climate_control.<entry_id>.learned`, verzögert 60 s, beim Entladen sofort wenn geändert). Die gelernte Kapazität der
+aktuellen Betriebsart geht in `planner_inputs` und die Diagnose ein. Dienst `reset_learned_capacity` (FR-PLNR-03) setzt zurück.
 
 Der Adapter (`coordinator.py`) führt den Zyklus im Intervall `cycle_s` aus, wendet nur Änderungen an und
 setzt nach jedem Wechsel auf Heizen/Kühlen den Sollwert erneut (FR-MODE-02). Weicht der Sollwert des Geräts

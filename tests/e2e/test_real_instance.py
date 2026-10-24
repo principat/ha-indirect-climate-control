@@ -14,6 +14,7 @@ import yaml
 DOMAIN = "climate_control"
 SIM = "climate_control_sim"
 PLAN = "sensor.sim_planner_power"
+SWITCH = "input_boolean.sim_cooling"
 REFERENCE = yaml.safe_load(Path("config/reference-case.yaml").read_text(encoding="utf-8"))
 UNITS = [r["indoor_unit"] for r in REFERENCE["rooms"]]
 SETPOINT = 21.0  # reference case has no setpoints yet (TODO in config/)
@@ -63,6 +64,7 @@ def entry(ha: requests.Session) -> dict[str, Any]:
             "p_min_w": inst["pmin_w"],
             "p_max_w": inst["pmax_w"],
             "outdoor_power_entity": inst["outdoor_power_sensor"],
+            "season_entity": SWITCH,
         },
     )
     assert flow["type"] == "create_entry", flow
@@ -240,3 +242,54 @@ def test_indoor_units_are_changed_and_removed_one_by_one(ha: requests.Session, e
     _add_room(ha, entry_id, room)
     titles = [s["title"] for s in _ws(ha, {"type": "config_entries/subentries/list", "entry_id": entry_id})]
     assert titles[-1] == room["id"] and len(titles) == len(UNITS)
+
+
+@pytest.mark.req("FR-SEAS-01")
+def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: requests.Session) -> None:
+    try:
+        for reading in (22, 24):  # the plausibility filter takes a step of 2 K per cycle at most
+            for unit in UNITS:
+                _service(sim, SIM, "set_reading", unit=unit.split(".", 1)[1], temperature=reading)
+            _cycle(sim)
+        _service(sim, SIM, "set_plan", power_kw=2.0)
+        _service(sim, "input_boolean", "turn_on", entity_id=SWITCH)
+        _cycle(sim)
+        cooling = [u for u in UNITS if _state(sim, u)["state"] == "cool"]
+        assert cooling and not [u for u in UNITS if _state(sim, u)["state"] == "heat"]
+        for unit in cooling:  # 3 K too warm: cooled to the setpoint, set again after the mode change
+            assert _state(sim, unit)["attributes"]["temperature"] == SETPOINT
+        # The state of charge runs the other way: warm rooms are a low cold store (heating would show 40 %).
+        assert float(_state(sim, "sensor.climate_control_state_of_charge")["state"]) < 60.0
+
+        _service(sim, "input_boolean", "turn_off", entity_id=SWITCH)
+        for unit in UNITS:
+            _service(sim, SIM, "set_reading", unit=unit.split(".", 1)[1], temperature=22)
+        _cycle(sim)
+        assert {_state(sim, u)["state"] for u in UNITS} == {"fan_only"}  # neutral first
+        _cycle(sim)
+        assert "heat" in {_state(sim, u)["state"] for u in UNITS}
+    finally:
+        _service(sim, "input_boolean", "turn_off", entity_id=SWITCH)
+
+
+@pytest.mark.req("FR-SEAS-02")
+def test_cooling_mirrors_the_values_sent_to_the_planner(sim: requests.Session) -> None:
+    try:
+        _service(sim, "input_boolean", "turn_on", entity_id=SWITCH)
+        _cycle(sim)
+        # the mirrored limit of the heating overload limit lies beyond the 15 degC end of the scale
+        assert float(_state(sim, "sensor.climate_control_overcharge_percentage")["state"]) == 100.0
+        # the learned capacities are diagnostic sensors with their start value
+        for key in ("heating", "cooling"):
+            assert float(_state(sim, f"sensor.climate_control_learned_capacity_{key}")["state"]) > 0
+    finally:
+        _service(sim, "input_boolean", "turn_off", entity_id=SWITCH)
+
+
+@pytest.mark.req("FR-PLNR-02")
+@pytest.mark.req("FR-PLNR-03")
+def test_learned_capacity_can_be_reset_by_the_service(sim: requests.Session) -> None:
+    _service(sim, DOMAIN, "reset_learned_capacity")
+    _cycle(sim)
+    assert float(_state(sim, "sensor.climate_control_learned_capacity_heating")["state"]) == 3.0
+    assert float(_state(sim, "sensor.climate_control_capacity")["state"]) == 45.0

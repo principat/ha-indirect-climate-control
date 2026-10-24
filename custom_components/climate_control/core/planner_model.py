@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .config import InstallationConfig, RoomConfig
+from .model import Season
 from .soc import temperature_to_soc
 
 Series = tuple[tuple[datetime, float], ...]
@@ -45,14 +46,22 @@ def is_night(t: datetime, start_h: int, end_h: int) -> bool:
     return h >= start_h or h < end_h if start_h > end_h else start_h <= h < end_h
 
 
-def planner_inputs(cfg: InstallationConfig, now: datetime) -> PlannerInputs:
-    """Values for now plus hourly forecasts over the planner horizon (`now` in local time)."""
+def planner_inputs(cfg: InstallationConfig, now: datetime, season: Season = Season.HEAT) -> PlannerInputs:
+    """Values for now plus hourly forecasts over the planner horizon (`now` in local time).
+
+    Cooling (FR-SEAS-02) mirrors every temperature limit around the setpoint: the buffer is a cold store,
+    the night setback relaxes its limit upwards and the SOC scale runs the other way.
+    """
     p = cfg.params
+    sign = season.sign
     lower_c = weighted_setpoint(cfg)
-    hard_c = lower_c - p.hard_min_below_k
+    hard_c = lower_c - sign * p.hard_min_below_k
 
     def lowered(t: datetime, c: float) -> float:
-        return c - p.night_setback_k if is_night(t, p.night_start_h, p.night_end_h) else c
+        return c - sign * p.night_setback_k if is_night(t, p.night_start_h, p.night_end_h) else c
+
+    def limit(r: RoomConfig, heating_limit_c: float) -> float:
+        return heating_limit_c if season is Season.HEAT else r.mirrored(heating_limit_c)
 
     start = now.replace(minute=0, second=0, microsecond=0)
     hours = [start + timedelta(hours=i) for i in range(p.planner_horizon_h)]
@@ -63,14 +72,14 @@ def planner_inputs(cfg: InstallationConfig, now: datetime) -> PlannerInputs:
         return round(p.late_charge_surcharge * (1 - i / span), 6)
 
     def soc(c: float) -> float:
-        return round(temperature_to_soc(c, p), 2)
+        return round(temperature_to_soc(c, p, season), 2)
 
     return PlannerInputs(
         capacity_kwh=round(cfg.capacity_kwh_per_k * (p.soc_max_c - p.soc_min_c), 3),
         min_charge_pct=soc(lowered(now, lower_c)),
         undercharge_pct=soc(lowered(now, hard_c)),
-        max_charge_pct=soc(weighted(cfg, lambda r: r.comfort_max_c)),
-        overcharge_pct=soc(weighted(cfg, lambda r: r.overload_max_c)),
+        max_charge_pct=soc(weighted(cfg, lambda r: limit(r, r.comfort_max_c))),
+        overcharge_pct=soc(weighted(cfg, lambda r: limit(r, r.overload_max_c))),
         undercharge_cost=p.undercharge_cost,
         overcharge_cost=p.overcharge_cost,
         efficiency_pct=p.efficiency_pct,

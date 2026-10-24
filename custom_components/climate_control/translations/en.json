@@ -8,6 +8,7 @@
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
           "outdoor_power_entity": "Outdoor unit power (sensor)",
+          "season_entity": "Cooling switch (optional)",
           "plan_entity": "Planned power (planner outputs, optional at first)"
         },
         "description": "Outdoor unit, planner output optional. Afterwards add the indoor units one by one via the three-dot menu (⋮) of this entry → “Add indoor unit”.",
@@ -33,6 +34,13 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
+          "help_season_entity": {
+            "name": "Help: Cooling switch (optional)",
+            "description": "Optional switch, binary sensor or input boolean that selects the operating mode of the plant: off = heating (default), on = cooling. Without an entity, or while it is unavailable, the plant heats. In cooling mode the whole control is mirrored: the buffer is a cold store, the SOC rises when the device temperatures fall (30 °C = 0 %, 15 °C = 100 %), the indoor units cool and the limits reported to the planner are mirrored around each setpoint. Changing the mode first puts all units in the neutral mode.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_plan_entity": {
             "name": "Help: Planned power (planner outputs, optional at first)",
             "description": "Leave empty when setting up for the first time: the planner output only exists after the planner has been set up with this integration's sensors. Until a sensor is selected, the installation only publishes its sensors and sends no command to the indoor units (no fallback either). Then select one or more sensors with the planned electrical power, usually the planned flow of the HAEO connection house → 'Klima' (e.g. `sensor.connection_klima_standard_source_to_target_power`, shown by HAEO 0.4.1 as 'Connection … source to target power' with braces); several sensors are summed. State = power now in W or kW, attribute `forecast` = list of `time`/`value` entries for the coming hours. Once selected: if a sensor is unavailable or the plan is older than the maximum plan age (options), the fallback applies and all indoor units heat to their standard setpoint.",
@@ -49,6 +57,7 @@
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
           "outdoor_power_entity": "Outdoor unit power (sensor)",
+          "season_entity": "Cooling switch (optional)",
           "plan_entity": "Planned power (planner outputs, optional at first)"
         },
         "sections": {
@@ -69,6 +78,13 @@
           "help_outdoor_power_entity": {
             "name": "Help: Outdoor unit power (sensor)",
             "description": "Sensor with the electrical power of the outdoor unit in W. Mandatory: it is the measured value for the comparison with the planned power and the basis for learning the buffer capacity. Choose the power sensor of the outdoor unit (active power, not apparent power).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_season_entity": {
+            "name": "Help: Cooling switch (optional)",
+            "description": "Optional switch, binary sensor or input boolean that selects the operating mode of the plant: off = heating (default), on = cooling. Without an entity, or while it is unavailable, the plant heats. In cooling mode the whole control is mirrored: the buffer is a cold store, the SOC rises when the device temperatures fall (30 °C = 0 %, 15 °C = 100 %), the indoor units cool and the limits reported to the planner are mirrored around each setpoint. Changing the mode first puts all units in the neutral mode.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -572,6 +588,12 @@
       "charge_cost": {
         "name": "Charge cost"
       },
+      "learned_heat_capacity": {
+        "name": "Learned capacity heating"
+      },
+      "learned_cool_capacity": {
+        "name": "Learned capacity cooling"
+      },
       "room_deviation": {
         "name": "Deviation from setpoint"
       },
@@ -590,6 +612,16 @@
     }
   },
   "services": {
+    "reset_learned_capacity": {
+      "name": "Reset learned capacity",
+      "description": "Sets the learned buffer capacity (heating and cooling) back to the start value. Only meaningful after fundamental changes to the plant; not needed in daily use.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Only this installation. Empty = all installations."
+        }
+      }
+    },
     "run_cycle": {
       "name": "Run cycle",
       "description": "Runs a control cycle now.",

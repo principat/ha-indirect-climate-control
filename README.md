@@ -31,7 +31,7 @@ Therefore set up in this order:
 
 1. **Install** via HACS (first button above), restart Home Assistant.
 2. **Create the installation** – *Settings → Devices & services → Add integration → Climate Control*
-   (or the second button above): name, Pmin, Pmax and the power sensor of the outdoor unit (mandatory).
+   (or the second button above): name, Pmin, Pmax, the power sensor of the outdoor unit (mandatory) and, optionally, the cooling switch.
    **Leave the planner sensor empty.**
    Without a planner sensor the installation is in commissioning mode: it publishes all sensors but sends
    **no command to the indoor units** (no fallback either).
@@ -54,8 +54,17 @@ Above every non-trivial field there is a collapsible **"Help: …"** section exp
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
-The buffer capacity is not a setting. It starts at 3 kWh_el/K; learning it from operating data is planned
-(concept in `docs/spec/technical/50-capacity-learning.md`).
+**Heating or cooling.** The plant heats by default. An optional switch (switch, binary sensor or input boolean) in the
+installation selects cooling: off = heating, on = cooling; without the entity, or while it is unavailable, the plant heats.
+Cooling mirrors everything: the buffer is a cold store (SOC 30 °C = 0 %, 15 °C = 100 %), the units cool, and the limits
+sent to the planner are mirrored around each setpoint. Changing the mode first puts all units in the neutral mode.
+
+**Buffer capacity.** It is not a setting. It starts at 3 kWh_el/K and is learned from operation: the electrical energy of the
+outdoor unit (the mandatory power sensor) per change of the area-weighted mean device temperature, in windows of at least
+0.35 K, separately for heating and cooling. Nothing else is used, in particular no load forecast. The learned values are
+diagnostic sensors (*Learned capacity heating / cooling*, read-only) and survive restarts. Only after fundamental changes to
+the plant the service `climate_control.reset_learned_capacity` sets them back to the start value; it is not offered in daily use.
+Concept: `docs/spec/technical/50-capacity-learning.md`.
 
 ### Diagnostic sensors per indoor unit
 
@@ -224,7 +233,7 @@ Deshalb in dieser Reihenfolge einrichten:
 
 1. **Installieren** über HACS (erste Schaltfläche oben), Home Assistant neu starten.
 2. **Anlage anlegen** – *Einstellungen → Geräte & Dienste → Integration hinzufügen → Climate Control*
-   (oder zweite Schaltfläche oben): Name, Pmin, Pmax und der Leistungssensor des Außengeräts (Pflicht).
+   (oder zweite Schaltfläche oben): Name, Pmin, Pmax, der Leistungssensor des Außengeräts (Pflicht) und optional der Kühlen-Schalter.
    **Planer-Sensor leer lassen.**
    Ohne Planer-Sensor ist die Anlage in Inbetriebnahme: Sie stellt alle Sensoren bereit, schickt aber
    **keinen Befehl an die Innengeräte** (auch keinen Rückfall).
@@ -248,8 +257,17 @@ Deshalb in dieser Reihenfolge einrichten:
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
-Die Pufferkapazität ist keine Einstellung. Sie startet mit 3 kWh_el/K; das Lernen aus Betriebsdaten ist
-geplant (Konzept in `docs/spec/technical/50-capacity-learning.md`).
+**Heizen oder Kühlen.** Standard ist Heizen. Ein optionaler Schalter (Schalter, Binärsensor oder Ein/Aus-Helfer) in der
+Anlage wählt das Kühlen: aus = Heizen, ein = Kühlen; ohne Entität oder solange sie nicht verfügbar ist, wird geheizt.
+Das Kühlen spiegelt alles: Der Puffer ist ein Kältespeicher (SOC 30 °C = 0 %, 15 °C = 100 %), die Geräte kühlen, und die
+Grenzen für den Planer werden um den jeweiligen Sollwert gespiegelt. Beim Wechsel gehen zuerst alle Geräte in den neutralen Modus.
+
+**Pufferkapazität.** Sie ist keine Einstellung. Sie startet mit 3 kWh_el/K und wird im Betrieb gelernt: elektrische Energie
+des Außengeräts (der Pflicht-Leistungssensor) je Änderung der flächengewichteten mittleren Gerätetemperatur, in Fenstern von
+mindestens 0,35 K, getrennt für Heizen und Kühlen. Sonst nichts, insbesondere keine Lastprognose. Die gelernten Werte sind
+Diagnose-Sensoren (*Gelernte Kapazität Heizen / Kühlen*, nur lesbar) und bleiben über Neustarts erhalten. Nur nach grundlegenden
+Änderungen an der Anlage setzt der Dienst `climate_control.reset_learned_capacity` sie auf den Startwert zurück; er wird im
+Alltag nicht angeboten. Konzept: `docs/spec/technical/50-capacity-learning.md`.
 
 ### Diagnose-Sensoren je Innengerät
 

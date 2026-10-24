@@ -29,6 +29,7 @@ from .const import (
     CONF_P_MAX,
     CONF_P_MIN,
     CONF_PLAN_ENTITY,
+    CONF_SEASON,
     DOMAIN,
     ROOM_AREA,
     ROOM_COMFORT_MAX,
@@ -89,6 +90,9 @@ def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_P_MAX): _number("W"),
         vol.Required(CONF_OUTDOOR_POWER): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        ),
+        vol.Optional(CONF_SEASON): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["switch", "binary_sensor", "input_boolean"])
         ),
         # Optional: the planner output only exists once the planner uses this integration's sensors.
         vol.Optional(CONF_PLAN_ENTITY): selector.EntitySelector(
