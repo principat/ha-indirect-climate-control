@@ -1,3 +1,10 @@
+## [0.9.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.8.0...v0.9.0) (2026-10-24)
+
+### Features
+
+* choose between a fixed value and an entity for the setpoint of an indoor unit ([4f38206](https://github.com/principat/ha-indirect-climate-control/commit/4f382065b1ae1b4c919ce825b7a397bc991d3433))
+* load control serves the neediest room first, hands over at the limit and records the outdoor power ([f6d4a82](https://github.com/principat/ha-indirect-climate-control/commit/f6d4a823d87eb9932f056947d261b22cf4005806))
+
 ## [0.8.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.7.0...v0.8.0) (2026-10-24)
 
 ### Features
