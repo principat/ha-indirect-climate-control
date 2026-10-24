@@ -4,7 +4,7 @@
 
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
-| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Planer-Sensor(en) optional | `entry.data`, Titel |
+| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Leistungssensor des Außengeräts (Pflicht, `outdoor_power_entity`; fehlt er in älteren Einträgen, erinnert eine Reparaturmeldung), Kühlen-Schalter optional (`season_entity`: `switch`, `binary_sensor`, `input_boolean`; aus oder fehlend = Heizen), Planer-Sensor(en) optional | `entry.data`, Titel |
 | Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow: Menü mit `plan` (Planer-Sensor, schreibt `entry.data`) und den Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
@@ -59,8 +59,8 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 
 | Sensor (Schlüssel) | Einheit | Bedeutung, Zuordnung HAEO-Batterie |
 | --- | --- | --- |
-| `soc` | % | Current Charge Percentage, Attribut `worst_room` |
-| `capacity` | kWh | Capacity = Kapazität je K (Startwert 7) × Skalenbreite |
+| `soc` | % | Current Charge Percentage, Attribut `worst_room`; im Kühlbetrieb gespiegelt (FR-SEAS-02) |
+| `capacity` | kWh | Capacity = gelernte Kapazität je K der aktuellen Betriebsart (Startwert 3) × Skalenbreite |
 | `min_charge` | % | Min Charge Percentage (flächengewichteter Sollwert, nachts abgesenkt), mit Prognose |
 | `undercharge` | % | Undercharge Percentage (hartes Minimum, nachts abgesenkt), mit Prognose |
 | `max_charge` | % | Max Charge Percentage (Obergrenze ohne Aufschlag) |
@@ -71,6 +71,10 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 | `max_charge_power` | kW | Max Power der einen Verbindung Haus → Klima (Grundvariante, = Pmax) |
 | `charge_cost` | Währung/kWh | Aufschlag Spätladen, mit fallender Prognose |
 
+Im Kühlbetrieb (FR-SEAS-02) sind alle Grenzen gespiegelt: Überlastgrenze und Obergrenze ohne Aufschlag am Sollwert des Raums,
+flächengewichtet, hartes Maximum statt Minimum, die Nachtabsenkung lockert die Grenze nach oben; Werte außerhalb der Skala werden
+auf 0 bis 100 % begrenzt.
+
 ### Status
 
 `planned_power` (W, Prognose), `requested_power` (W, Attribut `served_rooms`), `binary_sensor` `running`, `fallback` (an erst nach der Wartezeit; Attribut `plan_missing_s` = Sekunden ohne gültigen Plan).
@@ -78,9 +82,20 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation` (K), `room_heat_demand` (kWh),
 `room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).
 
+Gelernte Kapazität (FR-PLNR-02/03): Diagnose-Sensoren `learned_heat_capacity` und `learned_cool_capacity` (kWh/K, nur lesbar),
+Attribute `estimates` und `updated`. Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.
+
 ## Dienst
 
 `climate_control.run_cycle` – führt sofort einen Zyklus aus; optional `config_entry_id` für eine Anlage.
+
+`climate_control.reset_learned_capacity` – setzt die gelernten Kapazitäten auf den Startwert zurück (FR-PLNR-03); optional
+`config_entry_id`. Nur über die Entwicklerwerkzeuge erreichbar, nirgends in der Oberfläche angeboten.
+
+## Aufzeichnung (FR-OBS-01)
+
+Datei `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` (JSON-Zeilen, Ereignisse `plant` und `unit`), Aufbau siehe
+`10-architecture.md`.
 
 ## Geräte
 

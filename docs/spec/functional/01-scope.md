@@ -10,7 +10,8 @@ Die Lösung ist allgemein gehalten: Zahl der Geräte, Leistungsklassen, Pmin und
 Der Referenzfall (Abschnitt 5) dient als Entwicklungstemplate.
 
 **Teil des Projekts:** SOC bilden, Plan lesen, Geräte und Offsets wählen, Moduswechsel, Lastregelung,
-Sicherheit, Rückfall, Vorgaben für das Planer-Modell.
+Sicherheit, Rückfall, Vorgaben für das Planer-Modell, Betriebsart Heizen oder Kühlen, Lernen der
+Pufferkapazität aus dem Betrieb, Aufzeichnung der Betriebsdaten.
 
 **Nicht Teil des Projekts:** die Optimierung selbst, die Prognose der Heizlast aus der Wetterprognose
 (beides Sache des Planers) und Änderungen am Planer-Kern.

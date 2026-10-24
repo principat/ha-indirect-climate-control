@@ -6,8 +6,8 @@ Anforderung auf allen Ebenen ihrer Spalte „Ebenen" getestet ist.
 | Ebene | Ort | Umgebung | Inhalt |
 | --- | --- | --- | --- |
 | unit | `tests/unit` | nur Kern | jede Kernregel, Abnahmeszenarien, Kernisolation, Übersetzungen/Hilfetexte, Release- und Spec-Prüfungen. Abdeckung Kern ≥ 90 % |
-| integration | `tests/integration` | pytest-homeassistant-custom-component | Config Flow, Subentries, Options, mehrere Anlagen, Hilfeschalter, Regelzyklen gegen Fake-Innengeräte (`fakes.FakeUnits`: gemerkter Sollwert je Modus, kein Sollwert in Lüften/Entfeuchten) |
-| e2e | `tests/e2e` | echte Home-Assistant-Instanz (Compose-Dienst `homeassistant`, Version = `HA_IMAGE_TAG`) mit Simulator | Konfigurationsprüfung, Einrichtung des Referenzfalls über die echte REST-/WebSocket-API, Plan lesen, Sollwert nach Moduswechsel, Rückfall |
+| integration | `tests/integration` | pytest-homeassistant-custom-component | Config Flow, Subentries, Options, mehrere Anlagen, Hilfeschalter, Betriebsart-Schalter, Lernen mit Speicherung und Reset, Aufzeichnung, Regelzyklen gegen Fake-Innengeräte (`fakes.FakeUnits`: gemerkter Sollwert je Modus, kein Sollwert in Lüften/Entfeuchten) |
+| e2e | `tests/e2e` | echte Home-Assistant-Instanz (Compose-Dienst `homeassistant`, Version = `HA_IMAGE_TAG`) mit Simulator | Konfigurationsprüfung, Einrichtung des Referenzfalls über die echte REST-/WebSocket-API, Plan lesen, Sollwert nach Moduswechsel, Rückfall, Kühlbetrieb über den Schalter, Reset der gelernten Kapazität |
 
 ## Simulator (`tests/e2e/simulator`)
 
@@ -19,7 +19,8 @@ Test-Integration `climate_control_sim`, eingebunden über `.devcontainer/docker-
 - Wechsel auf Heizen/Kühlen setzt gemerkten Sollwert (18/26 °C); Lüften/Entfeuchten ohne Sollwert;
 - `current_temperature` in ganzen Grad;
 - `sensor.klima_aussen_leistung_w` (Lüfter + Nennleistung anfordernder Geräte);
-- `sensor.sim_planner_power` (kW, `forecast`), steuerbar über Dienste `set_plan`, `set_reading`, `reset`.
+- `sensor.sim_planner_power` (kW, `forecast`), steuerbar über Dienste `set_plan`, `set_reading`, `reset`;
+- `input_boolean.sim_cooling` (in `configuration.yaml`): Kühlen-Schalter der Anlage (FR-SEAS-01).
 
 ## Hinweise
 

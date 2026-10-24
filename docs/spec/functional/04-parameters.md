@@ -30,3 +30,4 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Startwert Kapazität | 3 kWh je K (elektrisch) | gilt, bis genug Messungen vorliegen |
 | Lernschritt | 0,1 K | Bezugsgröße der gelernten Energie |
 | Mindestfenster Lernen | 0,35 K | kleinste Temperaturänderung je Schätzung |
+| Speicher Aufzeichnung | etwa 2 MB | danach ersetzt der neue Teil den ältesten |
