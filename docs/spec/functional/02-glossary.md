@@ -20,3 +20,5 @@
 | Temperatureinheit | Celsius (Standard) oder Fahrenheit, je Anlage; gilt für alle Temperaturen der Klimaanlagen und für Differenzen und Schrittweiten (dort als Zahl, 1 K wird 1 °C bzw. 1 °F) |
 | Betriebsart | Heizen (Standard) oder Kühlen, je Anlage, wählbar über einen optionalen externen Schalter |
 | Gelernte Kapazität | elektrische Energie je 0,1 K Änderung der mittleren Gerätetemperatur, aus dem Betrieb gemessen, getrennt für Heizen und Kühlen |
+| Regelbereich | Abstand zum Sollwert (je Richtung), in dem der Planer den Puffer ohne Kosten nutzen darf |
+| Absolute Grenze | Abstand zum Sollwert (je Richtung), an dem Schluss ist: unten Schutz durch Heizen, oben keine weitere Beheizung (Überlastgrenze) |

@@ -19,14 +19,14 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | SOC-Glättung | 15 min | Mittelwert oder Median |
 | Ausreißergrenze | 2 K je Zyklus | Plausibilitätsprüfung |
 | Überhitzung | 3 K, mindestens 1 h | Kühlregel |
-| Hartes Minimum | Sollwert minus 2 K | Schutz |
-| Überlast | bis 28 °C, mit Aufschlag | Obergrenze des Puffers, je Raum festzulegen (raumabhängig) |
-| SOC-Skala | 15 bis 30 °C = 0 bis 100 % | Bezug auf eigenen Sollwert offen; im Kühlbetrieb gespiegelt (30 °C = 0 %, 15 °C = 100 %); bei Fahrenheit 59 bis 86 °F |
+| Regelbereich | 2 K nach unten, 2 K nach oben | je Innengerät optional; Abstand zum Sollwert, in dem der Planer den Puffer frei nutzt |
+| Absolute Grenze | 3 K nach unten, 3 K nach oben | je Innengerät optional; unten hartes Minimum (Schutz), oben Überlastgrenze |
+| SOC-Skala | Sollwert = 40 %, 6 K darunter = 0 %, 9 K darüber = 100 % | relativ zum aktuellen Sollwert des Raums; im Kühlbetrieb gespiegelt |
 | Wirkungsgrad Puffer | 92 % | Planer-Modell |
 | Entladegrenze Puffer | 3,5 kW | Planer-Modell |
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |
 | Aufschlag Spätladen | 0,001 €/kWh | fällt mit der Zeit, entscheidet nur zwischen gleich teuren Zeitfenstern |
-| Strafwert Sollwert bis hartes Minimum | 0,003 €/kWh | etwas unter dem der Zoe-Ladung |
+| Strafwert zwischen Regelbereich und absoluter Grenze | 0,003 €/kWh | etwas unter dem der Zoe-Ladung |
 | Startwert Kapazität | 3 kWh je K (elektrisch) | gilt, bis genug Messungen vorliegen |
 | Lernschritt | 0,1 K | Bezugsgröße der gelernten Energie |
 | Mindestfenster Lernen | 0,35 K | kleinste Temperaturänderung je Schätzung |
