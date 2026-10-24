@@ -1,7 +1,8 @@
 # 50 Pufferkapazität aus Betriebsdaten lernen (Konzept, nicht umgesetzt)
 
-Status: **Vorschlag zur Freigabe**, überarbeitet am 24.10.2026 nach den Vorgaben des Nutzers (kurze Messzeiten,
-Energie je 0,1 K, Wände vernachlässigt, Mindestfenster 0,35 K, Kühlen im Sommer, Leistungssensor als Pflicht).
+Status: **freigegeben am 24.10.2026, noch nicht umgesetzt** (FR-PLNR-02/03, FR-SEAS-01/02 in der Fachspec). Vorgaben des Nutzers:
+kurze Messzeiten, Energie je 0,1 K, Wände vernachlässigt, Mindestfenster 0,35 K, Kühlen im Sommer, Leistungssensor als Pflicht,
+keine Abhängigkeit von der Lastprognose einer anderen Integration.
 Bis dahin gilt ein fester Startwert von 3 kWh_el/K (`DEFAULT_CAPACITY_KWH_PER_K` im Adapter, nicht im Kern). Die
 Kapazität ist keine Einstellung.
 
@@ -61,23 +62,17 @@ Ein Fenster läuft, solange die Anlage heizt (`running`, mindestens eine Minute 
   Temperatur kaum.
 - Der Wärmeeintrag (Sonne, Außenluft) wirkt im Sommer gegen das Kühlen. Er steckt wie der Verlust im Winter in der
   gemessenen Energie, siehe nächster Abschnitt.
-- **Offen in der Spec:** Kühlen kommt bisher nur als Schutz vor (FR-SAFE-03, Überhitzung). Soll es im Sommer wie das
-  Heizen **geplant** werden (Kältespeicher mit gespiegelter SOC-Skala und gespiegelten Grenzen), braucht es eine neue
-  Anforderung, dazu eine Betriebsart je Jahreszeit (Heizen oder Kühlen), weil beides nicht gleichzeitig laufen darf
-  (FR-MODE-01). Das Lernen für das Kühlen ist erst sinnvoll, wenn das entschieden ist.
+- Kühlen als geplante Betriebsart ist beschlossen (FR-SEAS-01/02): Ein optionaler externer Schalter (Binärsensor oder Schalter,
+  aus = Heizen, ein = Kühlen) wählt die Betriebsart, Standard ist Heizen. Das Lernen läuft je Betriebsart in eigenem Wert.
 
 ## Wände und Verluste
 
 - Die langsame Auskühlung der Wände wird **vernachlässigt**. Ihr träger Puffer hält den Raum und wird beim Heizen
   wieder gefüllt. Darum braucht die Messung keine Gegenphase.
-- **Verlust nach außen während des Fensters.** Die gemessene Energie `E` ist die Summe aus zwei Anteilen: dem Anteil,
-  der den Puffer füllt (`C × ΔT`), und dem Anteil, der im selben Zeitraum nur den Wärmeverlust des Hauses ausgleicht.
-  Der zweite Anteil hebt die Temperatur nicht und lässt E₀,₁ zu groß erscheinen. Beispiel: Heizt die Anlage mit
-  1,3 kW und liegt der Bedarf bei 0,375 kW (deine Prognose, Tagesmittel), gehen 29 % der Energie in den Ausgleich des
-  Verlusts. Der gelernte Wert wäre dann um etwa 40 % zu hoch (3,0 statt 2,1 kWh_el/K).
-- **Vorschlag, noch offen:** Ist die Lastprognose der HAEO-Last am Knoten Klima als Sensor angegeben, wird ihr
-  Integral über das Fenster abgezogen (`E_netto = E − ∫ P_Last dt`). Ohne Sensor bleibt der Wert unkorrigiert und damit
-  eher zu groß. Im Sommer wäre es der Wärmeeintrag, falls die Prognose ihn liefert.
+- **Verlust nach außen** steckt unkorrigiert in der gemessenen Energie, der gelernte Wert ist deshalb eher zu groß (Beispiel:
+  1,3 kW Heizleistung bei 0,375 kW Bedarf, etwa 40 % zu hoch). **Beschluss:** Das Lernen nutzt keine Lastprognose und keinen
+  Sensor einer anderen Integration. Der Fehler wird als offener Punkt geführt. Eine spätere Korrektur muss aus eigenen Daten kommen
+  (zum Beispiel aus der Leistung im Lüftbetrieb).
 - Die Grundleistung im Lüften (Außengerät und Lüfter, etwa 35 W) wird als gemessene Leerlaufleistung abgezogen.
 
 ## Plausibilität und Aktualisierung
@@ -89,8 +84,9 @@ Ein Fenster läuft, solange die Anlage heizt (`running`, mindestens eine Minute 
   je Schätzung höchstens ±25 % Änderung. So folgt die Kapazität einem Wechsel der Jahreszeit (und der Leistungszahl)
   innerhalb von Stunden.
 - Der gelernte Wert und die Zahl der Schätzungen werden dauerhaft gespeichert und bleiben über Neustarts erhalten.
-- Sichtbar als Sensor „Gelernte Kapazität“ mit den Attributen Schätzungen und letzte Aktualisierung (für Heizen und
-  Kühlen je ein Sensor). Ein Dienst setzt auf den Startwert zurück.
+- Sichtbar als Diagnose-Sensor „Gelernte Kapazität“ mit den Attributen Schätzungen und letzte Aktualisierung (für Heizen und
+  Kühlen je ein Sensor), nicht änderbar. Ein Dienst setzt auf den Startwert zurück. Er wird im Alltag nicht angeboten (nicht in
+  der Oberfläche vorgeschlagen, nur über Entwicklerwerkzeuge erreichbar) und ist für grundlegende Änderungen an der Anlage gedacht.
 
 ## Benötigte Eingänge
 
@@ -98,19 +94,9 @@ Ein Fenster läuft, solange die Anlage heizt (`running`, mindestens eine Minute 
   bei älteren Einträgen erinnert eine Reparaturmeldung daran. Der Sensor dient dem Vergleich mit der geplanten Leistung
   und dem Lernen. Im Referenzfall `sensor.klima_aussen_leistung_w`. Frühere Daten sind unbrauchbar, wenn der Sensor
   Scheinleistung lieferte.
-- Optional: Lastprognose der HAEO-Last (Sensor) für die Korrektur des Verlusts.
+- Optional: Schalter für die Betriebsart (aus = Heizen, ein = Kühlen).
 - Vorhanden: Gerätetemperaturen, Betriebszustand, Fensterkontakte, Flächen.
 
-## Offene Fragen zur Freigabe
+## Fachspec
 
-1. Soll der Verlust über die Lastprognose abgezogen werden (genauer, aber ein weiteres Feld), oder genügt der
-   unkorrigierte Wert?
-2. Soll Kühlen im Sommer als geplanter Betrieb eingeführt werden (gespiegelter SOC, Betriebsart je Jahreszeit)? Davon
-   hängt ab, ob das Lernen für das Kühlen jetzt oder später umgesetzt wird.
-3. Soll der Nutzer den gelernten Wert sehen und zurücksetzen können, oder nur das System?
-
-## Vorschlag für die Fachspec (nach Freigabe)
-
-| ID | Anforderung | Status | Ebenen |
-| --- | --- | --- | --- |
-| FR-PLNR-02 | Die Pufferkapazität wird aus der elektrischen Energie je 0,1 K Änderung der mittleren Gerätetemperatur im Heiz- und im Kühlbetrieb laufend angepasst, ausgehend von einem Startwert. Jede Schätzung beruht auf einer Änderung von mindestens 0,35 K. Sie ist keine Einstellung. Der gelernte Wert bleibt über Neustarts erhalten. | Vorschlag | unit,integration |
+FR-PLNR-02, FR-PLNR-03, FR-SEAS-01 und FR-SEAS-02 stehen beschlossen in `03-requirements.md`.

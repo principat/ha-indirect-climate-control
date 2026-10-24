@@ -17,3 +17,5 @@
 | Leistungsklasse | Gruppe von Innengeräten gleicher Nennleistung |
 | Gleichstand-Band | Spanne, in der Abweichungen als gleich gelten |
 | Rückfall | Normalbetrieb ohne Planer nach einer Wartezeit: alle Geräte heizen schrittweise mit Standard-Sollwerten |
+| Betriebsart | Heizen (Standard) oder Kühlen, je Anlage, wählbar über einen optionalen externen Schalter |
+| Gelernte Kapazität | elektrische Energie je 0,1 K Änderung der mittleren Gerätetemperatur, aus dem Betrieb gemessen, getrennt für Heizen und Kühlen |

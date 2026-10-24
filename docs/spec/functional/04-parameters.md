@@ -20,10 +20,13 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Überhitzung | 3 K, mindestens 1 h | Kühlregel |
 | Hartes Minimum | Sollwert minus 2 K | Schutz |
 | Überlast | bis 28 °C, mit Aufschlag | Obergrenze des Puffers, je Raum festzulegen (raumabhängig) |
-| SOC-Skala | 15 bis 30 °C = 0 bis 100 % | Bezug auf eigenen Sollwert offen |
+| SOC-Skala | 15 bis 30 °C = 0 bis 100 % | Bezug auf eigenen Sollwert offen; im Kühlbetrieb gespiegelt (30 °C = 0 %, 15 °C = 100 %) |
 | Wirkungsgrad Puffer | 92 % | Planer-Modell |
 | Entladegrenze Puffer | 3,5 kW | Planer-Modell |
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |
 | Aufschlag Spätladen | 0,001 €/kWh | fällt mit der Zeit, entscheidet nur zwischen gleich teuren Zeitfenstern |
 | Strafwert Sollwert bis hartes Minimum | 0,003 €/kWh | etwas unter dem der Zoe-Ladung |
 | Mindestlaufzeit je Gerät | offen | siehe FR-DIST-03 |
+| Startwert Kapazität | 3 kWh je K (elektrisch) | gilt, bis genug Messungen vorliegen |
+| Lernschritt | 0,1 K | Bezugsgröße der gelernten Energie |
+| Mindestfenster Lernen | 0,35 K | kleinste Temperaturänderung je Schätzung |
