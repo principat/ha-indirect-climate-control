@@ -1,3 +1,19 @@
+## [0.6.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.5.0...v0.6.0) (2026-10-24)
+
+### Features
+
+* cooling mode with an optional switch and a capacity learned from operation ([73c1dee](https://github.com/principat/ha-indirect-climate-control/commit/73c1deeb4a52061a1e672e3e9018c2ecf7da4cb8))
+* mandatory power sensor of the outdoor unit ([b259647](https://github.com/principat/ha-indirect-climate-control/commit/b2596477d84b81e896d852c3d1c1e60293fe90d9))
+* minimum run time of the plant and a lower start value of the capacity ([7e3003d](https://github.com/principat/ha-indirect-climate-control/commit/7e3003dad3afa1e639475a0534231ab89ea79590))
+* offset band per indoor unit and an SOC relative to the setpoint ([76e9066](https://github.com/principat/ha-indirect-climate-control/commit/76e9066a3ad9ed32c40b6e1c0decb7659bc53b86))
+* record the operating data of the plant and the indoor units ([4528a9a](https://github.com/principat/ha-indirect-climate-control/commit/4528a9a13ca59e37add868e5b59c31123074708e))
+* temperature unit switch for the plant (Celsius default, Fahrenheit) ([380b446](https://github.com/principat/ha-indirect-climate-control/commit/380b446825dc7835e1238c06f67a33674a2d57c3))
+* use the device temperature as reported, without rounding to whole degrees ([3740e03](https://github.com/principat/ha-indirect-climate-control/commit/3740e036adda13b0cebfced8bd613e9c166edaab))
+
+### Bug Fixes
+
+* a change made while an entry is being set up no longer leaves the control on stale rooms ([180fdaf](https://github.com/principat/ha-indirect-climate-control/commit/180fdafcd278211fd2ff23737a6e603500f2f7a1))
+
 ## [0.5.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.4.0...v0.5.0) (2026-10-23)
 
 ### Features
