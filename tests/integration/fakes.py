@@ -59,6 +59,23 @@ def _ids(call: ServiceCall) -> list[str]:
     return [ids] if isinstance(ids, str) else list(ids)
 
 
+async def submit_room(hass: HomeAssistant, flow_id: str, values: dict[str, Any]) -> Any:
+    """Submit a room like the user does: the form with the setpoint source, then the setpoint itself."""
+    form = {k: v for k, v in values.items() if k not in ("setpoint_c", "setpoint_entity")}
+    source = "entity" if values.get("setpoint_entity") else "constant"
+    result = await hass.config_entries.subentries.async_configure(
+        flow_id, {**form, "setpoint_source": source}
+    )
+    if result["type"] == "form" and result["step_id"] in ("setpoint_constant", "setpoint_entity"):
+        value = (
+            {"setpoint_entity": values["setpoint_entity"]}
+            if source == "entity"
+            else {"setpoint_c": values["setpoint_c"]}
+        )
+        result = await hass.config_entries.subentries.async_configure(result["flow_id"], value)
+    return result
+
+
 def set_plan(hass: HomeAssistant, kw: float | None, hours: int = 6) -> None:
     """Planner output in kW with an hourly forecast; None = planner unavailable."""
     if kw is None:

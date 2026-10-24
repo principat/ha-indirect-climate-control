@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.climate_control.const import DOMAIN
 from custom_components.climate_control.core.config import Parameters
 
-from .fakes import INSTALLATION, PLAN, ROOMS, FakeUnits, room_data, run_cycle, set_plan
+from .fakes import INSTALLATION, PLAN, ROOMS, FakeUnits, room_data, run_cycle, set_plan, submit_room
 
 USER_INPUT = {"name": "Klima", **INSTALLATION}
 
@@ -31,9 +31,7 @@ async def _add_room(hass: HomeAssistant, entry: MockConfigEntry, entity_id: str,
         (entry.entry_id, "room"), context={"source": "user"}
     )
     assert result["type"] == FlowResultType.FORM and result["step_id"] == "user"
-    result = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], room_data(entity_id, **overrides)
-    )
+    result = await submit_room(hass, result["flow_id"], room_data(entity_id, **overrides))
     await hass.async_block_till_done()
     return result
 
@@ -95,7 +93,7 @@ async def test_indoor_unit_can_be_changed_and_removed(
     changed = {
         k: v for k, v in room_data(ROOMS[0], setpoint_c=23.0, name="Wohnen").items() if k != "entity_id"
     }
-    result = await hass.config_entries.subentries.async_configure(result["flow_id"], changed)
+    result = await submit_room(hass, result["flow_id"], changed)
     assert result["type"] == FlowResultType.ABORT and result["reason"] == "reconfigure_successful"
     await hass.async_block_till_done()
     assert entry.runtime_data.cfg.room(ROOMS[0]).setpoint_c == 23.0
@@ -235,8 +233,8 @@ async def test_help_sections_above_complex_fields_follow_the_switch(
         (entry.entry_id, "room"), context={"source": "user"}
     )
     units.set("climate.e", "fan_only", 20)
-    await hass.config_entries.subentries.async_configure(
-        sub["flow_id"], {**room_data("climate.e"), "help_setpoint_c": {"help_expanded": False}}
+    await submit_room(
+        hass, sub["flow_id"], {**room_data("climate.e"), "help_setpoint_source": {"help_expanded": False}}
     )
     await hass.async_block_till_done()
     form = await _open_group(hass, entry, "control")
@@ -290,8 +288,8 @@ async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUn
         hass, entry, ROOMS[0], band_up=4.0, limit_up=3.0
     )  # control range beyond the limit
     assert result["type"] == FlowResultType.FORM and result["errors"] == {"base": "room_limits"}
-    result = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], room_data(ROOMS[0], band_down=1.0, band_up=1.5, limit_down=2.5, limit_up=4.0)
+    result = await submit_room(
+        hass, result["flow_id"], room_data(ROOMS[0], band_down=1.0, band_up=1.5, limit_down=2.5, limit_up=4.0)
     )
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -322,7 +320,7 @@ async def test_the_band_fields_are_optional_and_default_to_the_standard_values(
     }
     assert defaults == {"band_down": 2.0, "band_up": 2.0, "limit_down": 3.0, "limit_up": 3.0}
     minimal = {"entity_id": ROOMS[0], "name": "A", "setpoint_c": 21.0, "nominal_power_w": 700, "area_m2": 10}
-    result = await hass.config_entries.subentries.async_configure(result["flow_id"], minimal)
+    result = await submit_room(hass, result["flow_id"], minimal)
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     room = entry.runtime_data.cfg.room(ROOMS[0])
@@ -443,7 +441,7 @@ async def test_window_contacts_can_be_edited_when_stored_as_single_id(
 
     changed = {k: v for k, v in room_data(ROOMS[0]).items() if k != "entity_id"}
     changed["window_entity"] = ["binary_sensor.fs_terrassentur_contact", "binary_sensor.fs_couch_contact"]
-    result = await hass.config_entries.subentries.async_configure(form["flow_id"], changed)
+    result = await submit_room(hass, form["flow_id"], changed)
     assert result["reason"] == "reconfigure_successful"
     stored = next(iter(entry.subentries.values())).data["window_entity"]
     assert stored == ["binary_sensor.fs_terrassentur_contact", "binary_sensor.fs_couch_contact"]

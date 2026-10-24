@@ -18,8 +18,7 @@ OPTION_HELP = "help_expanded"
 USER_HELP = ("temperature_unit", "plan_entity", "p_min_w", "p_max_w", "outdoor_power_entity", "season_entity")
 ROOM_HELP = (
     "entity_id",
-    "setpoint_c",
-    "setpoint_entity",
+    "setpoint_source",
     "band_down",
     "band_up",
     "limit_down",
@@ -30,6 +29,9 @@ ROOM_HELP = (
     "area_m2",
     "window_entity",
 )
+
+SETPOINT_CONSTANT_HELP = ("setpoint_c",)
+SETPOINT_ENTITY_HELP = ("setpoint_entity",)
 
 
 def help_section_key(field: str) -> str:

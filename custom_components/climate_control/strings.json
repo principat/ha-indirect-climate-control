@@ -134,8 +134,7 @@
           "data": {
             "entity_id": "Indoor unit",
             "name": "Room name",
-            "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
-            "setpoint_entity": "Setpoint entity (optional)",
+            "setpoint_source": "Setpoint from",
             "band_down": "Control range below the setpoint → Min Charge Level",
             "band_up": "Control range above the setpoint → Max Charge Level",
             "limit_down": "Absolute limit below the setpoint → Undercharge percentage",
@@ -154,16 +153,9 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
-            "help_setpoint_c": {
-              "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
-              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 K above it for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
-              "data": {
-                "help_expanded": "Expand help texts when opening"
-              }
-            },
-            "help_setpoint_entity": {
-              "name": "Help: Setpoint entity (optional)",
-              "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+            "help_setpoint_source": {
+              "name": "Help: Setpoint from",
+              "description": "Where the setpoint of this room comes from: a fixed value or an entity (a number helper, number or sensor, e.g. to change setpoints by automation or schedule). You choose one of the two and enter it in the next step. It is the reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 above it for 1 h → cool) and the fallback (heat to this value).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -233,12 +225,41 @@
             }
           }
         },
+        "setpoint_constant": {
+          "title": "Setpoint: fixed value",
+          "data": {
+            "setpoint_c": "Setpoint (fixed value) → Min Charge Level"
+          },
+          "sections": {
+            "help_setpoint_c": {
+              "name": "Help: Setpoint (fixed value) → Min Charge Level",
+              "description": "The fixed setpoint of this room in the unit of the installation. All limits sent to the planner follow it.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            }
+          }
+        },
+        "setpoint_entity": {
+          "title": "Setpoint: entity",
+          "data": {
+            "setpoint_entity": "Setpoint entity"
+          },
+          "sections": {
+            "help_setpoint_entity": {
+              "name": "Help: Setpoint entity",
+              "description": "Number helper, number or sensor whose value is the setpoint (in the unit of the installation, 5–30 °C or 41–86 °F). The value is read in every control cycle. Values outside the range, unavailable or non-numeric states are ignored: the last valid value counts. Before the first valid value the room is not controlled.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            }
+          }
+        },
         "reconfigure": {
           "title": "Indoor unit {entity_id}",
           "data": {
             "name": "Room name",
-            "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
-            "setpoint_entity": "Setpoint entity (optional)",
+            "setpoint_source": "Setpoint from",
             "band_down": "Control range below the setpoint → Min Charge Level",
             "band_up": "Control range above the setpoint → Max Charge Level",
             "limit_down": "Absolute limit below the setpoint → Undercharge percentage",
@@ -250,16 +271,9 @@
             "window_entity": "Window contacts"
           },
           "sections": {
-            "help_setpoint_c": {
-              "name": "Help: Setpoint (fixed or substitute value) → Min Charge Level",
-              "description": "The room's own setpoint. Reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 K above it for 1 h → cool) and the fallback (heat to this value). If a setpoint entity is set below, this value is only used while the entity delivers no valid value.",
-              "data": {
-                "help_expanded": "Expand help texts when opening"
-              }
-            },
-            "help_setpoint_entity": {
-              "name": "Help: Setpoint entity (optional)",
-              "description": "Optional number helper, number or sensor whose value (°C) is used as the setpoint instead of the fixed value, e.g. to change setpoints by automation or schedule. The value is read in every control cycle; values outside 5–30 °C, unavailable or non-numeric states are ignored and the fixed setpoint applies. Leave empty for a fixed setpoint.",
+            "help_setpoint_source": {
+              "name": "Help: Setpoint from",
+              "description": "Where the setpoint of this room comes from: a fixed value or an entity (a number helper, number or sensor, e.g. to change setpoints by automation or schedule). You choose one of the two and enter it in the next step. It is the reference for the deviation (priority), the SOC (worst room against its own setpoint), the absolute limit below it (heat even without plan), overheating (3 above it for 1 h → cool) and the fallback (heat to this value).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -633,6 +647,12 @@
     }
   },
   "selector": {
+    "setpoint_source": {
+      "options": {
+        "constant": "Fixed value",
+        "entity": "Entity"
+      }
+    },
     "temperature_unit": {
       "options": {
         "celsius": "Celsius",

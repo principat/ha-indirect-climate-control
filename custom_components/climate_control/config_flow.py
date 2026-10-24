@@ -6,6 +6,7 @@ a time), all parameters as options. Several installations can be configured side
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import fields
 from typing import Any
 
@@ -41,20 +42,25 @@ from .const import (
     ROOM_POWER,
     ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
+    ROOM_SETPOINT_SOURCE,
     ROOM_START_OFFSET,
     ROOM_STEP,
     ROOM_WINDOW,
+    SOURCE_CONSTANT,
+    SOURCE_ENTITY,
     SUBENTRY_ROOM,
 )
 from .core.config import ConfigError, Parameters, RoomConfig
 from .core.model import Mode
 from .core.units import TemperatureUnit, from_celsius
-from .data import as_list, build_config, installation_unit
+from .data import as_list, build_config, installation_unit, setpoint_source
 from .help import (
     HELP_KEY,
     OPTION_HELP,
     PARAMETER_GROUPS,
     ROOM_HELP,
+    SETPOINT_CONSTANT_HELP,
+    SETPOINT_ENTITY_HELP,
     USER_HELP,
     help_section_key,
     split_help,
@@ -120,7 +126,6 @@ def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
 def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
     """Temperatures are entered in the plant's unit (FR-UNIT-01); the ranges follow it."""
     symbol = unit.symbol
-    step = 0.5 if unit is TemperatureUnit.CELSIUS else 1
     items: dict[Any, Any] = {}
     if with_entity:
         items[vol.Required(ROOM_ENTITY)] = selector.EntitySelector(
@@ -129,11 +134,13 @@ def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
     items.update(
         {
             vol.Required(ROOM_NAME): str,
-            vol.Required(ROOM_SETPOINT, default=from_celsius(21.0, unit)): _number(
-                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(30, unit)
-            ),
-            vol.Optional(ROOM_SETPOINT_ENTITY): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain=["input_number", "number", "sensor"])
+            # FR-CFG-04: a fixed value or an entity: the choice here, the value in the next step
+            vol.Required(ROOM_SETPOINT_SOURCE, default=SOURCE_CONSTANT): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[SOURCE_CONSTANT, SOURCE_ENTITY],
+                    mode=selector.SelectSelectorMode.LIST,
+                    translation_key=ROOM_SETPOINT_SOURCE,
+                )
             ),
             # FR-BAND-01: optional distances to the current setpoint, in the plant's unit
             vol.Optional(ROOM_BAND_DOWN, default=RoomConfig.band_down): _number(
@@ -235,7 +242,13 @@ class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class RoomSubentryFlow(ConfigSubentryFlow):
-    """FR-CFG-01: one indoor unit per subentry."""
+    """FR-CFG-01: one indoor unit per subentry. FR-CFG-04: the setpoint source first, its value next."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._room: dict[str, Any] = {}
+        self._old: Mapping[str, Any] = {}
+        self._reconfiguring = False
 
     def _expanded(self) -> bool:
         return bool(self._get_entry().options.get(OPTION_HELP, False))
@@ -268,7 +281,8 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             if any(s.unique_id == entity_id for s in self._get_entry().subentries.values()):
                 errors[ROOM_ENTITY] = "already_configured"
             elif not errors:
-                return self.async_create_entry(title=values[ROOM_NAME], data=values, unique_id=entity_id)
+                self._room = values
+                return await self._next_step()
         schema = _with_help(_room_fields(True, self._unit()), ROOM_HELP, self._expanded())
         return self.async_show_form(
             step_id="user", data_schema=self.add_suggested_values_to_schema(schema, values), errors=errors
@@ -276,17 +290,17 @@ class RoomSubentryFlow(ConfigSubentryFlow):
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         subentry = self._get_reconfigure_subentry()
+        self._reconfiguring = True
+        self._old = subentry.data
         errors: dict[str, str] = {}
-        current = self._suggested(dict(subentry.data))
+        current = self._suggested({**subentry.data, ROOM_SETPOINT_SOURCE: setpoint_source(subentry.data)})
         if user_input is not None:
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
             errors = _room_errors(values)
             if not errors:
-                data = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
-                return self.async_update_and_abort(
-                    self._get_entry(), subentry, title=values[ROOM_NAME], data=data
-                )
+                self._room = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
+                return await self._next_step()
             current = self._suggested({ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values})
         schema = _with_help(_room_fields(False, self._unit()), ROOM_HELP, self._expanded())
         return self.async_show_form(
@@ -295,6 +309,69 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             description_placeholders={"entity_id": subentry.data[ROOM_ENTITY]},
             errors=errors,
         )
+
+    async def _next_step(self) -> SubentryFlowResult:
+        if self._room[ROOM_SETPOINT_SOURCE] == SOURCE_ENTITY:
+            return await self.async_step_setpoint_entity()
+        return await self.async_step_setpoint_constant()
+
+    async def async_step_setpoint_constant(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """The setpoint is a fixed value (entered here)."""
+        unit = self._unit()
+        expanded = self._expanded()
+        if user_input is not None:
+            values, expanded = split_help(user_input, expanded)
+            self._store_help(expanded)
+            data = {k: v for k, v in self._room.items() if k != ROOM_SETPOINT_ENTITY}
+            return self._finish({**data, ROOM_SETPOINT: values[ROOM_SETPOINT]})
+        symbol = unit.symbol
+        step = 0.5 if unit is TemperatureUnit.CELSIUS else 1
+        fields = {
+            vol.Required(ROOM_SETPOINT, default=from_celsius(21.0, unit)): _number(
+                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(30, unit)
+            )
+        }
+        schema = _with_help(fields, SETPOINT_CONSTANT_HELP, expanded)
+        current = {ROOM_SETPOINT: self._old[ROOM_SETPOINT]} if ROOM_SETPOINT in self._old else {}
+        return self.async_show_form(
+            step_id="setpoint_constant", data_schema=self.add_suggested_values_to_schema(schema, current)
+        )
+
+    async def async_step_setpoint_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """The setpoint comes from an entity (chosen here)."""
+        expanded = self._expanded()
+        if user_input is not None:
+            values, expanded = split_help(user_input, expanded)
+            self._store_help(expanded)
+            data = dict(self._room)
+            data[ROOM_SETPOINT_ENTITY] = values[ROOM_SETPOINT_ENTITY]
+            data.pop(ROOM_SETPOINT, None)  # one value only: the fixed one is gone
+            return self._finish(data)
+        fields = {
+            vol.Required(ROOM_SETPOINT_ENTITY): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["input_number", "number", "sensor"])
+            )
+        }
+        schema = _with_help(fields, SETPOINT_ENTITY_HELP, expanded)
+        current = (
+            {ROOM_SETPOINT_ENTITY: self._old[ROOM_SETPOINT_ENTITY]}
+            if ROOM_SETPOINT_ENTITY in self._old
+            else {}
+        )
+        return self.async_show_form(
+            step_id="setpoint_entity", data_schema=self.add_suggested_values_to_schema(schema, current)
+        )
+
+    def _finish(self, data: dict[str, Any]) -> SubentryFlowResult:
+        if self._reconfiguring:
+            return self.async_update_and_abort(
+                self._get_entry(), self._get_reconfigure_subentry(), title=data[ROOM_NAME], data=data
+            )
+        return self.async_create_entry(title=data[ROOM_NAME], data=data, unique_id=data[ROOM_ENTITY])
 
 
 def _options_fields(current: Parameters, names: tuple[str, ...], unit: TemperatureUnit) -> dict[Any, Any]:

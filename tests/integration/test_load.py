@@ -11,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 
 from custom_components.climate_control.const import DOMAIN, SERVICE_RESET_LEARNED
 
-from .fakes import ROOMS, FakeUnits, run_cycle, set_plan
+from .fakes import ROOMS, FakeUnits, run_cycle, set_plan, submit_room
 
 A, B, C = ROOMS
 POWER = "sensor.outdoor_power"
@@ -44,9 +44,7 @@ async def test_the_step_size_is_an_optional_field_of_the_indoor_unit_in_the_unit
         "nominal_power_w": 700,
         "area_m2": 10,
     }
-    added = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], minimal
-    )  # the field is optional
+    added = await submit_room(hass, result["flow_id"], minimal)  # the field is optional
     assert added["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     assert entry.runtime_data.cfg.room("climate.extra").step == 0.5

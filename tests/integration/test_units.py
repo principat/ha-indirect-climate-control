@@ -9,7 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.climate_control.const import DOMAIN
 
-from .fakes import INSTALLATION, ROOMS, FakeUnits, room_subentries, run_cycle, set_plan
+from .fakes import INSTALLATION, ROOMS, FakeUnits, room_subentries, run_cycle, set_plan, submit_room
 
 A, B, C = ROOMS
 FAHRENHEIT_ROOM = {"setpoint_c": 70.0}  # 21 degC; the distances keep their numbers (1 K becomes 1 degF)
@@ -78,12 +78,14 @@ async def test_setpoint_entity_values_are_fahrenheit_too(hass: HomeAssistant, un
     assert _value(hass, "sensor.a_deviation_from_setpoint") == pytest.approx(3.0)
     hass.states.async_set("input_number.setpoint_a", "100")  # not plausible as a setpoint in degF (max. 86)
     await run_cycle(hass)
-    assert _value(hass, "sensor.a_deviation_from_setpoint") == pytest.approx(2.0)  # the fixed 70 counts
+    assert _value(hass, "sensor.a_deviation_from_setpoint") == pytest.approx(
+        3.0
+    )  # the last valid value counts
     hass.states.async_set(
         "input_number.setpoint_a", "22"
     )  # a Celsius number is not plausible in degF (min. 41)
     await run_cycle(hass)
-    assert _value(hass, "sensor.a_deviation_from_setpoint") == pytest.approx(2.0)
+    assert _value(hass, "sensor.a_deviation_from_setpoint") == pytest.approx(3.0)
 
 
 @pytest.mark.req("FR-UNIT-01")
@@ -124,9 +126,25 @@ async def test_forms_of_a_fahrenheit_plant_use_fahrenheit(hass: HomeAssistant, u
         (entry.entry_id, "room"), context={"source": "user"}
     )
     schema = {str(m): (m, v) for m, v in result["data_schema"].schema.items()}
-    marker, selector = schema["setpoint_c"]
+    assert "setpoint_c" not in schema  # the setpoint follows in the next step (FR-CFG-04)
+    probe = await hass.config_entries.subentries.async_configure(
+        result["flow_id"],
+        {
+            "entity_id": "climate.probe",
+            "name": "P",
+            "setpoint_source": "constant",
+            "nominal_power_w": 700,
+            "area_m2": 10,
+        },
+    )
+    value = {str(m): (m, v) for m, v in probe["data_schema"].schema.items()}
+    marker, selector = value["setpoint_c"]
     assert marker.default() == 70.0 and selector.config["unit_of_measurement"] == "°F"
     assert selector.config["min"] == 41.0 and selector.config["max"] == 86.0
+    result = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "room"), context={"source": "user"}
+    )
+    schema = {str(m): (m, v) for m, v in result["data_schema"].schema.items()}
     assert schema["band_up"][1].config["unit_of_measurement"] == "°F"  # distances are in the unit as well
     assert schema["limit_down"][0].default() == 3.0
     values = {
@@ -137,11 +155,9 @@ async def test_forms_of_a_fahrenheit_plant_use_fahrenheit(hass: HomeAssistant, u
         "nominal_power_w": 700,
         "area_m2": 10,
     }
-    refused = await hass.config_entries.subentries.async_configure(result["flow_id"], values)
+    refused = await submit_room(hass, result["flow_id"], values)
     assert refused["type"] == FlowResultType.FORM and refused["errors"] == {"base": "room_limits"}
-    accepted = await hass.config_entries.subentries.async_configure(
-        result["flow_id"], {**values, "limit_up": 5.0}
-    )
+    accepted = await submit_room(hass, result["flow_id"], {**values, "limit_up": 5.0})
     assert accepted["type"] == FlowResultType.CREATE_ENTRY
 
 

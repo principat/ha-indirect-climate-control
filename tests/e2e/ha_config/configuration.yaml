@@ -21,3 +21,12 @@ climate_control_sim:
 input_boolean:
   sim_cooling:
     name: Sim cooling
+
+# Setpoint source of an indoor unit that takes its setpoint from an entity (FR-CFG-04).
+input_number:
+  sim_setpoint:
+    name: Sim setpoint
+    min: 5
+    max: 30
+    step: 0.5
+    initial: 23

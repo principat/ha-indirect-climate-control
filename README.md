@@ -42,7 +42,7 @@ Therefore set up in this order:
    **no command to the indoor units** (no fallback either).
 3. **Add indoor units** – in the three-dot menu (⋮) of the installation entry, *"Add indoor unit"* once per
    unit: climate entity, room name,
-   setpoint (fixed value, optionally an entity such as a number helper; the fixed value is then the substitute),
+   setpoint (a fixed value or an entity such as a number helper: you choose one of the two and enter it in the next step),
    optional control range and absolute limit around the setpoint (default 2 / 3 in the unit of the plant, below and above),
    nominal power (units with equal nominal power form a power class), area, optional window contacts (one or
    more, the room counts as open as soon as one is open). Units can
@@ -254,8 +254,8 @@ Deshalb in dieser Reihenfolge einrichten:
    **keinen Befehl an die Innengeräte** (auch keinen Rückfall).
 3. **Innengeräte hinzufügen** – im Drei-Punkte-Menü (⋮) des Anlagen-Eintrags *„Innengerät hinzufügen“*, je Gerät
    einmal: Klimagerät,
-   Raumname, Sollwert (fester Wert oder zusätzlich eine Entität wie ein Zahl-Helfer, dann ist der feste Wert der
-   Ersatzwert), optional Regelbereich und absolute Grenze um den Sollwert (Standard 2 / 3 in der Einheit der Anlage, unten und oben),
+   Raumname, Sollwert (ein fester Wert oder eine Entität wie ein Zahl-Helfer: du wählst eines von beiden und gibst es im
+   nächsten Schritt an), optional Regelbereich und absolute Grenze um den Sollwert (Standard 2 / 3 in der Einheit der Anlage, unten und oben),
    Nennleistung (Geräte gleicher Nennleistung bilden eine Leistungsklasse), Fläche, optional Fensterkontakte
    (einer oder mehrere, der Raum gilt als offen, sobald einer offen ist).
    Jedes Innengerät erhält ein eigenes Gerät mit Diagnose-Sensoren (siehe unten). Innengeräte lassen sich später

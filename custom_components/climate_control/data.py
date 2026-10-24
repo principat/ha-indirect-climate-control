@@ -20,8 +20,12 @@ from .const import (
     ROOM_NAME,
     ROOM_POWER,
     ROOM_SETPOINT,
+    ROOM_SETPOINT_ENTITY,
+    ROOM_SETPOINT_SOURCE,
     ROOM_START_OFFSET,
     ROOM_STEP,
+    SOURCE_CONSTANT,
+    SOURCE_ENTITY,
     SUBENTRY_ROOM,
 )
 from .core.config import InstallationConfig, Parameters, RoomConfig
@@ -45,6 +49,14 @@ def installation_unit(data: Mapping[str, Any]) -> TemperatureUnit:
         return TemperatureUnit.CELSIUS
 
 
+def setpoint_source(room: Mapping[str, Any]) -> str:
+    """FR-CFG-04: where the setpoint of a room comes from. Entries from before the choice derive it."""
+    source = room.get(ROOM_SETPOINT_SOURCE)
+    if source in (SOURCE_CONSTANT, SOURCE_ENTITY):
+        return str(source)
+    return SOURCE_ENTITY if room.get(ROOM_SETPOINT_ENTITY) else SOURCE_CONSTANT
+
+
 def room_data(entry: ConfigEntry) -> list[Mapping[str, Any]]:
     """Room subentries in creation order (= configured order)."""
     return [s.data for s in entry.subentries.values() if s.subentry_type == SUBENTRY_ROOM]
@@ -58,7 +70,7 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
         RoomConfig(
             id=r[ROOM_ENTITY],
             name=r[ROOM_NAME],
-            setpoint_c=float(r[ROOM_SETPOINT]),
+            setpoint_c=float(r.get(ROOM_SETPOINT, 0.0)),  # entity rooms: a placeholder until the first value
             nominal_power_w=float(r[ROOM_POWER]),
             area_m2=float(r.get(ROOM_AREA, 1.0)),
             band_down=float(r.get(ROOM_BAND_DOWN, RoomConfig.band_down)),

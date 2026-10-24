@@ -8,6 +8,8 @@ from custom_components.climate_control.core.config import Parameters
 from custom_components.climate_control.help import (
     PARAMETER_GROUPS,
     ROOM_HELP,
+    SETPOINT_CONSTANT_HELP,
+    SETPOINT_ENTITY_HELP,
     USER_HELP,
     help_section_key,
     split_help,
@@ -25,6 +27,8 @@ def _forms(data: dict) -> list[tuple[str, dict, tuple[str, ...]]]:  # type: igno
         ("reconfigure", data["config"]["step"]["reconfigure"], USER_HELP),
         ("room", room["user"], ROOM_HELP),
         ("room reconfigure", room["reconfigure"], tuple(f for f in ROOM_HELP if f != "entity_id")),
+        ("setpoint constant", room["setpoint_constant"], SETPOINT_CONSTANT_HELP),
+        ("setpoint entity", room["setpoint_entity"], SETPOINT_ENTITY_HELP),
         ("options sensors", data["options"]["step"]["sensors"], ("outdoor_power_entity", "season_entity")),
         *((f"options {g}", data["options"]["step"][g], names) for g, names in PARAMETER_GROUPS.items()),
     ]

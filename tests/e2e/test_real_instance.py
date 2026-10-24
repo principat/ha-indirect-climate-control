@@ -87,15 +87,24 @@ def _room_input(room: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _submit_room(ha: requests.Session, flow: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
+    """FR-CFG-04: the form with the choice of the setpoint source, then the setpoint itself."""
+    form = {k: v for k, v in values.items() if k != "setpoint_c"}
+    url = f"/api/config/config_entries/subentries/flow/{flow['flow_id']}"
+    flow = _post(ha, url, {**form, "setpoint_source": "constant"})
+    assert flow["type"] == "form" and flow["step_id"] == "setpoint_constant", flow
+    return _post(
+        ha,
+        f"/api/config/config_entries/subentries/flow/{flow['flow_id']}",
+        {"setpoint_c": values["setpoint_c"]},
+    )
+
+
 def _add_room(ha: requests.Session, entry_id: str, room: dict[str, Any]) -> None:
     """FR-CFG-01: one indoor unit at a time."""
     flow = _post(ha, "/api/config/config_entries/subentries/flow", {"handler": [entry_id, "room"]})
     assert flow["type"] == "form" and flow["step_id"] == "user", flow
-    flow = _post(
-        ha,
-        f"/api/config/config_entries/subentries/flow/{flow['flow_id']}",
-        {"entity_id": room["indoor_unit"], **_room_input(room)},
-    )
+    flow = _submit_room(ha, flow, {"entity_id": room["indoor_unit"], **_room_input(room)})
     assert flow["type"] == "create_entry", flow
 
 
@@ -248,11 +257,7 @@ def test_indoor_units_are_changed_and_removed_one_by_one(ha: requests.Session, e
         {"handler": [entry_id, "room"], "subentry_id": last["subentry_id"]},
     )
     assert flow["step_id"] == "reconfigure", flow
-    flow = _post(
-        ha,
-        f"/api/config/config_entries/subentries/flow/{flow['flow_id']}",
-        {**_room_input(room), "name": "Bad neu"},
-    )
+    flow = _submit_room(ha, flow, {**_room_input(room), "name": "Bad neu"})
     assert flow["type"] == "abort" and flow["reason"] == "reconfigure_successful", flow
 
     _ws(
@@ -319,3 +324,46 @@ def test_learned_capacity_can_be_reset_by_the_service(sim: requests.Session) -> 
     _cycle(sim)
     assert float(_state(sim, "sensor.climate_control_learned_capacity_heating")["state"]) == 3.0
     assert float(_state(sim, "sensor.climate_control_capacity")["state"]) == 45.0
+
+
+@pytest.mark.req("FR-CFG-04")
+def test_the_setpoint_is_a_fixed_value_or_an_entity_chosen_in_the_configuration(
+    sim: requests.Session, entry: dict[str, Any]
+) -> None:
+    entry_id = entry["entry_id"]
+    first = _ws(sim, {"type": "config_entries/subentries/list", "entry_id": entry_id})[0]
+    room = REFERENCE["rooms"][0]
+    deviation = f"sensor.{room['id']}_deviation_from_setpoint"
+    base = {k: v for k, v in _room_input(room).items() if k != "setpoint_c"}
+    assert float(_state(sim, deviation)["state"]) == 1.0  # fixed setpoint 21, device reading 20
+
+    def reconfigure(source: str, value: dict[str, Any]) -> dict[str, Any]:
+        flow = _post(
+            sim,
+            "/api/config/config_entries/subentries/flow",
+            {"handler": [entry_id, "room"], "subentry_id": first["subentry_id"]},
+        )
+        assert flow["step_id"] == "reconfigure", flow
+        url = "/api/config/config_entries/subentries/flow/{}"
+        nxt = _post(sim, url.format(flow["flow_id"]), {**base, "setpoint_source": source})
+        assert nxt["type"] == "form" and nxt["step_id"] == f"setpoint_{source}", (
+            nxt
+        )  # the value is asked next
+        done = _post(sim, url.format(nxt["flow_id"]), value)
+        assert done["type"] == "abort" and done["reason"] == "reconfigure_successful", done
+        _wait_loaded(sim, entry_id)
+        _cycle(sim)
+        return done
+
+    try:
+        reconfigure("entity", {"setpoint_entity": "input_number.sim_setpoint"})  # the helper stands at 23
+        assert float(_state(sim, deviation)["state"]) == 3.0
+        _service(sim, "input_number", "set_value", entity_id="input_number.sim_setpoint", value=24)
+        _cycle(sim)
+        assert float(_state(sim, deviation)["state"]) == 4.0  # the value is read in every cycle
+    finally:
+        reconfigure("constant", {"setpoint_c": SETPOINT})
+    assert float(_state(sim, deviation)["state"]) == 1.0  # a fixed value again, the entity no longer counts
+    _service(sim, "input_number", "set_value", entity_id="input_number.sim_setpoint", value=28)
+    _cycle(sim)
+    assert float(_state(sim, deviation)["state"]) == 1.0

@@ -263,7 +263,7 @@ async def test_setpoint_can_come_from_an_entity(hass: HomeAssistant, units: Fake
     min_charge = float(_state(hass, "sensor.climate_control_min_charge_level").state)
     hass.states.async_set("input_number.setpoint_a", "unavailable")
     await run_cycle(hass)
-    assert units.target(A) == 21.0  # fixed setpoint as substitute
+    assert units.target(A) == 22.0  # the entity has no valid value: the last valid one counts
     # the limits follow the setpoint, so the percentage the planner sees does not move with it
     assert float(_state(hass, "sensor.climate_control_min_charge_level").state) == min_charge
 

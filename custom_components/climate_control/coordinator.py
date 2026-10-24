@@ -36,8 +36,10 @@ from .const import (
     DOMAIN,
     LOGGER,
     ROOM_ENTITY,
+    ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
     ROOM_WINDOW,
+    SOURCE_ENTITY,
     STORAGE_VERSION,
 )
 from .core.config import SETPOINT_MAX_C, SETPOINT_MIN_C, InstallationConfig, Parameters, valid_setpoint
@@ -50,7 +52,7 @@ from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
 from .core.units import from_celsius
-from .data import as_list, build_config, installation_unit, room_data
+from .data import as_list, build_config, installation_unit, room_data, setpoint_source
 from .record_file import append_records
 
 type ClimateControlConfigEntry = ConfigEntry[ClimateControlCoordinator]
@@ -103,8 +105,17 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
         )
+        # FR-CFG-04: a room takes its setpoint from an entity only if that was chosen
         self._setpoint_entities: dict[str, str] = {
-            r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY] for r in room_data(entry) if r.get(ROOM_SETPOINT_ENTITY)
+            r[ROOM_ENTITY]: r[ROOM_SETPOINT_ENTITY]
+            for r in room_data(entry)
+            if setpoint_source(r) == SOURCE_ENTITY and r.get(ROOM_SETPOINT_ENTITY)
+        }
+        # the last valid value of an entity, to start with the stored one of an older entry
+        self._last_setpoint: dict[str, float] = {
+            r[ROOM_ENTITY]: float(r[ROOM_SETPOINT])
+            for r in room_data(entry)
+            if r[ROOM_ENTITY] in self._setpoint_entities and r.get(ROOM_SETPOINT) is not None
         }
 
     async def async_load_learned(self) -> None:
@@ -147,8 +158,11 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             return None
         now = dt_util.utcnow()
         plan = self._read_plan()
-        rooms = {r.id: self._room_state(r.id) for r in self.cfg.rooms}
         setpoints = self._read_setpoints()
+        rooms = {r.id: self._room_state(r.id) for r in self.cfg.rooms}
+        for room_id in self._setpoint_entities:
+            if room_id not in setpoints:  # no value yet: the room is not controlled, as without a reading
+                rooms[room_id] = RoomState(None, None, rooms[room_id].window_open)
         season = self._read_season()
         power = self._read_power()
         # the mean of this and the last reading stands for the cycle (no extra sampling between the cycles)
@@ -253,13 +267,18 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             self._store.async_delay_save(self._stored, 60)
 
     def _read_setpoints(self) -> dict[str, float]:
-        """Current setpoints from configured entities. Invalid or missing values keep the fixed setpoint."""
+        """FR-CFG-04: setpoints of the rooms that take them from an entity.
+
+        An invalid or unavailable value keeps the last valid one; before the first value the room has none.
+        """
         setpoints: dict[str, float] = {}
         for room_id, entity_id in self._setpoint_entities.items():
             state = self.hass.states.get(entity_id)
             value = self._setpoint_value(state.state) if state else None
             if value is not None:
-                setpoints[room_id] = value
+                self._last_setpoint[room_id] = value
+            if room_id in self._last_setpoint:
+                setpoints[room_id] = self._last_setpoint[room_id]
         return setpoints
 
     def _setpoint_value(self, raw: object) -> float | None:

@@ -134,8 +134,7 @@
           "data": {
             "entity_id": "Innengerät",
             "name": "Raumname",
-            "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
-            "setpoint_entity": "Sollwert-Entität (optional)",
+            "setpoint_source": "Sollwert aus",
             "band_down": "Regelbereich unter dem Sollwert → Min Charge Level",
             "band_up": "Regelbereich über dem Sollwert → Max Charge Level",
             "limit_down": "Absolute Grenze unter dem Sollwert → Undercharge percentage",
@@ -154,16 +153,9 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
-            "help_setpoint_c": {
-              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
-              "description": "Eigener Sollwert des Raums. Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), das harte Minimum (Sollwert − 2 K → Heizen auch ohne Plan), die Überhitzung (Sollwert + 3 K für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert). Ist unten eine Sollwert-Entität angegeben, gilt dieser Wert nur, solange die Entität keinen gültigen Wert liefert.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
-            "help_setpoint_entity": {
-              "name": "Hilfe: Sollwert-Entität (optional)",
-              "description": "Optionaler Zahl-Helfer, Number oder Sensor, dessen Wert (°C) statt des festen Werts als Sollwert gilt, z. B. um Sollwerte per Automation oder Zeitplan zu ändern. Der Wert wird in jedem Regelzyklus gelesen; Werte außerhalb 5–30 °C, nicht verfügbare oder nicht numerische Zustände werden ignoriert, dann gilt der feste Sollwert. Leer lassen für einen festen Sollwert.",
+            "help_setpoint_source": {
+              "name": "Hilfe: Sollwert aus",
+              "description": "Woher der Sollwert dieses Raums kommt: ein fester Wert oder eine Entität (Zahl-Helfer, Number oder Sensor, z. B. um Sollwerte per Automation oder Zeitplan zu ändern). Du wählst eines von beiden und gibst es im nächsten Schritt an. Er ist Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), die absolute Grenze darunter (Heizen auch ohne Plan), die Überhitzung (3 darüber für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -233,12 +225,41 @@
             }
           }
         },
+        "setpoint_constant": {
+          "title": "Sollwert: fester Wert",
+          "data": {
+            "setpoint_c": "Sollwert (fester Wert) → Min Charge Level"
+          },
+          "sections": {
+            "help_setpoint_c": {
+              "name": "Hilfe: Sollwert (fester Wert) → Min Charge Level",
+              "description": "Der feste Sollwert dieses Raums in der Einheit der Anlage. Alle Grenzen für den Planer folgen ihm.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            }
+          }
+        },
+        "setpoint_entity": {
+          "title": "Sollwert: Entität",
+          "data": {
+            "setpoint_entity": "Sollwert-Entität"
+          },
+          "sections": {
+            "help_setpoint_entity": {
+              "name": "Hilfe: Sollwert-Entität",
+              "description": "Zahl-Helfer, Number oder Sensor, dessen Wert der Sollwert ist (in der Einheit der Anlage, 5–30 °C bzw. 41–86 °F). Der Wert wird in jedem Regelzyklus gelesen. Werte außerhalb des Bereichs, nicht verfügbare oder nicht numerische Zustände werden ignoriert, dann gilt der zuletzt gültige Wert. Vor dem ersten gültigen Wert wird der Raum nicht geregelt.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            }
+          }
+        },
         "reconfigure": {
           "title": "Innengerät {entity_id}",
           "data": {
             "name": "Raumname",
-            "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
-            "setpoint_entity": "Sollwert-Entität (optional)",
+            "setpoint_source": "Sollwert aus",
             "band_down": "Regelbereich unter dem Sollwert → Min Charge Level",
             "band_up": "Regelbereich über dem Sollwert → Max Charge Level",
             "limit_down": "Absolute Grenze unter dem Sollwert → Undercharge percentage",
@@ -250,16 +271,9 @@
             "window_entity": "Fensterkontakte"
           },
           "sections": {
-            "help_setpoint_c": {
-              "name": "Hilfe: Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
-              "description": "Eigener Sollwert des Raums. Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), das harte Minimum (Sollwert − 2 K → Heizen auch ohne Plan), die Überhitzung (Sollwert + 3 K für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert). Ist unten eine Sollwert-Entität angegeben, gilt dieser Wert nur, solange die Entität keinen gültigen Wert liefert.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
-            "help_setpoint_entity": {
-              "name": "Hilfe: Sollwert-Entität (optional)",
-              "description": "Optionaler Zahl-Helfer, Number oder Sensor, dessen Wert (°C) statt des festen Werts als Sollwert gilt, z. B. um Sollwerte per Automation oder Zeitplan zu ändern. Der Wert wird in jedem Regelzyklus gelesen; Werte außerhalb 5–30 °C, nicht verfügbare oder nicht numerische Zustände werden ignoriert, dann gilt der feste Sollwert. Leer lassen für einen festen Sollwert.",
+            "help_setpoint_source": {
+              "name": "Hilfe: Sollwert aus",
+              "description": "Woher der Sollwert dieses Raums kommt: ein fester Wert oder eine Entität (Zahl-Helfer, Number oder Sensor, z. B. um Sollwerte per Automation oder Zeitplan zu ändern). Du wählst eines von beiden und gibst es im nächsten Schritt an. Er ist Bezug für die Abweichung (Priorität), den SOC (schlechtester Raum gegen seinen eigenen Sollwert), die absolute Grenze darunter (Heizen auch ohne Plan), die Überhitzung (3 darüber für 1 h → Kühlen) und den Rückfall (Heizen auf diesen Wert).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -633,6 +647,12 @@
     }
   },
   "selector": {
+    "setpoint_source": {
+      "options": {
+        "constant": "Fester Wert",
+        "entity": "Entität"
+      }
+    },
     "temperature_unit": {
       "options": {
         "celsius": "Celsius",
