@@ -9,6 +9,11 @@
 
 **English** · [Deutsch](#deutsch)
 
+> [!WARNING]
+> **Alpha version.** Climate Control is in an early stage and under active development. Breaking changes are not ruled out: settings,
+> entities and behavior may change between releases (a stored configuration is migrated where possible, but not always without
+> adjustments). Use it only if you can watch your plant and check the planner values after each update.
+
 Home Assistant integration (HACS) that makes a multi-split air conditioner usable as a thermal buffer for an
 energy planner (reference: HAEO). The integration does not plan anything itself:
 
@@ -212,6 +217,12 @@ database (history) to keep it small.
 # Climate Control (Deutsch)
 
 [English](#climate-control) · **Deutsch**
+
+> [!WARNING]
+> **Alpha-Version.** Climate Control befindet sich in einem frühen Stadium und wird aktiv weiterentwickelt. Breaking Changes sind nicht
+> ausgeschlossen: Einstellungen, Entitäten und Verhalten können sich zwischen Releases ändern (eine gespeicherte Konfiguration wird,
+> soweit möglich, migriert, aber nicht immer ohne Nacharbeit). Nur einsetzen, wenn du deine Anlage beobachten und nach jedem Update die
+> Werte für den Planer prüfen kannst.
 
 Home-Assistant-Integration (HACS), die eine Klimaanlage mit mehreren Innengeräten für einen Energie-Planer
 (Referenz: HAEO) als thermischen Puffer nutzbar macht. Die Integration plant selbst nichts:
