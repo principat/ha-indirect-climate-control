@@ -598,3 +598,28 @@ async def test_outdoor_power_and_cooling_switch_are_set_under_configure(
     await hass.async_block_till_done()
     assert "season_entity" not in entry.data  # emptied: no switch, the plant heats
     assert entry.data["outdoor_power_entity"] == "sensor.outdoor_power"
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_reconfiguring_reloads_the_entry_once_and_without_a_deprecation_warning(
+    hass: HomeAssistant, units: FakeUnits, caplog: pytest.LogCaptureFixture
+) -> None:
+    from unittest.mock import patch
+
+    import custom_components.climate_control as integration
+
+    set_plan(hass, 0)
+    entry = MockConfigEntry(domain=DOMAIN, title="Klima", version=4, data=dict(INSTALLATION))
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    with patch.object(integration, "async_setup_entry", wraps=integration.async_setup_entry) as setup:
+        form = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            form["flow_id"], {**USER_INPUT, "p_max_w": 3000}
+        )
+        await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.ABORT and result["reason"] == "reconfigure_successful"
+    assert entry.data["p_max_w"] == 3000
+    assert setup.call_count == 1  # reloaded by the update listener only
+    assert "should use it for scheduling a reload" not in caplog.text

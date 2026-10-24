@@ -148,7 +148,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
         )
         planner = planner_inputs(current, dt_util.as_local(now), season)
-        learned = {s: replace(item, bootstrap=[]) for s, item in self.learner.learned.items()}
+        learned = {
+            s: replace(item, bootstrap=list(item.bootstrap)) for s, item in self.learner.learned.items()
+        }
         return CycleData(
             result, planner, plan, room_diagnostics(current, result.temperatures, season), season, learned
         )

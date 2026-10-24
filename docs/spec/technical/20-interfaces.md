@@ -83,7 +83,7 @@ Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation`
 `room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).
 
 Gelernte Kapazität (FR-PLNR-02/03): Diagnose-Sensoren `learned_heat_capacity` und `learned_cool_capacity` (kWh/K, nur lesbar),
-Attribute `estimates` und `updated`. Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.
+Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einzelschätzungen in kWh/K). Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.
 
 ## Dienst
 

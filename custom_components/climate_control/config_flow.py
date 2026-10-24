@@ -212,9 +212,11 @@ class ClimateControlConfigFlow(ConfigFlow, domain=DOMAIN):
             errors = _installation_errors(values)
             if not errors:
                 title = values.pop(CONF_NAME)
-                return self.async_update_reload_and_abort(
+                # The update listener reloads the entry; the reload helper as well would reload twice.
+                self.hass.config_entries.async_update_entry(
                     entry, title=title, data=values, options={**entry.options, OPTION_HELP: expanded}
                 )
+                return self.async_abort(reason="reconfigure_successful")
         current = {CONF_NAME: entry.title, **entry.data}
         schema = _with_help(_user_fields(current), USER_HELP, expanded)
         return self.async_show_form(

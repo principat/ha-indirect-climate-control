@@ -31,6 +31,10 @@ RATE = 0.2  # weight of a later estimate
 MAX_CHANGE = 0.25  # largest relative change by one estimate
 
 
+def _optional_float(value: Any) -> float | None:
+    return None if value is None else float(value)
+
+
 @dataclass
 class Learned:
     """Learned value of one season."""
@@ -39,6 +43,7 @@ class Learned:
     estimates: int = 0
     updated: datetime | None = None
     bootstrap: list[float] = field(default_factory=list)
+    last_estimate_kwh: float | None = None  # the latest single estimate, to judge the learning
 
     @property
     def capacity_kwh_per_k(self) -> float:
@@ -78,6 +83,7 @@ class CapacityLearner:
                 "estimates": item.estimates,
                 "updated": item.updated.isoformat() if item.updated else None,
                 "bootstrap": list(item.bootstrap),
+                "last_estimate_kwh": item.last_estimate_kwh,
             }
             for season, item in self.learned.items()
         }
@@ -97,6 +103,7 @@ class CapacityLearner:
                     estimates=int(raw.get("estimates", 0)),
                     updated=datetime.fromisoformat(updated) if updated else None,
                     bootstrap=[float(v) for v in raw.get("bootstrap", [])][:BOOTSTRAP_ESTIMATES],
+                    last_estimate_kwh=_optional_float(raw.get("last_estimate_kwh")),
                 )
             except KeyError, TypeError, ValueError:
                 continue
@@ -175,6 +182,7 @@ class CapacityLearner:
         if not E01_MIN_KWH <= estimate <= E01_MAX_KWH:
             return False
         item = self.learned[season]
+        item.last_estimate_kwh = estimate
         if item.estimates < BOOTSTRAP_ESTIMATES:
             item.bootstrap.append(estimate)
             self._points = [last]  # the first windows must not overlap

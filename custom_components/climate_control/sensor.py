@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, ROOM_ENTITY, ROOM_NAME, SUBENTRY_ROOM
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator, CycleData
 from .core.diagnostics import RoomDiagnostics
+from .core.learning import STEP_K
 from .core.model import Season
 from .core.planner_model import Series
 from .entity import ClimateControlEntity
@@ -52,7 +53,14 @@ def _learned(season: Season) -> Callable[[CycleData], dict[str, Any]]:
     def attrs(d: CycleData) -> dict[str, Any]:
         item = d.learned.get(season)
         updated = item.updated.isoformat() if item and item.updated else None
-        return {"estimates": item.estimates if item else 0, "updated": updated}
+        last = item.last_estimate_kwh if item else None
+        return {
+            "estimates": item.estimates if item else 0,
+            "updated": updated,
+            # single estimates in kWh per K: the first three (before they replace the start value), the latest
+            "pending_estimates": [round(v / STEP_K, 3) for v in item.bootstrap] if item else [],
+            "last_estimate": round(last / STEP_K, 3) if last is not None else None,
+        }
 
     return attrs
 

@@ -118,6 +118,8 @@ async def test_capacity_is_learned_from_the_power_sensor_and_the_device_temperat
     assert learned is not None
     assert float(learned.state) == pytest.approx(2.0, rel=0.1)
     assert learned.attributes["estimates"] >= 3 and learned.attributes["updated"] is not None
+    assert learned.attributes["pending_estimates"] == []  # the first three have replaced the start value
+    assert learned.attributes["last_estimate"] == pytest.approx(2.0, rel=0.3)  # the latest single estimate
     assert _value(hass, CAPACITY) == pytest.approx(30.0, rel=0.1)  # the planner gets the learned capacity
     assert _value(hass, LEARNED_COOL) == 3.0  # cooling is learned separately
 
