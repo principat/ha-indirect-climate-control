@@ -20,7 +20,7 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Überhitzung | 3 K, mindestens 1 h | Kühlregel |
 | Hartes Minimum | Sollwert minus 2 K | Schutz |
 | Überlast | bis 28 °C, mit Aufschlag | Obergrenze des Puffers, je Raum festzulegen (raumabhängig) |
-| SOC-Skala | 15 bis 30 °C = 0 bis 100 % | Bezug auf eigenen Sollwert offen; im Kühlbetrieb gespiegelt (30 °C = 0 %, 15 °C = 100 %) |
+| SOC-Skala | 15 bis 30 °C = 0 bis 100 % | Bezug auf eigenen Sollwert offen; im Kühlbetrieb gespiegelt (30 °C = 0 %, 15 °C = 100 %); bei Fahrenheit 59 bis 86 °F |
 | Wirkungsgrad Puffer | 92 % | Planer-Modell |
 | Entladegrenze Puffer | 3,5 kW | Planer-Modell |
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |

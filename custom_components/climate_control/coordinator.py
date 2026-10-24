@@ -48,7 +48,8 @@ from .core.learning import CapacityLearner, Learned
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
-from .data import as_list, build_config, room_data
+from .core.units import from_celsius, to_celsius
+from .data import as_list, build_config, installation_unit, room_data
 from .record_file import append_records
 
 type ClimateControlConfigEntry = ConfigEntry[ClimateControlCoordinator]
@@ -84,6 +85,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._windows: dict[str, list[str]] = {
             r[ROOM_ENTITY]: as_list(r.get(ROOM_WINDOW)) for r in room_data(entry)
         }
+        self._unit = installation_unit(entry.data)
         self._season_entity: str | None = entry.data.get(CONF_SEASON) or None
         self._power_entity: str | None = entry.data.get(CONF_OUTDOOR_POWER) or None
         self._areas: dict[str, float] = {r.id: r.area_m2 for r in self.cfg.rooms} if self.cfg else {}
@@ -164,6 +166,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             )
         context = {
             "season": str(result.season),
+            "unit": str(self._unit),  # temperatures of the unit records are in this unit
             "soc_pct": result.soc_pct,
             "planned_w": result.planned_w,
             "requested_w": result.requested_w,
@@ -210,10 +213,17 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         setpoints: dict[str, float] = {}
         for room_id, entity_id in self._setpoint_entities.items():
             state = self.hass.states.get(entity_id)
-            value = valid_setpoint(state.state) if state else None
+            value = self._setpoint_value(state.state) if state else None
             if value is not None:
                 setpoints[room_id] = value
         return setpoints
+
+    def _setpoint_value(self, raw: object) -> float | None:
+        """A setpoint entity's value in the plant's unit, as degrees Celsius, or None if not plausible."""
+        try:
+            return valid_setpoint(to_celsius(float(raw), self._unit))  # type: ignore[arg-type]
+        except TypeError, ValueError:
+            return None
 
     def _read_plan(self) -> Plan | None:
         """FR-PLAN-01: planned power now and ahead, summed over all planner outputs.
@@ -245,12 +255,14 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         except ValueError:
             mode = None
         temperature = state.attributes.get(ATTR_CURRENT_TEMPERATURE)
-        return RoomState(mode, float(temperature) if temperature is not None else None, window_open)
+        celsius = to_celsius(float(temperature), self._unit) if temperature is not None else None
+        return RoomState(mode, celsius, window_open)
 
     async def _apply(self, entity_id: str, command: Command) -> None:
         state = self.hass.states.get(entity_id)
         if state is None:
             return
+        target = from_celsius(command.target_c, self._unit) if command.target_c is not None else None
         try:
             switched = state.state != command.mode
             if switched:
@@ -262,14 +274,14 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
                 )
             # FR-MODE-02: the unit restores its own remembered setpoint after a mode change,
             # so the setpoint is set again after every switch to heat or cool.
-            if command.mode in WITH_SETPOINT and command.target_c is not None:
+            if command.mode in WITH_SETPOINT and target is not None:
                 current = self.hass.states.get(entity_id)
                 actual = current.attributes.get(ATTR_TEMPERATURE) if current else None
-                if switched or actual != command.target_c:
+                if switched or actual != target:
                     await self.hass.services.async_call(
                         CLIMATE_DOMAIN,
                         SERVICE_SET_TEMPERATURE,
-                        {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: command.target_c},
+                        {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: target},
                         blocking=True,
                     )
         except HomeAssistantError as err:

@@ -54,6 +54,8 @@ Above every non-trivial field there is a collapsible **"Help: …"** section exp
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
+**Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: all temperatures of the units (device temperatures, setpoints, room limits, the SOC scale) are then °F and the SOC scale of 15–30 °C counts as 59–86 °F. Temperature differences in the parameters (offset, band, thresholds) stay in kelvin. Setpoints and limits already entered are not converted when the unit is changed.
+
 **Heating or cooling.** The plant heats by default. An optional switch (switch, binary sensor or input boolean) in the
 installation selects cooling: off = heating, on = cooling; without the entity, or while it is unavailable, the plant heats.
 Cooling mirrors everything: the buffer is a cold store (SOC 30 °C = 0 %, 15 °C = 100 %), the units cool, and the limits
@@ -256,6 +258,8 @@ Deshalb in dieser Reihenfolge einrichten:
 Über jedem nicht trivialen Feld steht ein einklappbarer Abschnitt **„Hilfe: …“** mit der Erklärung des
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
+
+**Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen, Sollwerte, Raumgrenzen, SOC-Skala) sind dann °F, und die SOC-Skala von 15–30 °C gilt als 59–86 °F. Temperaturdifferenzen in den Parametern (Offset, Band, Schwellen) bleiben in Kelvin. Bereits eingegebene Sollwerte und Grenzen werden beim Wechsel der Einheit nicht umgerechnet.
 
 **Heizen oder Kühlen.** Standard ist Heizen. Ein optionaler Schalter (Schalter, Binärsensor oder Ein/Aus-Helfer) in der
 Anlage wählt das Kühlen: aus = Heizen, ein = Kühlen; ohne Entität oder solange sie nicht verfügbar ist, wird geheizt.

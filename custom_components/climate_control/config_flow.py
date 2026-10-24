@@ -30,6 +30,7 @@ from .const import (
     CONF_P_MIN,
     CONF_PLAN_ENTITY,
     CONF_SEASON,
+    CONF_UNIT,
     DOMAIN,
     ROOM_AREA,
     ROOM_COMFORT_MAX,
@@ -44,7 +45,8 @@ from .const import (
 )
 from .core.config import ConfigError, Parameters
 from .core.model import Mode
-from .data import as_list, build_config
+from .core.units import TemperatureUnit, from_celsius, to_celsius
+from .data import as_list, build_config, core_parameters, installation_unit, ui_parameters
 from .help import (
     HELP_KEY,
     OPTION_HELP,
@@ -86,6 +88,11 @@ def _with_help(items: dict[Any, Any], help_fields: tuple[str, ...], expanded: bo
 def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     return {
         vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "Climate Control")): str,
+        vol.Required(CONF_UNIT, default=TemperatureUnit.CELSIUS.value): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[u.value for u in TemperatureUnit], translation_key=CONF_UNIT
+            )
+        ),
         vol.Required(CONF_P_MIN): _number("W"),
         vol.Required(CONF_P_MAX): _number("W"),
         vol.Required(CONF_OUTDOOR_POWER): selector.EntitySelector(
@@ -101,7 +108,10 @@ def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     }
 
 
-def _room_fields(with_entity: bool) -> dict[Any, Any]:
+def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
+    """Temperatures are entered in the plant's unit (FR-UNIT-01); the ranges follow it."""
+    symbol = unit.symbol
+    step = 0.5 if unit is TemperatureUnit.CELSIUS else 1
     items: dict[Any, Any] = {}
     if with_entity:
         items[vol.Required(ROOM_ENTITY)] = selector.EntitySelector(
@@ -110,12 +120,18 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
     items.update(
         {
             vol.Required(ROOM_NAME): str,
-            vol.Required(ROOM_SETPOINT, default=21.0): _number("°C", step=0.5, minimum=5, maximum=30),
+            vol.Required(ROOM_SETPOINT, default=from_celsius(21.0, unit)): _number(
+                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(30, unit)
+            ),
             vol.Optional(ROOM_SETPOINT_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["input_number", "number", "sensor"])
             ),
-            vol.Required(ROOM_COMFORT_MAX, default=24.0): _number("°C", step=0.5, minimum=5, maximum=35),
-            vol.Required(ROOM_OVERLOAD_MAX, default=28.0): _number("°C", step=0.5, minimum=5, maximum=35),
+            vol.Required(ROOM_COMFORT_MAX, default=from_celsius(24.0, unit)): _number(
+                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(35, unit)
+            ),
+            vol.Required(ROOM_OVERLOAD_MAX, default=from_celsius(28.0, unit)): _number(
+                symbol, step=step, minimum=from_celsius(5, unit), maximum=from_celsius(35, unit)
+            ),
             vol.Required(ROOM_POWER): _number("W"),
             vol.Required(ROOM_AREA, default=10): _number("m²", step=0.5),
             vol.Optional(ROOM_WINDOW): selector.EntitySelector(
@@ -126,10 +142,12 @@ def _room_fields(with_entity: bool) -> dict[Any, Any]:
     return items
 
 
-def _room_errors(values: dict[str, Any], options: Mapping[str, Any]) -> dict[str, str]:
+def _room_errors(values: dict[str, Any], options: Mapping[str, Any], unit: TemperatureUnit) -> dict[str, str]:
     """Room limits must lie on the SOC scale: scale min < comfort max < overload max <= scale max."""
-    p = Parameters.from_mapping(dict(options))
-    if not p.soc_min_c < values[ROOM_COMFORT_MAX] < values[ROOM_OVERLOAD_MAX] <= p.soc_max_c:
+    p = core_parameters(options, unit)
+    comfort = to_celsius(values[ROOM_COMFORT_MAX], unit)
+    overload = to_celsius(values[ROOM_OVERLOAD_MAX], unit)
+    if not p.soc_min_c < comfort < overload <= p.soc_max_c:
         return {"base": "room_limits"}
     return {}
 
@@ -199,6 +217,9 @@ class RoomSubentryFlow(ConfigSubentryFlow):
     def _expanded(self) -> bool:
         return bool(self._get_entry().options.get(OPTION_HELP, False))
 
+    def _unit(self) -> TemperatureUnit:
+        return installation_unit(self._get_entry().data)
+
     def _store_help(self, expanded: bool) -> None:
         entry = self._get_entry()
         if expanded != self._expanded():
@@ -220,12 +241,12 @@ class RoomSubentryFlow(ConfigSubentryFlow):
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
             entity_id = values[ROOM_ENTITY]
-            errors = _room_errors(values, self._get_entry().options)
+            errors = _room_errors(values, self._get_entry().options, self._unit())
             if any(s.unique_id == entity_id for s in self._get_entry().subentries.values()):
                 errors[ROOM_ENTITY] = "already_configured"
             elif not errors:
                 return self.async_create_entry(title=values[ROOM_NAME], data=values, unique_id=entity_id)
-        schema = _with_help(_room_fields(with_entity=True), ROOM_HELP, self._expanded())
+        schema = _with_help(_room_fields(True, self._unit()), ROOM_HELP, self._expanded())
         return self.async_show_form(
             step_id="user", data_schema=self.add_suggested_values_to_schema(schema, values), errors=errors
         )
@@ -237,14 +258,14 @@ class RoomSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             values, expanded = split_help(user_input, self._expanded())
             self._store_help(expanded)
-            errors = _room_errors(values, self._get_entry().options)
+            errors = _room_errors(values, self._get_entry().options, self._unit())
             if not errors:
                 data = {ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values}
                 return self.async_update_and_abort(
                     self._get_entry(), subentry, title=values[ROOM_NAME], data=data
                 )
             current = self._suggested({ROOM_ENTITY: subentry.data[ROOM_ENTITY], **values})
-        schema = _with_help(_room_fields(with_entity=False), ROOM_HELP, self._expanded())
+        schema = _with_help(_room_fields(False, self._unit()), ROOM_HELP, self._expanded())
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(schema, current),
@@ -314,7 +335,7 @@ class ClimateControlOptionsFlow(OptionsFlow):
     async def _group(self, group: str, user_input: dict[str, Any] | None) -> ConfigFlowResult:
         names = PARAMETER_GROUPS[group]
         expanded = bool(self.config_entry.options.get(OPTION_HELP, False))
-        current = Parameters.from_mapping(dict(self.config_entry.options))
+        current = ui_parameters(self.config_entry.options, installation_unit(self.config_entry.data))
         errors: dict[str, str] = {}
         if user_input is not None:
             values, expanded = split_help(user_input, expanded)

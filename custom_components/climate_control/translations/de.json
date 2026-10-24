@@ -5,6 +5,7 @@
         "title": "Anlage",
         "data": {
           "name": "Name",
+          "temperature_unit": "Temperatureeinheit",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
           "outdoor_power_entity": "Leistung Außengerät (Sensor)",
@@ -13,6 +14,13 @@
         },
         "description": "Außengerät, Planer-Ausgabe optional. Danach die Innengeräte einzeln über das Drei-Punkte-Menü (⋮) dieses Eintrags → „Innengerät hinzufügen“ anlegen.",
         "sections": {
+          "help_temperature_unit": {
+            "name": "Hilfe: Temperatureeinheit",
+            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen, Sollwerte, Raumgrenzen und SOC-Skala. Standard ist Celsius. Bei Fahrenheit gilt die SOC-Skala von 15 bis 30 °C als 59 bis 86 °F, und die Temperaturfelder der Innengeräte und der SOC-Skala werden in °F eingegeben. Temperaturdifferenzen (Offsets, Bänder, Schwellen) bleiben in Kelvin. Alles andere arbeitet unverändert. Nach einem Wechsel der Einheit die Sollwerte und Grenzen der Innengeräte prüfen: Sie werden nicht umgerechnet.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_p_min_w": {
             "name": "Hilfe: Pmin (kleinste Dauerleistung)",
             "description": "Kleinste elektrische Leistung, die das Außengerät dauerhaft ohne Takten halten kann. Im Betrieb wird mindestens Pmin angefordert, ein Überschuss gegenüber dem Plan geht in den Puffer. Start- und Abschaltschwelle sind Anteile von Pmin (Standard 80 % und 50 %). Beispiel: Pmin 1300 W → Start ab 1040 W Plan, Abschalten unter 650 W.",
@@ -54,6 +62,7 @@
         "title": "Anlage",
         "data": {
           "name": "Name",
+          "temperature_unit": "Temperatureeinheit",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
           "outdoor_power_entity": "Leistung Außengerät (Sensor)",
@@ -61,6 +70,13 @@
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "sections": {
+          "help_temperature_unit": {
+            "name": "Hilfe: Temperatureeinheit",
+            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen, Sollwerte, Raumgrenzen und SOC-Skala. Standard ist Celsius. Bei Fahrenheit gilt die SOC-Skala von 15 bis 30 °C als 59 bis 86 °F, und die Temperaturfelder der Innengeräte und der SOC-Skala werden in °F eingegeben. Temperaturdifferenzen (Offsets, Bänder, Schwellen) bleiben in Kelvin. Alles andere arbeitet unverändert. Nach einem Wechsel der Einheit die Sollwerte und Grenzen der Innengeräte prüfen: Sie werden nicht umgerechnet.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_p_min_w": {
             "name": "Hilfe: Pmin (kleinste Dauerleistung)",
             "description": "Kleinste elektrische Leistung, die das Außengerät dauerhaft ohne Takten halten kann. Im Betrieb wird mindestens Pmin angefordert, ein Überschuss gegenüber dem Plan geht in den Puffer. Start- und Abschaltschwelle sind Anteile von Pmin (Standard 80 % und 50 %). Beispiel: Pmin 1300 W → Start ab 1040 W Plan, Abschalten unter 650 W.",
@@ -120,8 +136,8 @@
             "name": "Raumname",
             "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
             "setpoint_entity": "Sollwert-Entität (optional)",
-            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level (°C)",
-            "overload_max_c": "Überlastgrenze → Overcharge percentage (°C)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level",
+            "overload_max_c": "Überlastgrenze → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "window_entity": "Fensterkontakte"
@@ -149,14 +165,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level (°C)",
+              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level",
               "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
             "help_overload_max_c": {
-              "name": "Hilfe: Überlastgrenze → Overcharge percentage (°C)",
+              "name": "Hilfe: Überlastgrenze → Overcharge percentage",
               "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -191,8 +207,8 @@
             "name": "Raumname",
             "setpoint_c": "Sollwert (fest bzw. Ersatzwert) → Min Charge Level",
             "setpoint_entity": "Sollwert-Entität (optional)",
-            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level (°C)",
-            "overload_max_c": "Überlastgrenze → Overcharge percentage (°C)",
+            "comfort_max_c": "Obergrenze ohne Aufschlag → Max Charge Level",
+            "overload_max_c": "Überlastgrenze → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "window_entity": "Fensterkontakte"
@@ -213,14 +229,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level (°C)",
+              "name": "Hilfe: Obergrenze ohne Aufschlag → Max Charge Level",
               "description": "Raumtemperatur, bis zu der Laden des Puffers für diesen Raum normal ist. Zwischen diesem Wert und der Überlastgrenze rechnet der Planer mit dem Überlast-Aufschlag. Räume unterscheiden sich, z. B. soll ein Schlafzimmer kühler bleiben als das Wohnzimmer. Für den Planer werden die Werte aller Räume nach Fläche gemittelt. Standard 24 °C (Annahme, in der Fachspec nicht festgelegt).",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
             "help_overload_max_c": {
-              "name": "Hilfe: Überlastgrenze → Overcharge percentage (°C)",
+              "name": "Hilfe: Überlastgrenze → Overcharge percentage",
               "description": "Höchste Temperatur, auf die dieser Raum zum Speichern von Energie geheizt werden darf (Überlast mit Aufschlag). Ab dieser Temperatur wird das Gerät nicht mehr bedient, sein Sollwert wird darauf begrenzt. Muss über der Obergrenze ohne Aufschlag und höchstens bei SOC-Skala 100 % (Optionen) liegen. Standard 28 °C.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
@@ -353,22 +369,22 @@
       "soc": {
         "title": "Füllstand (SOC)",
         "data": {
-          "soc_min_c": "SOC-Skala 0 % (°C)",
-          "soc_max_c": "SOC-Skala 100 % (°C)",
+          "soc_min_c": "SOC-Skala 0 %",
+          "soc_max_c": "SOC-Skala 100 %",
           "soc_smoothing_s": "SOC-Glättung (s)",
           "outlier_k": "Ausreißergrenze je Zyklus (K)"
         },
         "sections": {
           "help_soc_min_c": {
-            "name": "Hilfe: SOC-Skala 0 % (°C)",
-            "description": "Temperatur des schlechtesten Raums, die 0 % SOC entspricht. Standard 15 °C.",
+            "name": "Hilfe: SOC-Skala 0 %",
+            "description": "Temperatur des schlechtesten Raums, die 0 % SOC entspricht. Standard 15 °C (Fahrenheit: 59 °F).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
           "help_soc_max_c": {
-            "name": "Hilfe: SOC-Skala 100 % (°C)",
-            "description": "Temperatur des schlechtesten Raums, die 100 % SOC entspricht. Standard 30 °C.",
+            "name": "Hilfe: SOC-Skala 100 %",
+            "description": "Temperatur des schlechtesten Raums, die 100 % SOC entspricht. Standard 30 °C (Fahrenheit: 86 °F).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -529,6 +545,12 @@
     }
   },
   "selector": {
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius",
+        "fahrenheit": "Fahrenheit"
+      }
+    },
     "neutral_mode": {
       "options": {
         "fan_only": "Lüften",

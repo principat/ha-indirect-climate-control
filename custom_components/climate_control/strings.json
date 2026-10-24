@@ -5,6 +5,7 @@
         "title": "Installation",
         "data": {
           "name": "Name",
+          "temperature_unit": "Temperature unit",
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
           "outdoor_power_entity": "Outdoor unit power (sensor)",
@@ -13,6 +14,13 @@
         },
         "description": "Outdoor unit, planner output optional. Afterwards add the indoor units one by one via the three-dot menu (⋮) of this entry → “Add indoor unit”.",
         "sections": {
+          "help_temperature_unit": {
+            "name": "Help: Temperature unit",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures, setpoints, room limits and the SOC scale. Celsius is the default. With Fahrenheit the SOC scale of 15 to 30 °C counts as 59 to 86 °F and the temperature fields of the indoor units and of the SOC scale are entered in °F. Temperature differences (offsets, bands, thresholds) stay in kelvin. Everything else works unchanged. After changing the unit check the setpoints and limits of the indoor units: they are not converted.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_p_min_w": {
             "name": "Help: Pmin (smallest continuous power)",
             "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
@@ -54,6 +62,7 @@
         "title": "Installation",
         "data": {
           "name": "Name",
+          "temperature_unit": "Temperature unit",
           "p_min_w": "Pmin (smallest continuous power)",
           "p_max_w": "Pmax (largest power)",
           "outdoor_power_entity": "Outdoor unit power (sensor)",
@@ -61,6 +70,13 @@
           "plan_entity": "Planned power (planner outputs, optional at first)"
         },
         "sections": {
+          "help_temperature_unit": {
+            "name": "Help: Temperature unit",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures, setpoints, room limits and the SOC scale. Celsius is the default. With Fahrenheit the SOC scale of 15 to 30 °C counts as 59 to 86 °F and the temperature fields of the indoor units and of the SOC scale are entered in °F. Temperature differences (offsets, bands, thresholds) stay in kelvin. Everything else works unchanged. After changing the unit check the setpoints and limits of the indoor units: they are not converted.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_p_min_w": {
             "name": "Help: Pmin (smallest continuous power)",
             "description": "Smallest electrical power the outdoor unit can hold continuously without cycling. While running, at least Pmin is requested; a surplus over the plan goes into the buffer. Start and stop threshold are shares of Pmin (default 80 % and 50 %). Example: Pmin 1300 W → start from 1040 W planned, stop below 650 W.",
@@ -120,8 +136,8 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge → Max Charge Level (°C)",
-            "overload_max_c": "Overload limit → Overcharge percentage (°C)",
+            "comfort_max_c": "Upper bound without surcharge → Max Charge Level",
+            "overload_max_c": "Overload limit → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
@@ -149,14 +165,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge → Max Charge Level (°C)",
+              "name": "Help: Upper bound without surcharge → Max Charge Level",
               "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
             "help_overload_max_c": {
-              "name": "Help: Overload limit → Overcharge percentage (°C)",
+              "name": "Help: Overload limit → Overcharge percentage",
               "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -191,8 +207,8 @@
             "name": "Room name",
             "setpoint_c": "Setpoint (fixed or substitute value) → Min Charge Level",
             "setpoint_entity": "Setpoint entity (optional)",
-            "comfort_max_c": "Upper bound without surcharge → Max Charge Level (°C)",
-            "overload_max_c": "Overload limit → Overcharge percentage (°C)",
+            "comfort_max_c": "Upper bound without surcharge → Max Charge Level",
+            "overload_max_c": "Overload limit → Overcharge percentage",
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "window_entity": "Window contacts"
@@ -213,14 +229,14 @@
               }
             },
             "help_comfort_max_c": {
-              "name": "Help: Upper bound without surcharge → Max Charge Level (°C)",
+              "name": "Help: Upper bound without surcharge → Max Charge Level",
               "description": "Room temperature up to which charging the buffer is normal for this room. Between this value and the overload limit the planner applies the overload surcharge. Rooms differ, e.g. a bedroom should stay cooler than a living room. For the planner the values of all rooms are averaged by area. Default 24 °C (assumption, not fixed in the functional spec).",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
             },
             "help_overload_max_c": {
-              "name": "Help: Overload limit → Overcharge percentage (°C)",
+              "name": "Help: Overload limit → Overcharge percentage",
               "description": "Highest temperature this room may be heated to for storing energy (overload with surcharge). At or above it the unit is no longer served and its setpoint is capped to this value. Must be above the upper bound without surcharge and at most SOC scale 100 % (options). Default 28 °C.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
@@ -353,22 +369,22 @@
       "soc": {
         "title": "State of charge (SOC)",
         "data": {
-          "soc_min_c": "SOC scale 0 % (°C)",
-          "soc_max_c": "SOC scale 100 % (°C)",
+          "soc_min_c": "SOC scale 0 %",
+          "soc_max_c": "SOC scale 100 %",
           "soc_smoothing_s": "SOC smoothing (s)",
           "outlier_k": "Outlier limit per cycle (K)"
         },
         "sections": {
           "help_soc_min_c": {
-            "name": "Help: SOC scale 0 % (°C)",
-            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C.",
+            "name": "Help: SOC scale 0 %",
+            "description": "Temperature of the worst room that corresponds to 0 % SOC. Default 15 °C (Fahrenheit: 59 °F).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
           },
           "help_soc_max_c": {
-            "name": "Help: SOC scale 100 % (°C)",
-            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C.",
+            "name": "Help: SOC scale 100 %",
+            "description": "Temperature of the worst room that corresponds to 100 % SOC. Default 30 °C (Fahrenheit: 86 °F).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -529,6 +545,12 @@
     }
   },
   "selector": {
+    "temperature_unit": {
+      "options": {
+        "celsius": "Celsius",
+        "fahrenheit": "Fahrenheit"
+      }
+    },
     "neutral_mode": {
       "options": {
         "fan_only": "Fan",

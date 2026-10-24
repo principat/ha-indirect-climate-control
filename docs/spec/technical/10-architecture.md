@@ -27,6 +27,10 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 
 ## Datenfluss je Zyklus (`Controller.step`)
 
+0. Temperatureinheit (FR-UNIT-01): Der Kern rechnet immer in °C. Der Adapter wandelt an den Rändern um: Gerätetemperatur und
+   Sollwert-Entität °F → °C beim Lesen (`core/units.py`, `coordinator.py`), Zielwerte °C → °F (ganze Grad) beim Senden, Sollwerte,
+   Raumgrenzen und SOC-Skala (`soc_min_c`, `soc_max_c`) in `data.build_config` (`core_parameters`). Gespeichert wird in der Einheit der
+   Anlage, Standardwerte der Skala im Dialog sind bei °F 59 und 86 (`ui_parameters`). Differenzen (K) bleiben unverändert.
 0. Betriebsart `season` (FR-SEAS-01): Schalter an = Kühlen, sonst Heizen (auch ohne Schalter oder bei `unavailable`).
    `Season.sign` (+1 Heizen, −1 Kühlen) spiegelt Abweichung, SOC, Grenzen und Schutz; ein Wechsel setzt Glättung, Lauf und
    Zeitgeber zurück. Überlastgrenze im Kühlen = `RoomConfig.mirrored(overload_max_c)` (Spiegelung am Sollwert).

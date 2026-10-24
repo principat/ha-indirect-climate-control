@@ -4,7 +4,7 @@
 
 | Ebene | Ablauf | Gespeichert in |
 | --- | --- | --- |
-| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Pmin, Pmax, Leistungssensor des Außengeräts (Pflicht, `outdoor_power_entity`; fehlt er in älteren Einträgen, erinnert eine Reparaturmeldung), Kühlen-Schalter optional (`season_entity`: `switch`, `binary_sensor`, `input_boolean`; aus oder fehlend = Heizen), Planer-Sensor(en) optional | `entry.data`, Titel |
+| Anlage | Config Flow `user`, änderbar über `reconfigure`: Name, Temperatureeinheit (`temperature_unit`: `celsius` Standard oder `fahrenheit`, FR-UNIT-01), Pmin, Pmax, Leistungssensor des Außengeräts (Pflicht, `outdoor_power_entity`; fehlt er in älteren Einträgen, erinnert eine Reparaturmeldung), Kühlen-Schalter optional (`season_entity`: `switch`, `binary_sensor`, `input_boolean`; aus oder fehlend = Heizen), Planer-Sensor(en) optional | `entry.data`, Titel |
 | Innengerät | Subentry-Typ `room` („Innengerät hinzufügen" im Drei-Punkte-Menü des Eintrags), je Gerät einzeln anlegen, ändern (`reconfigure`), löschen: Klima-Entität, Name, Sollwert (fest), optional Sollwert-Entität (`input_number`, `number`, `sensor`; gilt vor dem festen Wert, wenn 5–30 °C), Obergrenze ohne Aufschlag, Überlastgrenze, Nennleistung (bestimmt die Leistungsklasse), Fläche, Fensterkontakte (mehrere, offen = einer offen) | `entry.subentries`, `unique_id` = Klima-Entität (je Anlage nur einmal) |
 | Parameter | Options Flow: Menü mit `plan` (Planer-Sensor, schreibt `entry.data`) und den Gruppen `control`, `soc`, `safety`, `planner` (`help.PARAMETER_GROUPS`); jede Gruppe speichert zusammen mit den übrigen Werten | `entry.options` |
 | Hilfeschalter | `help_expanded` | `entry.options` |
