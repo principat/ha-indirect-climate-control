@@ -64,11 +64,10 @@ async def test_setpoint_is_set_again_after_mode_change(
     set_plan(hass, 2.0)
     await setup_entry()
     heating = [e for e in ROOMS if units.mode(e) == "heat"]
-    assert len(heating) == 2  # the load control serves two units for 2 kW (one step pair at a time)
+    assert len(heating) == 3  # the 4 power steps for 2 kW rise evenly over the rooms (2, 1, 1)
+    # 20 - start distance 2 + 2 or 1 power steps of 0.5, not the remembered 18
+    assert sorted(units.target(e) for e in heating) == [18.5, 18.5, 19.0]
     for entity_id in heating:
-        assert (
-            units.target(entity_id) == 19.0
-        )  # 20 - start distance 2 + 4 power steps of 0.5, not the remembered 18
         own = [c[1] for c in units.calls if c[0] == entity_id]
         assert own == ["set_hvac_mode", "set_temperature"]
     units.calls.clear()
@@ -360,10 +359,16 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
-    assert len({r["unit"] for r in heating}) == 2 and heating[0]["target_c"] == 19.0
+    assert len({r["unit"] for r in heating}) == 3 and heating[0]["target_c"] == 19.0
     size = path.stat().st_size
     await run_cycle(hass)  # nothing changed: nothing recorded
     assert path.stat().st_size == size
+    hass.states.async_set("sensor.outdoor_power", "1210.5", {"unit_of_measurement": "W"})
+    await run_cycle(hass)  # the outdoor power moved: it is recorded with its value
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    power = [r for r in rows if r["event"] == "power"]
+    assert power and power[-1]["power_w"] > 0
+    size = path.stat().st_size
     units.set(A, "heat", 21, units.target(A))  # the device temperature of one unit moved
     await run_cycle(hass)
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]

@@ -176,7 +176,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             await self._apply(entity_id, command)
         self._learn(now, season, result.running, rooms, power)
         self._store_load_changes()
-        await self._record(now, result)
+        await self._record(now, result, mean_power)
         current = replace(
             self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
         )
@@ -195,8 +195,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             learned,
         )
 
-    async def _record(self, now: datetime, result: CycleResult) -> None:
-        """FR-OBS-01: start, stop and the state of every indoor unit, written only when something changed."""
+    async def _record(self, now: datetime, result: CycleResult, power_w: float | None) -> None:
+        """FR-OBS-01: start, stop, outdoor power and every indoor unit, written when something changed."""
         assert self.cfg is not None
         units: dict[str, UnitRecord] = {}
         for room in self.cfg.rooms:
@@ -219,7 +219,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             "expected_w": result.expected_w,
             "fallback": result.fallback,
         }
-        rows = self._journal.record(now, result.running, units, context)
+        rows = self._journal.record(now, result.running, units, context, power_w)
         if rows:
             try:
                 await self.hass.async_add_executor_job(append_records, self._journal_path, rows)
@@ -315,7 +315,13 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         except ValueError:
             mode = None
         temperature = state.attributes.get(ATTR_CURRENT_TEMPERATURE)
-        return RoomState(mode, float(temperature) if temperature is not None else None, window_open)
+        target = state.attributes.get(ATTR_TEMPERATURE)
+        return RoomState(
+            mode,
+            float(temperature) if temperature is not None else None,
+            window_open,
+            float(target) if target is not None else None,
+        )
 
     async def _apply(self, entity_id: str, command: Command) -> None:
         state = self.hass.states.get(entity_id)

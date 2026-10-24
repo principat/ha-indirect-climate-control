@@ -28,6 +28,7 @@ class RoomState:
     mode: Mode | None
     temperature_c: float | None
     window_open: bool = False
+    target_c: float | None = None  # setpoint the unit holds (to see that a command has arrived)
 
 
 @dataclass(frozen=True)

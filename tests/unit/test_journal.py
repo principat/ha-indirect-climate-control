@@ -50,6 +50,21 @@ def test_start_and_stop_carry_the_reasons_and_each_changed_unit_is_recorded_alon
 
 
 @pytest.mark.req("FR-OBS-01")
+def test_the_outdoor_power_is_recorded_when_it_moves() -> None:
+    journal = Journal()
+    first = journal.record(T0, True, {"a": FAN}, CONTEXT, 1210.4)
+    assert [r["event"] for r in first] == ["plant", "power", "unit"]
+    assert first[1] == {"time": T0.isoformat(), "event": "power", "power_w": 1210.4}
+    minute = timedelta(minutes=1)
+    assert journal.record(T0 + minute, True, {"a": FAN}, CONTEXT, 1225.0) == []  # 15 W: inside the step
+    moved = journal.record(T0 + 2 * minute, True, {"a": FAN}, CONTEXT, 1235.0)  # 25 W since the last record
+    assert moved == [{"time": (T0 + 2 * minute).isoformat(), "event": "power", "power_w": 1235.0}]
+    spike = journal.record(T0 + 3 * minute, True, {"a": FAN}, CONTEXT, 1970.0)
+    assert [r["power_w"] for r in spike] == [1970.0]
+    assert journal.record(T0 + 4 * minute, True, {"a": FAN}, CONTEXT, None) == []  # no reading: nothing
+
+
+@pytest.mark.req("FR-OBS-01")
 def test_the_file_has_one_json_line_per_record_and_a_limited_size(tmp_path: Path) -> None:
     path = tmp_path / "sub" / "entry.jsonl"
     rows = [{"time": "t", "event": "unit", "unit": "a", "mode": "heat"}]

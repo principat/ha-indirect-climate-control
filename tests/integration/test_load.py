@@ -64,6 +64,22 @@ async def test_the_setpoint_of_a_served_unit_lies_the_steps_beyond_its_device_te
     assert abs(result.expected_w - 2000) <= 130 + 170  # within the dead band and the size of a step
 
 
+@pytest.mark.req("FR-LOAD-03")
+async def test_a_unit_at_its_limit_stays_on_until_the_next_unit_is_running_and_then_goes_to_standby(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 1.3)
+    await setup_entry()
+    assert [e for e in ROOMS if units.mode(e) == "heat"] == [A, B]  # the minimum stage on two units
+    for temperature in (22.0, 23.5, 24.0):  # A heats up to 3 above its setpoint of 21: its limit
+        units.set(A, "heat", temperature, units.target(A))
+        await run_cycle(hass)
+    assert units.mode(C) == "heat"  # the next unit has started ...
+    assert units.mode(A) == "heat"  # ... while A still runs
+    await run_cycle(hass)  # C shows its setpoint now
+    assert units.mode(A) == "fan_only" and {units.mode(B), units.mode(C)} == {"heat"}
+
+
 @pytest.mark.req("FR-LOAD-02")
 async def test_the_power_per_step_is_a_diagnostic_sensor_per_indoor_unit_with_the_start_value(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any

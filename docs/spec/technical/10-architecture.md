@@ -19,7 +19,7 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 | `plan.py` | FR-PLAN-01, FR-SAFE-04 | `Plan` aus Prognosepunkten, Leistung zu einem Zeitpunkt, Horizont, Gültigkeit; `plan_from_forecast` liest die Planer-Ausgabe |
 | `threshold.py` | FR-PLAN-02, FR-PLAN-03 | Start-/Abschaltschwelle mit Hysterese, mindestens Pmin |
 | `soc.py` | FR-SOC-01, FR-SOC-02 | Skala, schlechtester Raum, Ausreißerfilter, Median-Glättung |
-| `distribution.py` | FR-DIST-01, FR-DIST-02 | Rangstufen nach Abweichung mit Gleichstand-Band, Gruppen je Leistungsklasse (= gleiche Nennleistung, kein eigenes Feld), Auswahl bis Nennleistung ≥ Anforderung |
+| `distribution.py` | FR-DIST-01, FR-DIST-02 | Rangstufen nach Abweichung mit Gleichstand-Band, Gruppen je Leistungsklasse (= gleiche Nennleistung, kein eigenes Feld); die Stufen gehen an `core/load.py` |
 | `diagnostics.py` | FR-OBS-02 | Abweichung, Wärmebedarf und Speicherkapazität je Raum aus den im Zyklus verwendeten Temperaturen |
 | `modes.py` | FR-MODE-01 | nächster zulässiger Moduszustand (Heizen/Kühlen nur über neutral) |
 | `planner_model.py` | FR-PLNR-01 | Vorgaben für den Planer inkl. Stundenprognosen |
@@ -66,7 +66,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | --- | --- | --- |
 | SOC relativ zum Sollwert | Abweichung zum aktuellen Sollwert des schlechtesten Raums, Sollwert = 40 %, feste Steigung für alle Räume | `soc_below_k`, `soc_above_k` |
 | Gleichstand „innerhalb des Bandes" | Differenz zur größten Abweichung der Stufe < Band | `tie_band_k` |
-| Last (FR-LOAD-01/02) | Lastregelung `core/load.py`: Sollwert = Gerätetemperatur + Schritte × Schrittweite, erwartete Last = Σ gelernte Leistung je Schritt × Schritte, zwei Geräte je Schritt, Totband, Mindeststufe; Lernen je Innengerät nach Beruhigung der Außenleistung (siehe 60-load-control.md) | `step` je Innengerät, `load_deadband_ratio`, `load_settle_max_s` |
+| Last (FR-LOAD-01/02/03) | Lastregelung `core/load.py`: Sollwert = Gerätetemperatur + Schritte × Schrittweite, erwartete Last = Σ gelernte Leistung je Schritt × Schritte, ein Gerät je Schritt (größte Abweichung zuerst, im Gleichstand-Band reihum, die Leistungsklasse nur bei Gleichstand), Totband, Mindeststufe; Übergabe an der Grenze im Controller (`_retiring`, siehe 60-load-control.md); Lernen je Innengerät nach Beruhigung der Außenleistung (siehe 60-load-control.md) | `step` je Innengerät, `load_deadband_ratio`, `load_settle_max_s` |
 | Ausreißer | einmal verworfen, bei Bestätigung im nächsten Zyklus übernommen | `outlier_k` |
 | Fenster offen | Gerät neutral, nicht im SOC, nicht verteilt, auch im Rückfall | – |
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |
@@ -84,7 +84,7 @@ Alle beschlossenen Anforderungen sind umgesetzt.
 
 `core/journal.py` vergleicht je Zyklus den Zustand (Anlage läuft, Modus, Gerätetemperatur, Sollwert, Lüfterstufe je Innengerät)
 mit dem letzten und liefert nur Änderungen als Einträge: `plant` bei Start/Stopp (mit SOC, geplanter und angeforderter Leistung,
-Betriebsart, Rückfall) und `unit` je geändertem Gerät. Der erste Zyklus schreibt den Ausgangszustand. `record_file.py` hängt die
+Betriebsart, Rückfall) `power` bei einer Änderung der Außenleistung um mindestens 20 W seit dem letzten Eintrag (`POWER_STEP_W`, Mittel der letzten zwei Messwerte) und `unit` je geändertem Gerät. Der erste Zyklus schreibt den Ausgangszustand. `record_file.py` hängt die
 Einträge als JSON-Zeilen an `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` an (Executor, seltene Schreibzugriffe wegen
 der SD-Karte) und ersetzt bei mehr als 1 MB die Vorgängerdatei `.jsonl.1`, es bleiben also höchstens etwa 2 MB. Der Recorder von
 Home Assistant bleibt unberührt, die Datei ergänzt ihn um Lüfterstufe und die Gründe der Anlage.

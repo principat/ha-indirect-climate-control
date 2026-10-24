@@ -3,10 +3,11 @@
 The control variable is the number of power steps `n` of each served unit: its setpoint lies `n x step`
 above its start threshold, which is the start distance below the device temperature. Two steps on two units
 (the minimum stage) bring the outdoor unit to Pmin, every further step adds the learned power per step.
-The controller compares it with the requested power and changes the steps of two units at a time (one of the
-largest and one of the smallest power class), first the setpoints, then the number of units. A dead band
-around the request, a floor of two steps and the absolute limits of the rooms bound it. It runs on every
-cycle and every temperature event, there is no time window.
+The controller compares it with the requested power and changes the steps of one unit at a time: the room
+with the largest deviation first, the rooms within the tie band of it in turn (fewest steps first, then the
+power class), so the rooms are brought to one level and then rise together. Lowering takes the fullest room
+first. A dead band around the request, a floor of two steps on two units and the absolute limits of the
+rooms bound it. It runs on every cycle and every temperature event, there is no time window.
 
 Learning: after an adjustment the outdoor unit's power is watched until it has settled (cycle means within the
 dead band over three cycles, with a maximum time that adapts to the plant). The change divided by the changed
@@ -23,6 +24,7 @@ from statistics import mean, median
 from typing import Any
 
 from .config import InstallationConfig, RoomConfig
+from .distribution import Tier
 from .model import Season
 
 MIN_STAGE = 2  # power steps, spread over two units if possible
@@ -218,15 +220,16 @@ class LoadControl:
         cfg: InstallationConfig,
         season: Season,
         requested_w: float,
-        ranked: Sequence[RoomConfig],
+        tiers: Sequence[Tier],
         disturbed: bool = False,
     ) -> dict[str, int]:
-        """Steps per served unit for the requested power. `ranked` are the eligible units, most urgent first.
+        """Steps per served unit for the requested power. `tiers` are the eligible units, most urgent first.
 
         `disturbed` tells that something else changed the load since the last cycle (a room under protection,
         a window, a change of the season): a running observation is then not trustworthy.
         """
         dead = cfg.params.load_deadband_ratio * cfg.p_min_w
+        ranked = _flat(tiers)
         ids = {r.id for r in ranked}
         lost = [rid for rid in self.steps if rid not in ids]
         if disturbed or lost:
@@ -234,7 +237,7 @@ class LoadControl:
         before = {r.id: self.steps.get(r.id, 0) for r in ranked}
         limit = {r.id: max(1, int(r.charge_limit(season) / r.step + 1e-9)) for r in ranked}
         power = {r.id: self._power(cfg, r.id) for r in ranked}
-        after = self._adjust(before, limit, power, ranked, requested_w, dead, cfg.p_min_w)
+        after = self._adjust(before, limit, power, tiers, requested_w, dead, cfg.p_min_w)
         changed = {rid: after[rid] - before[rid] for rid in after if after[rid] != before[rid]}
         if changed:
             # a run that starts from standby only reaches the minimum stage (Pmin): nothing to learn from it
@@ -264,7 +267,7 @@ class LoadControl:
         steps: dict[str, int],
         limit: dict[str, int],
         power: dict[str, float],
-        ranked: Sequence[RoomConfig],
+        tiers: Sequence[Tier],
         requested_w: float,
         dead: float,
         p_min_w: float,
@@ -276,99 +279,91 @@ class LoadControl:
         for _ in range(MAX_ITERATIONS):
             error = requested_w - expected(n)
             if error > dead:
-                candidate = self._raise(n, limit, expected, ranked, requested_w)
+                candidate = _raise(n, limit, tiers)
             elif error < -dead:
-                candidate = self._lower(n, expected, ranked, requested_w)
+                candidate = self._lower(n, expected, tiers, requested_w)
             else:
                 break
-            if candidate is None or abs(requested_w - expected(candidate)) >= abs(error):
+            if candidate is None:
+                break
+            # below the minimum stage the load stays at Pmin, so a step there cannot improve the error
+            if abs(requested_w - expected(candidate)) >= abs(error) and sum(n.values()) >= MIN_STAGE:
                 break
             n = candidate
-        return self._enforce_floor(n, limit, ranked)
-
-    def _raise(
-        self,
-        n: Mapping[str, int],
-        limit: Mapping[str, int],
-        expected: Callable[[Mapping[str, int]], float],
-        ranked: Sequence[RoomConfig],
-        requested_w: float,
-    ) -> dict[str, int] | None:
-        pair = _pick_up(n, limit, ranked)
-        options = [pair] + [[r] for r in pair] if len(pair) > 1 else [pair]
-        best = None
-        best_error = float("inf")
-        for option in options:
-            if not option:
-                continue
-            candidate = dict(n)
-            for r in option:
-                candidate[r.id] += 1
-            error = abs(requested_w - expected(candidate))
-            if error < best_error:
-                best, best_error = candidate, error
-        return best
+        return self._enforce_floor(n, limit, tiers)
 
     def _lower(
         self,
         n: Mapping[str, int],
         expected: Callable[[Mapping[str, int]], float],
-        ranked: Sequence[RoomConfig],
+        tiers: Sequence[Tier],
         requested_w: float,
     ) -> dict[str, int] | None:
-        served = [r for r in ranked if n[r.id] > 0]
-        # the units with the most steps first, of equal steps the less urgent one
-        served.sort(key=lambda r: (-n[r.id], -ranked.index(r)))
-        pair = served[:2]
-        options = [pair] + [[r] for r in pair] if len(pair) > 1 else [pair]
-        best = None
-        best_error = float("inf")
-        for option in options:
-            if not option:
-                continue
+        """One step less for the fullest served room (of equal fill the one with the most steps)."""
+        ranked = _flat(tiers)
+        for r in _fullest_first(n, tiers):
             candidate = dict(n)
-            for r in option:
-                candidate[r.id] -= 1
+            candidate[r.id] -= 1
             if not _floor_ok(candidate, ranked):
                 continue
-            error = abs(requested_w - expected(candidate))
-            if error < best_error:
-                best, best_error = candidate, error
-        return best
+            return candidate
+        return None
 
     def _enforce_floor(
-        self, n: dict[str, int], limit: Mapping[str, int], ranked: Sequence[RoomConfig]
+        self, n: dict[str, int], limit: Mapping[str, int], tiers: Sequence[Tier]
     ) -> dict[str, int]:
         """The plant never runs below two power steps (spread over two units if there are two)."""
+        ranked = _flat(tiers)
         for _ in range(MAX_ITERATIONS):
             if _floor_ok(n, ranked):
                 break
-            pair = _pick_up(n, limit, ranked)
-            if not pair:
+            units = sum(1 for v in n.values() if v > 0)
+            pick = _pick_up(n, limit, tiers, fresh=units < min(2, len(ranked)))
+            if pick is None:
                 break
             n = dict(n)
-            for r in pair:
-                n[r.id] += 1
+            n[pick.id] += 1
         return n
 
 
-def _pick_up(
-    n: Mapping[str, int], limit: Mapping[str, int], ranked: Sequence[RoomConfig]
-) -> list[RoomConfig]:
-    """The units to raise: served units with room left first, else new ones.
+def _flat(tiers: Sequence[Tier]) -> list[RoomConfig]:
+    return [r for tier in tiers for group in tier for r in group]
 
-    One of the largest and one of the smallest power class, within a class the most urgent.
+
+def _raise(n: Mapping[str, int], limit: Mapping[str, int], tiers: Sequence[Tier]) -> dict[str, int] | None:
+    pick = _pick_up(n, limit, tiers)
+    if pick is None:
+        return None
+    candidate = dict(n)
+    candidate[pick.id] += 1
+    return candidate
+
+
+def _pick_up(
+    n: Mapping[str, int], limit: Mapping[str, int], tiers: Sequence[Tier], fresh: bool = False
+) -> RoomConfig | None:
+    """The unit to raise: the room with the largest deviation, the rooms within its tie band in turn.
+
+    The tiers are ordered by deviation, so the first tier with a unit that has room left decides. Inside
+    the tier the unit with the fewest steps comes first, of equal steps the first of the tier (power class
+    group, configured order): the power class decides only on a tie. `fresh` takes a unit without steps.
     """
-    pool = [r for r in ranked if 0 < n[r.id] < limit[r.id]] or [r for r in ranked if n[r.id] == 0]
-    if not pool:
-        return []
-    largest = max(r.power_class for r in pool)
-    smallest = min(r.power_class for r in pool)
-    first = next(r for r in pool if r.power_class == largest)
-    second = next((r for r in pool if r.power_class == smallest and r is not first), None)
-    if second is None:
-        second = next((r for r in pool if r is not first), None)
-    return [first] if second is None else [first, second]
+    for tier in tiers:
+        members = [
+            r for group in tier for r in group if n[r.id] < limit[r.id] and (not fresh or n[r.id] == 0)
+        ]
+        if members:
+            return min(members, key=lambda r: n[r.id])
+    return None
+
+
+def _fullest_first(n: Mapping[str, int], tiers: Sequence[Tier]) -> list[RoomConfig]:
+    """Served units, the last tier (least deviation) first, inside a tier the most steps first."""
+    order: list[RoomConfig] = []
+    for tier in reversed(tiers):
+        members = [r for group in tier for r in group if n[r.id] > 0]
+        order.extend(sorted(members, key=lambda r: -n[r.id]))
+    return order
 
 
 def _floor_ok(n: Mapping[str, int], ranked: Sequence[RoomConfig]) -> bool:

@@ -7,13 +7,14 @@ import pytest
 
 from custom_components.climate_control.core.config import InstallationConfig
 from custom_components.climate_control.core.controller import Controller
+from custom_components.climate_control.core.distribution import rank
 from custom_components.climate_control.core.load import (
     LoadControl,
     LoadModel,
     expected_load_w,
     start_power_w,
 )
-from custom_components.climate_control.core.model import Mode, Season
+from custom_components.climate_control.core.model import Mode, RoomState, Season
 
 from .helpers import T0, installation, plan, room, states
 
@@ -25,8 +26,14 @@ def rooms4(**per_room: float) -> InstallationConfig:
     return installation(*(room(f"r{i}", power=700.0) for i in range(1, 5)), **per_room)
 
 
-def ranked(cfg: InstallationConfig, season: Season = Season.HEAT):  # noqa: ANN202
-    return list(cfg.rooms)
+def ranked(cfg: InstallationConfig, deviations: dict[str, float] | None = None, rooms=None):  # noqa: ANN001, ANN202
+    """The tiers of the units as the controller hands them over: by deviation, then class (FR-DIST-01/02)."""
+    dev = deviations or {}
+    return rank(
+        [(r, dev.get(r.id, 0.0)) for r in (cfg.rooms if rooms is None else rooms)],
+        cfg.params.tie_band_k,
+        cfg.class_order,
+    )
 
 
 class Plant:
@@ -89,7 +96,7 @@ def test_nothing_changes_inside_the_dead_band() -> None:
 
 
 @pytest.mark.req("FR-LOAD-01")
-def test_a_step_moves_two_units_one_of_the_largest_and_one_of_the_smallest_class() -> None:
+def test_the_room_with_the_largest_deviation_is_served_first_and_the_power_class_only_decides_a_tie() -> None:
     cfg = installation(
         room("big1", power=900.0),
         room("small", power=500.0),
@@ -97,12 +104,37 @@ def test_a_step_moves_two_units_one_of_the_largest_and_one_of_the_smallest_class
         room("mid", power=700.0),
     )
     ctl = LoadControl()
-    steps = ctl.update(T0, cfg, Season.HEAT, 1300.0, ranked(cfg))
-    # the first pair is the first unit of the largest class and the first of the smallest class
-    assert steps.get("big1", 0) > 0 and steps.get("small", 0) > 0
-    assert (
-        "big2" not in steps and "mid" not in steps
-    )  # setpoints first, more units only when these are used up
+    steps = ctl.update(T0, cfg, Season.HEAT, 1300.0, ranked(cfg, {"small": 3.0}))
+    # the minimum stage needs two units: the neediest room and the first of the rest (all equal)
+    assert steps == {"small": 1, "big1": 1}
+    tie = LoadControl().update(T0, cfg, Season.HEAT, 1300.0, ranked(cfg))
+    assert tie == {"big1": 1, "big2": 1}  # all equal: the class group (one class, configured order) decides
+
+
+@pytest.mark.req("FR-LOAD-01")
+def test_the_rooms_are_brought_to_one_level_and_then_rise_together() -> None:
+    cfg = rooms4()
+    ctl = LoadControl()
+    behind = ctl.update(T0, cfg, Season.HEAT, 2050.0, ranked(cfg, {"r1": 3.0}))  # r1 is 2 K further behind
+    assert behind["r1"] >= 3 and behind["r1"] > max(n for rid, n in behind.items() if rid != "r1")
+    # r1 has caught up: the units without steps join before r1 gets more
+    even = ctl.update(T0 + MIN, cfg, Season.HEAT, 3050.0, ranked(cfg))
+    assert even["r1"] == behind["r1"] and sum(even.values()) > sum(behind.values())
+    assert min(even.get(rid, 0) for rid in ("r2", "r3", "r4")) >= 1
+
+
+@pytest.mark.req("FR-LOAD-01")
+def test_lowering_takes_the_fullest_room_first() -> None:
+    cfg = rooms4()
+    ctl = LoadControl()
+    ctl.update(T0, cfg, Season.HEAT, 2800.0, ranked(cfg))
+    before = dict(ctl.steps)
+    fill = {"r1": 2.0, "r2": 2.0, "r3": 2.0, "r4": -1.0}
+    after = ctl.update(T0 + MIN, cfg, Season.HEAT, 2000.0, ranked(cfg, fill))
+    assert after.get("r4", 0) < before["r4"]  # r4 is the fullest
+    assert all(after.get(rid, 0) == before[rid] for rid in ("r1", "r2", "r3")) or sum(after.values()) < sum(
+        before.values()
+    )
 
 
 @pytest.mark.req("FR-LOAD-01")
@@ -150,7 +182,7 @@ def test_units_that_are_no_longer_eligible_lose_their_steps() -> None:
     served = set(ctl.steps)
     gone = sorted(served)[0]
     remaining = [r for r in cfg.rooms if r.id != gone]
-    steps = ctl.update(T0 + MIN, cfg, Season.HEAT, 2000.0, remaining)
+    steps = ctl.update(T0 + MIN, cfg, Season.HEAT, 2000.0, ranked(cfg, rooms=remaining))
     assert gone not in steps and sum(steps.values()) > 0
 
 
@@ -336,3 +368,68 @@ def test_a_run_from_standby_reaches_the_minimum_stage_and_teaches_nothing() -> N
     for _ in range(12):
         plant.cycle(1300.0)  # the plant starts: Pmin is the minimum stage, a power step has not been measured
     assert sum(ctl.steps.values()) == 2 and not ctl.model.units
+
+
+def _hold(result, temps: dict[str, float], applied: set[str] | None = None) -> dict[str, RoomState]:  # noqa: ANN001
+    """Room states after the devices carried out the commands of `result` (only those in `applied`)."""
+    rooms = {}
+    for rid, temp in temps.items():
+        cmd = result.commands.get(rid)
+        if cmd is not None and (applied is None or rid in applied):
+            rooms[rid] = RoomState(cmd.mode, temp, False, cmd.target_c)
+        else:
+            rooms[rid] = RoomState(Mode.FAN, temp, False, None)
+    return rooms
+
+
+def _until_the_limit(ctrl: Controller, ids: tuple[str, ...], warm: dict[str, float], hot: dict[str, float]):  # noqa: ANN202
+    """Two cycles of a run, then the cycle in which the rooms in `hot` reach their limit (3 K above)."""
+    cold = {rid: 20.0 for rid in ids}
+    first = ctrl.step(T0, plan(1300), states(cold))
+    second = ctrl.step(T0 + MIN, plan(1300), _hold(first, warm))  # the outlier filter allows 2 K per cycle
+    return second, ctrl.step(T0 + 2 * MIN, plan(1300), _hold(second, hot))
+
+
+@pytest.mark.req("FR-LOAD-03")
+def test_a_unit_at_its_limit_keeps_running_until_the_next_unit_holds_its_setpoint() -> None:
+    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
+    ctrl = Controller(cfg)
+    ids = ("r1", "r2", "r3")
+    warm = {"r1": 21.5, "r2": 20.0, "r3": 20.0}
+    hot = {"r1": 23.0, "r2": 20.0, "r3": 20.0}  # r1 is 3 above its setpoint: at its limit
+    second, handover = _until_the_limit(ctrl, ids, warm, hot)
+    assert set(second.steps) == {"r1", "r2"}
+    assert handover.commands["r3"].mode is Mode.HEAT  # the next unit starts first ...
+    assert handover.commands["r1"].mode is Mode.HEAT  # ... and r1 is not switched off yet
+    assert "r1" in handover.steps and "r3" in handover.steps
+    # r3 has not shown its setpoint yet: r1 stays on
+    waiting = ctrl.step(T0 + 3 * MIN, plan(1300), _hold(handover, hot, applied={"r1", "r2"}))
+    assert waiting.commands["r1"].mode is Mode.HEAT and "r1" in waiting.steps
+    # now r2 and r3 hold their setpoints: r1 goes to standby
+    done = ctrl.step(T0 + 4 * MIN, plan(1300), _hold(waiting, hot))
+    assert done.commands["r1"].mode is Mode.FAN and "r1" not in done.steps
+    assert set(done.steps) == {"r2", "r3"}
+
+
+@pytest.mark.req("FR-LOAD-03")
+def test_a_retiring_unit_goes_to_standby_after_the_maximum_time_even_if_the_next_unit_never_answers() -> None:
+    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
+    ctrl = Controller(cfg)
+    ids = ("r1", "r2", "r3")
+    warm = {"r1": 21.5, "r2": 20.0, "r3": 20.0}
+    hot = {"r1": 23.0, "r2": 20.0, "r3": 20.0}
+    _, handover = _until_the_limit(ctrl, ids, warm, hot)
+    assert handover.commands["r1"].mode is Mode.HEAT
+    late = T0 + 13 * MIN  # more than the maximum time (10 min) later: r3 never showed its setpoint
+    result = ctrl.step(late, plan(1300, late), _hold(handover, hot, applied={"r1", "r2"}))
+    assert result.commands["r1"].mode is Mode.FAN and "r1" not in result.steps
+
+
+@pytest.mark.req("FR-LOAD-03")
+def test_without_a_unit_to_take_over_the_unit_at_its_limit_stops_at_once() -> None:
+    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2)))
+    ctrl = Controller(cfg)
+    warm = {"r1": 21.5, "r2": 21.5}
+    hot = {"r1": 23.0, "r2": 23.0}
+    _, result = _until_the_limit(ctrl, ("r1", "r2"), warm, hot)
+    assert all(c.mode is Mode.FAN for c in result.commands.values()) and not result.steps

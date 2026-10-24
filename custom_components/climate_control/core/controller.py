@@ -9,7 +9,7 @@ from datetime import datetime
 from .config import InstallationConfig, RoomConfig
 from .distribution import rank
 from .load import LoadControl, LoadModel
-from .model import WITH_SETPOINT, Command, RoomState, Season
+from .model import WITH_SETPOINT, Command, Mode, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
 from .soc import OutlierFilter, SocSmoother, deviation_to_soc, worst_room
@@ -50,6 +50,51 @@ class Controller:
         self.load_model = LoadModel()
         self._load = LoadControl(self.load_model)
         self._disturbance: tuple[object, ...] = ()
+        # FR-LOAD-03: units at their limit that keep running until the next unit has taken over
+        self._retiring: dict[str, tuple[datetime, int]] = {}
+        self._issued: dict[str, Command] = {}  # what the last cycle commanded
+
+    def _reset_load(self) -> None:
+        self._load.reset()
+        self._retiring.clear()
+
+    def _start_handover(self, now: datetime, active: list[RoomConfig], eligible: list[RoomConfig]) -> None:
+        """FR-LOAD-03: a served unit that reaches its limit is not switched off at once."""
+        eligible_ids = {r.id for r in eligible}
+        at_limit = {r.id for r in active if r.id not in eligible_ids}
+        self._retiring = {rid: v for rid, v in self._retiring.items() if rid in at_limit}
+        if not eligible_ids:  # nobody to hand over to
+            self._retiring.clear()
+            return
+        for rid, n in self._load.steps.items():
+            if rid in at_limit and rid not in self._retiring:
+                self._retiring[rid] = (now, n)
+
+    def _finish_handover(
+        self, now: datetime, rooms: Mapping[str, RoomState], mode: Mode, steps: Mapping[str, int]
+    ) -> None:
+        """FR-LOAD-03: the retiring units go to standby once the units that took over hold their setpoint."""
+        if not self._retiring:
+            return
+        successors = [rid for rid, n in steps.items() if n > 0]
+        taken_over = bool(successors) and all(self._holds(rooms.get(rid), rid, mode) for rid in successors)
+        for rid, (since, _) in list(self._retiring.items()):
+            waited = (now - since).total_seconds()
+            if not successors or taken_over or waited >= self.cfg.params.load_settle_max_s:
+                del self._retiring[rid]
+
+    def _holds(self, state: RoomState | None, room_id: str, mode: Mode) -> bool:
+        """The unit shows the mode and setpoint that the last cycle commanded."""
+        issued = self._issued.get(room_id)
+        return (
+            state is not None
+            and issued is not None
+            and issued.mode is mode
+            and state.mode is mode
+            and issued.target_c is not None
+            and state.target_c is not None
+            and abs(state.target_c - issued.target_c) < 0.01
+        )
 
     def _held(self, now: datetime) -> bool:
         """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
@@ -94,7 +139,7 @@ class Controller:
             self._overheat_since.clear()
             self._run_since = None
             self.running = False
-            self._load.reset()
+            self._reset_load()
         sign = season.sign
         main_mode = season.mode
         temps: dict[str, float] = {}
@@ -139,7 +184,7 @@ class Controller:
         served: tuple[RoomConfig, ...] = ()
         if plan_missing and not fallback:
             # Waiting: units stay as they are (the protection rules below still apply).
-            self._load.reset()
+            self._reset_load()
             targets = {r.id: Command(rooms[r.id].mode) for r in active}  # type: ignore[arg-type]
         elif fallback:
             # Fallback: units are switched to the season's mode (heating or cooling) with their standard
@@ -147,7 +192,7 @@ class Controller:
             # Running units stay on.
             self.running = False
             self._run_since = None
-            self._load.reset()
+            self._reset_load()
             tiers = rank(
                 [(r, sign * (r.setpoint_c - temps[r.id])) for r in active], p.tie_band_k, cfg.class_order
             )
@@ -183,14 +228,24 @@ class Controller:
                     cfg.class_order,
                 )
                 ranked = [r for tier in tiers for group in tier for r in group]
+                self._start_handover(now, active, eligible)
                 disturbance = self._disturbance_of(cfg, rooms, active, temps, season)
                 unit_steps = self._load.update(
-                    now, cfg, season, requested_w, ranked, disturbance != self._disturbance
+                    now,
+                    cfg,
+                    season,
+                    requested_w,
+                    tiers,
+                    disturbance != self._disturbance or bool(self._retiring),
                 )
                 self._disturbance = disturbance
-                served = tuple(r for r in ranked if unit_steps.get(r.id, 0) > 0)
+                self._finish_handover(now, rooms, main_mode, unit_steps)
+                unit_steps = {**unit_steps, **{rid: n for rid, (_, n) in self._retiring.items()}}
+                served = tuple(r for r in ranked if unit_steps.get(r.id, 0) > 0) + tuple(
+                    r for r in active if r.id in self._retiring
+                )
             else:
-                self._load.reset()
+                self._reset_load()
             for r in active:
                 if unit_steps.get(r.id, 0) > 0:
                     # FR-LOAD-01: `steps x step` above the start threshold (start distance below the
@@ -229,6 +284,7 @@ class Controller:
             rid: Command(m, targets[rid].target_c if m in WITH_SETPOINT and m == targets[rid].mode else None)
             for rid, m in modes.items()
         }
+        self._issued = dict(commands)
         return CycleResult(
             commands=commands,
             soc_pct=soc,
@@ -241,6 +297,6 @@ class Controller:
             plan_missing_s=missing_s,
             temperatures=temps,
             season=season,
-            steps=dict(self._load.steps),
+            steps={**self._load.steps, **{rid: n for rid, (_, n) in self._retiring.items()}},
             expected_w=self._load.expected_w,
         )

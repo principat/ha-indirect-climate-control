@@ -12,13 +12,13 @@ Gedächtnis dafür, welche Last ein Schritt bewirkt.
 
 ## Vorgaben des Nutzers
 
-- **Ein Schritt verstellt zwei Geräte** (wie die bisherige Lastführung: eines der größten, eines der kleinsten Leistungsklasse).
+- **Ein Schritt verstellt ein Gerät** (Stand 25.10.2026, vorher zwei: eines der größten, eines der kleinsten Leistungsklasse). Das Gerät des Raums mit der größten Abweichung kommt zuerst, Räume innerhalb des Gleichstand-Bands reihum nach der geringsten Schrittzahl, die Leistungsklasse entscheidet nur bei Gleichstand (`rank` in `core/distribution.py`, `_pick_up` in `core/load.py`). Nach unten kommt das Gerät des vollsten Raums zuerst.
 - **Nachregeln nach oben und nach unten.** Absenken nur, solange die Anlage über der Mindeststufe liegt oder mehr als zwei Geräte
   gesteuert werden. Wird die geplante Leistung zurückgefahren, wird nachgeregelt, aber **nicht unter zwei Leistungsschritte**,
   vorzugsweise auf zwei Geräte verteilt (Mindeststufe).
 - **Totband bleibt: 10 % von Pmin** um die angeforderte Leistung.
 - **Bezug ist die angeforderte Leistung** (mindestens Pmin im Betrieb, FR-PLAN-03), nicht die reine Planleistung.
-- **Reihenfolge:** zuerst der Sollwert (bis zur absoluten Grenze des Raums), dann die Zahl der Geräte.
+- **Reihenfolge:** nach Abweichung, nicht mehr „zuerst der Sollwert, dann die Zahl der Geräte“. Das hatte zur Folge, dass ein Raum bis an seine absolute Grenze geladen wurde, während Räume mit größerer Abweichung ungeladen blieben (Journal vom 24.10.2026, Bad und Keller).
 - **Zurücksetzen** beim Stopp der Anlage und beim Wechsel der Betriebsart auf den Standard.
 - **Die Leistungsänderung je Schritt wird je Innengerät gelernt.** Ein 1,6-kW-Gerät zieht weniger als ein 2,8-kW-Gerät. Die
   Lüfterstufe braucht keinen eigenen Schlüssel, sie steckt in der gelernten Geräteleistung. Eine Änderung der Lüfterleistung würde
@@ -42,10 +42,12 @@ Gedächtnis dafür, welche Last ein Schritt bewirkt.
    `Pmin + p̄ × (Σ Schritte − 2)`, mit `p̄` als nach Schritten gewichtetem Mittel der gelernten Leistung je Schritt der bedienten Geräte
    (`core/load.py: expected_load_w`). Die Rechnung wird bei jedem Ereignis neu gemacht: Änderung der Gerätetemperatur eines bedienten
    Geräts, Änderung des Plans, Start oder Stopp eines Geräts. Es gibt kein festes Fenster.
-3. **Entscheidung:** Liegt die erwartete Last mehr als das Totband unter der angeforderten Leistung, werden zwei Geräte um je einen
-   Schritt angehoben (Gerät der größten Leistungsklasse und eines der kleinsten, bei Gleichstand nach Abweichung). Liegt sie mehr als
-   das Totband darüber und bleiben mindestens zwei Schritte (Mindeststufe) oder mehr als zwei gesteuerte Geräte, werden die zuletzt
-   angehobenen Geräte um einen Schritt zurückgenommen.
+3. **Entscheidung:** Liegt die erwartete Last mehr als das Totband unter der angeforderten Leistung, wird ein Gerät um einen Schritt
+   angehoben: das des Raums mit der größten Abweichung, innerhalb des Gleichstand-Bands reihum das mit den wenigsten Schritten. Bis zur
+   Mindeststufe ändert ein Schritt die erwartete Last nicht (sie bleibt Pmin); dort wird auch ohne Verbesserung weitergestellt. Die
+   Mindeststufe verlangt zwei Geräte mit Schritten: Fehlt das zweite, bekommt es das nächste Gerät nach Abweichung. Liegt die erwartete
+   Last mehr als das Totband darüber und bleiben mindestens zwei Schritte (Mindeststufe) auf zwei Geräten, wird ein Gerät um einen
+   Schritt zurückgenommen: das des vollsten Raums, bei Gleichstand das mit den meisten Schritten.
 4. **Gelernt wird `p_i`** nur oberhalb der Mindeststufe: Nach jeder Verstellung eines laufenden Außengeräts wird die Außenleistung
    beobachtet, bis sie sich beruhigt hat (siehe Beruhigung). Die gemessene Änderung geteilt durch die erwartete bestimmt einen Faktor,
    mit dem die Werte der beteiligten Geräte skaliert werden. Ein Lauf aus dem Stillstand erreicht nur die Mindeststufe (Pmin) und
@@ -81,6 +83,23 @@ Das Kriterium nutzt nur Größen, die die Integration für jede Anlage kennt ode
 
 Das Kriterium ist eine Annahme, bis es an Messwerten geprüft ist. Die Beobachtungen werden in der Aufzeichnung (FR-OBS-01) um Beruhigungszeit
 und Änderung ergänzt, damit man es an echten Daten prüfen kann.
+
+## Übergabe (FR-LOAD-03)
+
+`Controller._start_handover`, `_finish_handover` und `_holds`. Ein Gerät mit Schritten, dessen Raum seine Überlastgrenze erreicht hat
+(nicht mehr zulässig), wird nicht aus den Schritten gestrichen, sondern in `_retiring` geführt: Es behält seine Schritte (und damit den
+Sollwert Gerätetemperatur + Schritte × Schrittweite − Anlaufabstand, begrenzt auf die Grenze des Raums), zählt aber nicht mehr zur
+erwarteten Last und nicht zu den Geräten, die der Lastregler anheben oder zurücknehmen darf. Die zulässigen Geräte werden damit so
+angehoben, dass sie die ganze angeforderte Leistung allein tragen. In dieser Zeit laufen beide, die Last ist kurz höher als angefordert.
+Die Beobachtung der Außenleistung wird verworfen (`disturbed`), solange ein Gerät übergibt.
+
+Freigegeben wird ein Gerät (neutraler Modus), wenn alle Geräte mit Schritten unter den zulässigen im Zustand den Modus und Sollwert zeigen,
+den der letzte Zyklus befohlen hat (`_holds`, Vergleich auf 0,01), wenn die Höchstzeit (`load_settle_max_s`, 10 min, wie bei der Beruhigung)
+abgelaufen ist oder wenn kein zulässiges Gerät Schritte hat (z. B. alle Räume an der Grenze). Ist kein Raum zulässig, endet der Lauf wie bisher
+sofort. Beim Stopp, bei Rückfall, fehlendem Plan und Wechsel der Betriebsart wird `_retiring` geleert.
+
+Annahme, nicht gemessen: Das Gerät „hält“ seinen Sollwert, sobald sein gemeldeter Sollwert dem befohlenen entspricht. Ob die Last des neuen
+Geräts bis dahin am Außengerät angekommen ist, wird nicht geprüft (Anlauf etwa eine Minute).
 
 ## Offen (Annahmen, bis zur Prüfung an Messwerten)
 

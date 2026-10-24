@@ -15,6 +15,7 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Mindeststufe Lastregler | 2 Leistungsschritte | Pmin; Untergrenze beim Nachregeln nach unten, vorzugsweise auf zwei Geräte verteilt |
 | Startwert Last je Schritt | (Pmax − Pmin) / (2 × Zahl der Innengeräte) | je Innengerät, gilt bis zur ersten Messung |
 | Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
+| Höchstzeit Übergabe | 10 min | so lange läuft ein Gerät an seiner Grenze höchstens weiter, bis das nächste seinen Sollwert hält (FR-LOAD-03) |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |
 | Schritt des Rückfalls | 2 min | je Schritt wird eine weitere Gerätegruppe auf Heizen gestellt |
 | SOC-Glättung | 15 min | Mittelwert oder Median |
@@ -32,3 +33,4 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Lernschritt | 0,1 K | Bezugsgröße der gelernten Energie |
 | Mindestfenster Lernen | 0,35 K | kleinste Temperaturänderung je Schätzung |
 | Speicher Aufzeichnung | etwa 2 MB | danach ersetzt der neue Teil den ältesten |
+| Leistungsschritt Aufzeichnung | 20 W | die Leistung des Außengeräts wird aufgezeichnet, wenn sie sich seit dem letzten Eintrag so stark geändert hat |
