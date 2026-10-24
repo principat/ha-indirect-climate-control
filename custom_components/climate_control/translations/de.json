@@ -691,6 +691,9 @@
       "room_deviation": {
         "name": "Abweichung zum Sollwert"
       },
+      "room_offset": {
+        "name": "Geplanter Offset"
+      },
       "room_heat_demand": {
         "name": "Wärmebedarf"
       },

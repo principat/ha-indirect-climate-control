@@ -278,7 +278,7 @@ async def test_diagnostic_sensors_per_indoor_unit(hass: HomeAssistant, units: Fa
     own = [
         e for e in ent_reg.entities.values() if e.config_entry_id == entry.entry_id and e.config_subentry_id
     ]
-    assert len(own) == 4 * len(ROOMS)
+    assert len(own) == 5 * len(ROOMS)
     assert {e.entity_category for e in own} == {er.EntityCategory.DIAGNOSTIC}
     first = next(iter(entry.subentries.values()))
     room_entities = {e.translation_key: e.entity_id for e in own if e.config_subentry_id == first.subentry_id}

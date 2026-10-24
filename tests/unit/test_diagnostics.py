@@ -24,6 +24,16 @@ def test_deviation_heat_demand_and_storage_per_room() -> None:
 
 
 @pytest.mark.req("FR-OBS-02")
+def test_planned_offset_is_the_power_steps_times_the_step_size_and_zero_when_not_served() -> None:
+    from dataclasses import replace
+
+    cfg = installation(replace(room("a"), step=1.0), room("b"), room("c"))
+    diag = room_diagnostics(cfg, {"a": 20.0, "b": 20.0, "c": 20.0}, steps={"a": 2, "b": 3})
+    assert diag["a"].offset == 2.0 and diag["b"].offset == 1.5 and diag["c"].offset == 0.0
+    assert room_diagnostics(cfg, {"a": 20.0})["b"].offset == 0.0  # unknown temperature: still no offset
+
+
+@pytest.mark.req("FR-OBS-02")
 def test_storage_is_never_negative_and_unknown_rooms_have_no_values() -> None:
     cfg = installation(room("a"), room("b"))
     diag = room_diagnostics(cfg, {"a": 29.0})

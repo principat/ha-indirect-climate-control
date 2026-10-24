@@ -86,6 +86,25 @@ async def test_the_power_per_step_is_a_diagnostic_sensor_per_indoor_unit_with_th
         )  # (Pmax - Pmin) / (2 x 3)
 
 
+@pytest.mark.req("FR-OBS-02")
+async def test_the_planned_offset_is_a_diagnostic_sensor_per_indoor_unit(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any
+) -> None:
+    set_plan(hass, 2.0)
+    entry = await setup_entry(a={"step": 1.0})
+    result = entry.runtime_data.data.result
+    registry = er.async_get(hass)
+    by_room = {}
+    for e in registry.entities.values():
+        if e.config_entry_id == entry.entry_id and e.translation_key == "room_offset":
+            by_room[e.entity_id.split(".")[1][0].upper()] = float(hass.states.get(e.entity_id).state)
+    assert set(by_room) == {"A", "B", "C"}
+    for entity_id, room in zip(ROOMS, "ABC", strict=True):
+        step = 1.0 if entity_id == A else 0.5
+        assert by_room[room] == pytest.approx(result.steps.get(entity_id, 0) * step)
+    assert sum(by_room.values()) > 0  # the served units have a planned offset, the others none
+
+
 @pytest.mark.req("FR-LOAD-02")
 async def test_the_power_per_step_is_learned_from_the_outdoor_power_and_survives_a_restart(
     hass: HomeAssistant,

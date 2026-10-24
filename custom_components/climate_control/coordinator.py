@@ -176,7 +176,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             result,
             planner,
             plan,
-            room_diagnostics(current, result.temperatures, season, step_power),
+            room_diagnostics(current, result.temperatures, season, step_power, result.steps),
             season,
             learned,
         )

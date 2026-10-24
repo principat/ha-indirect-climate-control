@@ -82,7 +82,7 @@ Entladeseite (Min Charge, Undercharge), die unter dem Sollwert die Ladeseite (Ma
 Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation` (K), `room_heat_demand` (kWh),
 `room_storage` (kWh), `entity_category: diagnostic` (FR-OBS-02).
 
-Je Innengerät zusätzlich `room_step_power` (W): gelernte Leistung je Leistungsschritt, Startwert (Pmax − Pmin) / (2 × Zahl der Geräte) (FR-LOAD-02). Gespeichert im selben `Store` unter `load`.
+Je Innengerät zusätzlich `room_offset` (geplanter Offset = Schritte × Schrittweite, 0 wenn nicht bedient) und `room_step_power` (W): gelernte Leistung je Leistungsschritt, Startwert (Pmax − Pmin) / (2 × Zahl der Geräte) (FR-LOAD-02). Gespeichert im selben `Store` unter `load`.
 
 Gelernte Kapazität (FR-PLNR-02/03): Diagnose-Sensoren `learned_heat_capacity` und `learned_cool_capacity` (kWh/K, nur lesbar),
 Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einzelschätzungen in kWh/K). Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.

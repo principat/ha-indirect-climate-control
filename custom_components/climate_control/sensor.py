@@ -205,6 +205,11 @@ ROOM_SENSORS: tuple[RoomSensorDescription, ...] = (
         unit=UnitOfTemperature.KELVIN,
     ),
     RoomSensorDescription(
+        key="room_offset",
+        value=lambda r: r.offset,
+        unit=UnitOfTemperature.KELVIN,
+    ),
+    RoomSensorDescription(
         key="room_heat_demand",
         value=lambda r: r.heat_demand_kwh,
         unit=UnitOfEnergy.KILO_WATT_HOUR,

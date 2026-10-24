@@ -691,6 +691,9 @@
       "room_deviation": {
         "name": "Deviation from setpoint"
       },
+      "room_offset": {
+        "name": "Planned offset"
+      },
       "room_heat_demand": {
         "name": "Heat demand"
       },
