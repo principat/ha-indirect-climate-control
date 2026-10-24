@@ -117,8 +117,8 @@ def _check_outdoor_power(hass: HomeAssistant, entry: ClimateControlConfigEntry) 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> bool:
     _check_outdoor_power(hass, entry)
-    # The configuration the coordinator is built from. Taken, and watched, before the first await: a change made
-    # while the entry is still being set up must still trigger a reload, otherwise the control runs on stale rooms.
+    # The configuration the coordinator is built from. Taken, and watched, before the first await: a change
+    # made while the entry is still being set up must still trigger a reload (else: stale rooms).
     loaded = _snapshot(entry)
 
     async def reload_on_change(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> None:
