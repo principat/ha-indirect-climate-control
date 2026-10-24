@@ -1,3 +1,10 @@
+## [0.8.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.7.0...v0.8.0) (2026-10-24)
+
+### Features
+
+* load control counts power steps from the start threshold of the indoor unit ([0c741ad](https://github.com/principat/ha-indirect-climate-control/commit/0c741ad60333aa57b77f60b56263fee7ad3f0c38))
+* planned offset as a diagnostic sensor per indoor unit ([3a4fd0f](https://github.com/principat/ha-indirect-climate-control/commit/3a4fd0f2fc811863449410801066258e5c96bcbd))
+
 ## [0.7.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.6.0...v0.7.0) (2026-10-24)
 
 ### Features
