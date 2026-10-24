@@ -86,6 +86,16 @@ def _with_help(items: dict[Any, Any], help_fields: tuple[str, ...], expanded: bo
     return vol.Schema(schema)
 
 
+def _outdoor_power_selector() -> selector.Selector[Any]:
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor", device_class="power"))
+
+
+def _season_selector() -> selector.Selector[Any]:
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(domain=["switch", "binary_sensor", "input_boolean"])
+    )
+
+
 def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
     return {
         vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "Climate Control")): str,
@@ -96,12 +106,8 @@ def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         ),
         vol.Required(CONF_P_MIN): _number("W"),
         vol.Required(CONF_P_MAX): _number("W"),
-        vol.Required(CONF_OUTDOOR_POWER): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor", device_class="power")
-        ),
-        vol.Optional(CONF_SEASON): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain=["switch", "binary_sensor", "input_boolean"])
-        ),
+        vol.Required(CONF_OUTDOOR_POWER): _outdoor_power_selector(),
+        vol.Optional(CONF_SEASON): _season_selector(),
         # Optional: the planner output only exists once the planner uses this integration's sensors.
         vol.Optional(CONF_PLAN_ENTITY): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", multiple=True)
@@ -305,7 +311,7 @@ class ClimateControlOptionsFlow(OptionsFlow):
     """All tunable parameters (functional spec, section 4), grouped into menu steps."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["plan", *PARAMETER_GROUPS])
+        return self.async_show_menu(step_id="init", menu_options=["plan", "sensors", *PARAMETER_GROUPS])
 
     async def async_step_plan(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Planner output: connected here as well, because it is set after the planner exists."""
@@ -327,6 +333,28 @@ class ClimateControlOptionsFlow(OptionsFlow):
         current = {CONF_PLAN_ENTITY: entry.data[CONF_PLAN_ENTITY]} if entry.data.get(CONF_PLAN_ENTITY) else {}
         return self.async_show_form(
             step_id="plan", data_schema=self.add_suggested_values_to_schema(schema, current)
+        )
+
+    async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Outdoor unit power and cooling switch: also here, so they can be changed without reconfiguring."""
+        entry = self.config_entry
+        expanded = bool(entry.options.get(OPTION_HELP, False))
+        if user_input is not None:
+            values, expanded = split_help(user_input, expanded)
+            data = {k: v for k, v in entry.data.items() if k not in (CONF_OUTDOOR_POWER, CONF_SEASON)}
+            data[CONF_OUTDOOR_POWER] = values[CONF_OUTDOOR_POWER]
+            if values.get(CONF_SEASON):  # empty = no switch = heating
+                data[CONF_SEASON] = values[CONF_SEASON]
+            self.hass.config_entries.async_update_entry(entry, data=data)
+            return self.async_create_entry(data={**entry.options, OPTION_HELP: expanded})
+        fields = {
+            vol.Required(CONF_OUTDOOR_POWER): _outdoor_power_selector(),
+            vol.Optional(CONF_SEASON): _season_selector(),
+        }
+        schema = _with_help(fields, (CONF_OUTDOOR_POWER, CONF_SEASON), expanded)
+        current = {k: entry.data[k] for k in (CONF_OUTDOOR_POWER, CONF_SEASON) if entry.data.get(k)}
+        return self.async_show_form(
+            step_id="sensors", data_schema=self.add_suggested_values_to_schema(schema, current)
         )
 
     async def async_step_control(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

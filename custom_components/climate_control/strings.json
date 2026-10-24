@@ -314,10 +314,34 @@
         "description": "Choose a group.",
         "menu_options": {
           "plan": "Planner output (planned power)",
+          "sensors": "Sensors of the plant (outdoor unit power, cooling switch)",
           "control": "Control: thresholds and distribution",
           "soc": "State of charge (SOC)",
           "safety": "Protection and fallback",
           "planner": "Planner model (HAEO)"
+        }
+      },
+      "sensors": {
+        "title": "Sensors of the plant",
+        "data": {
+          "outdoor_power_entity": "Outdoor unit power (sensor)",
+          "season_entity": "Cooling switch (optional)"
+        },
+        "sections": {
+          "help_outdoor_power_entity": {
+            "name": "Help: Outdoor unit power (sensor)",
+            "description": "Sensor with the electrical power of the outdoor unit in W. Mandatory: it is the measured value for the comparison with the planned power and the basis for learning the buffer capacity. Choose the power sensor of the outdoor unit (active power, not apparent power).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_season_entity": {
+            "name": "Help: Cooling switch (optional)",
+            "description": "Optional switch, binary sensor or input boolean that selects the operating mode of the plant: off = heating (default), on = cooling. Without an entity, or while it is unavailable, the plant heats. In cooling mode the whole control is mirrored: the buffer is a cold store, the SOC rises when the device temperatures fall (30 °C = 0 %, 15 °C = 100 %), the indoor units cool and the limits reported to the planner are mirrored around each setpoint. Changing the mode first puts all units in the neutral mode.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          }
         }
       },
       "plan": {

@@ -25,6 +25,7 @@ def _forms(data: dict) -> list[tuple[str, dict, tuple[str, ...]]]:  # type: igno
         ("reconfigure", data["config"]["step"]["reconfigure"], USER_HELP),
         ("room", room["user"], ROOM_HELP),
         ("room reconfigure", room["reconfigure"], tuple(f for f in ROOM_HELP if f != "entity_id")),
+        ("options sensors", data["options"]["step"]["sensors"], ("outdoor_power_entity", "season_entity")),
         *((f"options {g}", data["options"]["step"][g], names) for g, names in PARAMETER_GROUPS.items()),
     ]
 
@@ -72,4 +73,4 @@ def test_parameters_are_grouped_completely_and_once() -> None:
     assert sorted(grouped) == sorted(OPTIONS_HELP)
     for path in FILES:
         menu = json.loads(path.read_text(encoding="utf-8"))["options"]["step"]["init"]["menu_options"]
-        assert set(menu) == {"plan", *PARAMETER_GROUPS}, path.name
+        assert set(menu) == {"plan", "sensors", *PARAMETER_GROUPS}, path.name

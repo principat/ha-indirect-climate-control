@@ -142,9 +142,9 @@ async def test_all_parameters_are_options(hass: HomeAssistant, units: FakeUnits,
     entry = await setup_entry()
     menu = await hass.config_entries.options.async_init(entry.entry_id)
     assert menu["type"] == FlowResultType.MENU
-    assert menu["menu_options"] == ["plan", "control", "soc", "safety", "planner"]
+    assert menu["menu_options"] == ["plan", "sensors", "control", "soc", "safety", "planner"]
     keys: set[str] = set()
-    for group in menu["menu_options"][1:]:
+    for group in menu["menu_options"][2:]:  # the parameter groups: planner output and sensors are plant data
         form = await _open_group(hass, entry, group)
         keys |= {str(k) for k in form["data_schema"].schema if not str(k).startswith("help_")}
     assert keys == {f.name for f in fields(Parameters)}  # every parameter in a group
@@ -550,3 +550,51 @@ async def test_an_indoor_unit_added_while_the_entry_is_being_set_up_is_not_lost(
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.cfg is not None
     assert [r.id for r in entry.runtime_data.cfg.rooms] == ["climate.extra"]  # reloaded with the new unit
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_outdoor_power_and_cooling_switch_are_set_under_configure(
+    hass: HomeAssistant, units: FakeUnits
+) -> None:
+    """Both can be changed in the options as well, without going through the reconfiguration."""
+    from homeassistant.helpers import issue_registry as ir
+
+    set_plan(hass, 0)
+    data = {k: v for k, v in INSTALLATION.items() if k != "outdoor_power_entity"}  # entry from before 0.6
+    entry = MockConfigEntry(domain=DOMAIN, title="Klima", version=4, data=data)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = ir.async_get(hass)
+    assert registry.async_get_issue(DOMAIN, f"outdoor_power_missing_{entry.entry_id}") is not None
+
+    menu = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "sensors" in menu["menu_options"]
+    form = await hass.config_entries.options.async_configure(menu["flow_id"], {"next_step_id": "sensors"})
+    assert form["type"] == FlowResultType.FORM and form["step_id"] == "sensors"
+    assert {"help_outdoor_power_entity", "help_season_entity"} <= set(_sections(form))
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"],
+        {"outdoor_power_entity": "sensor.outdoor_power", "season_entity": "input_boolean.cooling"},
+    )
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.data["outdoor_power_entity"] == "sensor.outdoor_power"
+    assert entry.data["season_entity"] == "input_boolean.cooling"
+    assert entry.state is ConfigEntryState.LOADED  # reloaded with the new values
+    assert (
+        registry.async_get_issue(DOMAIN, f"outdoor_power_missing_{entry.entry_id}") is None
+    )  # the repair is gone
+
+    form = await _open_group(hass, entry, "sensors")  # the stored values are shown again
+    defaults = {str(m): m.description["suggested_value"] for m in form["data_schema"].schema if m.description}
+    assert defaults == {
+        "outdoor_power_entity": "sensor.outdoor_power",
+        "season_entity": "input_boolean.cooling",
+    }
+    result = await hass.config_entries.options.async_configure(
+        form["flow_id"], {"outdoor_power_entity": "sensor.outdoor_power"}
+    )
+    await hass.async_block_till_done()
+    assert "season_entity" not in entry.data  # emptied: no switch, the plant heats
+    assert entry.data["outdoor_power_entity"] == "sensor.outdoor_power"
