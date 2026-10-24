@@ -8,9 +8,18 @@ import probatio as vol
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.typing import ConfigType
 
-from .const import ATTR_CONFIG_ENTRY_ID, DOMAIN, LOGGER, ROOM_WINDOW, SERVICE_RUN_CYCLE, SUBENTRY_ROOM
+from .const import (
+    ATTR_CONFIG_ENTRY_ID,
+    CONF_OUTDOOR_POWER,
+    DOMAIN,
+    LOGGER,
+    ROOM_WINDOW,
+    SERVICE_RUN_CYCLE,
+    SUBENTRY_ROOM,
+)
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator
 from .core.config import Parameters
 from .data import as_list
@@ -79,7 +88,25 @@ def _snapshot(entry: ClimateControlConfigEntry) -> tuple[Any, ...]:
     return (tuple(sorted(entry.data.items())), params, rooms)
 
 
+def _check_outdoor_power(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> None:
+    """The outdoor unit power sensor is mandatory; entries from before 0.6 miss it and get a repair issue."""
+    issue_id = f"outdoor_power_missing_{entry.entry_id}"
+    if entry.data.get(CONF_OUTDOOR_POWER):
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="outdoor_power_missing",
+        translation_placeholders={"name": entry.title},
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> bool:
+    _check_outdoor_power(hass, entry)
     coordinator = ClimateControlCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
@@ -96,3 +123,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ClimateControlConfigEntr
 
 async def async_unload_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ClimateControlConfigEntry) -> None:
+    ir.async_delete_issue(hass, DOMAIN, f"outdoor_power_missing_{entry.entry_id}")

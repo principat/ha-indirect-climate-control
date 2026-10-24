@@ -6,6 +6,7 @@ DOMAIN = "climate_control"
 LOGGER = logging.getLogger(__package__)
 
 CONF_PLAN_ENTITY = "plan_entity"
+CONF_OUTDOOR_POWER = "outdoor_power_entity"
 CONF_P_MIN = "p_min_w"
 CONF_P_MAX = "p_max_w"
 CONF_CAPACITY = "capacity_kwh_per_k"

@@ -7,6 +7,7 @@
           "name": "Name",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
+          "outdoor_power_entity": "Leistung Außengerät (Sensor)",
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "description": "Außengerät, Planer-Ausgabe optional. Danach die Innengeräte einzeln über das Drei-Punkte-Menü (⋮) dieses Eintrags → „Innengerät hinzufügen“ anlegen.",
@@ -21,6 +22,13 @@
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
             "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Max Power Source to Target“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_outdoor_power_entity": {
+            "name": "Hilfe: Leistung Außengerät (Sensor)",
+            "description": "Sensor mit der elektrischen Leistung des Außengeräts in W. Pflichtangabe: Er ist der Messwert für den Vergleich mit der geplanten Leistung und die Grundlage für das Lernen der Pufferkapazität. Den Leistungssensor des Außengeräts wählen (Wirkleistung, nicht Scheinleistung).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -40,6 +48,7 @@
           "name": "Name",
           "p_min_w": "Pmin (kleinste Dauerleistung)",
           "p_max_w": "Pmax (größte Leistung)",
+          "outdoor_power_entity": "Leistung Außengerät (Sensor)",
           "plan_entity": "Geplante Leistung (Planer-Ausgaben, anfangs optional)"
         },
         "sections": {
@@ -53,6 +62,13 @@
           "help_p_max_w": {
             "name": "Hilfe: Pmax (größte Leistung)",
             "description": "Größte elektrische Leistung, die das Außengerät bei Volllast aufnimmt, z. B. laut Datenblatt oder höchster gemessener Wert. Sie ist die Obergrenze für die geplante Leistung: Der Sensor „Max Power Source to Target“ gibt sie dem Planer als Höchstwert der Verbindung Haus → Klimaanlage.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_outdoor_power_entity": {
+            "name": "Hilfe: Leistung Außengerät (Sensor)",
+            "description": "Sensor mit der elektrischen Leistung des Außengeräts in W. Pflichtangabe: Er ist der Messwert für den Vergleich mit der geplanten Leistung und die Grundlage für das Lernen der Pufferkapazität. Den Leistungssensor des Außengeräts wählen (Wirkleistung, nicht Scheinleistung).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -565,6 +581,12 @@
       "room_storage": {
         "name": "Speicherkapazität"
       }
+    }
+  },
+  "issues": {
+    "outdoor_power_missing": {
+      "title": "Leistungssensor des Außengeräts fehlt",
+      "description": "{name} braucht den Leistungssensor des Außengeräts. Den Eintrag öffnen, Drei-Punkte-Menü → Neu konfigurieren und den Sensor wählen."
     }
   },
   "services": {

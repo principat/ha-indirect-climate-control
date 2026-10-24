@@ -79,6 +79,7 @@ async def run_cycle(hass: HomeAssistant) -> None:
 
 INSTALLATION = {
     "plan_entity": [PLAN],
+    "outdoor_power_entity": "sensor.outdoor_power",
     "p_min_w": 1300,
     "p_max_w": 3300,
 }

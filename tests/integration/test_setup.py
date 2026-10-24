@@ -446,3 +446,41 @@ async def test_single_window_contact_is_migrated_to_a_list(hass: HomeAssistant, 
     rooms = [dict(s.data) for s in entry.subentries.values()]
     assert rooms[0]["window_entity"] == ["binary_sensor.fs_terrassentur_contact"]
     assert "window_entity" not in rooms[1]
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_outdoor_power_sensor_is_mandatory(hass: HomeAssistant) -> None:
+    from homeassistant.data_entry_flow import InvalidData
+
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    assert "help_outdoor_power_entity" in _sections(result)
+    without = {k: v for k, v in USER_INPUT.items() if k != "outdoor_power_entity"}
+    with pytest.raises(InvalidData):
+        await hass.config_entries.flow.async_configure(result["flow_id"], without)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], dict(USER_INPUT))
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["result"].data["outdoor_power_entity"] == "sensor.outdoor_power"
+
+
+@pytest.mark.req("FR-GEN-01")
+async def test_entry_without_outdoor_power_sensor_gets_a_repair_until_it_is_set(
+    hass: HomeAssistant, units: FakeUnits
+) -> None:
+    from homeassistant.helpers import issue_registry as ir
+
+    set_plan(hass, 0)
+    data = {k: v for k, v in INSTALLATION.items() if k != "outdoor_power_entity"}  # entry from before 0.6
+    entry = MockConfigEntry(domain=DOMAIN, title="Klima", version=3, data=data)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    registry = ir.async_get(hass)
+    issue = registry.async_get_issue(DOMAIN, f"outdoor_power_missing_{entry.entry_id}")
+    assert issue is not None and issue.translation_key == "outdoor_power_missing"
+    assert entry.state is ConfigEntryState.LOADED  # the control keeps working meanwhile
+
+    form = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(form["flow_id"], {**USER_INPUT})
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert registry.async_get_issue(DOMAIN, f"outdoor_power_missing_{entry.entry_id}") is None

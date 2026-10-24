@@ -31,7 +31,8 @@ Therefore set up in this order:
 
 1. **Install** via HACS (first button above), restart Home Assistant.
 2. **Create the installation** – *Settings → Devices & services → Add integration → Climate Control*
-   (or the second button above): name, Pmin, Pmax. **Leave the planner sensor empty.**
+   (or the second button above): name, Pmin, Pmax and the power sensor of the outdoor unit (mandatory).
+   **Leave the planner sensor empty.**
    Without a planner sensor the installation is in commissioning mode: it publishes all sensors but sends
    **no command to the indoor units** (no fallback either).
 3. **Add indoor units** – in the three-dot menu (⋮) of the installation entry, *"Add indoor unit"* once per
@@ -223,7 +224,8 @@ Deshalb in dieser Reihenfolge einrichten:
 
 1. **Installieren** über HACS (erste Schaltfläche oben), Home Assistant neu starten.
 2. **Anlage anlegen** – *Einstellungen → Geräte & Dienste → Integration hinzufügen → Climate Control*
-   (oder zweite Schaltfläche oben): Name, Pmin, Pmax. **Planer-Sensor leer lassen.**
+   (oder zweite Schaltfläche oben): Name, Pmin, Pmax und der Leistungssensor des Außengeräts (Pflicht).
+   **Planer-Sensor leer lassen.**
    Ohne Planer-Sensor ist die Anlage in Inbetriebnahme: Sie stellt alle Sensoren bereit, schickt aber
    **keinen Befehl an die Innengeräte** (auch keinen Rückfall).
 3. **Innengeräte hinzufügen** – im Drei-Punkte-Menü (⋮) des Anlagen-Eintrags *„Innengerät hinzufügen“*, je Gerät

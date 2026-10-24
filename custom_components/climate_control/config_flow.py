@@ -25,6 +25,7 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_OUTDOOR_POWER,
     CONF_P_MAX,
     CONF_P_MIN,
     CONF_PLAN_ENTITY,
@@ -86,6 +87,9 @@ def _user_fields(defaults: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "Climate Control")): str,
         vol.Required(CONF_P_MIN): _number("W"),
         vol.Required(CONF_P_MAX): _number("W"),
+        vol.Required(CONF_OUTDOOR_POWER): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor", device_class="power")
+        ),
         # Optional: the planner output only exists once the planner uses this integration's sensors.
         vol.Optional(CONF_PLAN_ENTITY): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", multiple=True)
