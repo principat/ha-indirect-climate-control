@@ -8,6 +8,7 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Pmax | 3,3 kW | Höchstleistung |
 | Startschwelle | 80 % von Pmin | Plan darunter wird ignoriert |
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
+| Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (Auflösung der Geräte) |
 | Offset-Schritt | 0,5 K | je Regelschritt |
 | Wartezeit | 2 min | nach jedem Schritt |

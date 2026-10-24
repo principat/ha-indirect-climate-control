@@ -3,7 +3,7 @@
 | ID | Anforderung | Status | Ebenen |
 | --- | --- | --- | --- |
 | FR-PLAN-01 | Die Steuerung liest die geplante Leistung für jetzt und die folgenden Stunden. | beschlossen | unit,integration,e2e |
-| FR-PLAN-02 | Start erst ab Startschwelle (80 % von Pmin). Eine laufende Anlage bleibt in Betrieb, bis der Plan unter die Abschaltschwelle (50 % von Pmin) fällt. Darunter wird der Plan ignoriert, alle Geräte gehen in den neutralen Modus. Es gibt keinen Pulsbetrieb. | beschlossen | unit |
+| FR-PLAN-02 | Start erst ab Startschwelle (80 % von Pmin). Eine laufende Anlage bleibt in Betrieb, bis der Plan unter die Abschaltschwelle (50 % von Pmin) fällt, mindestens aber 10 Minuten ab ihrem Start (Mindestlaufzeit, gezählt ab jedem Start, nicht ab Laständerungen; in dieser Zeit wird mindestens Pmin angefordert). Darunter wird der Plan ignoriert, alle Geräte gehen in den neutralen Modus. Nach einer Pause darf sofort wieder gestartet werden. Es gibt keinen Pulsbetrieb. | beschlossen | unit |
 | FR-PLAN-03 | Im Betrieb wird mindestens Pmin angefordert. Ein Überschuss gegenüber dem Plan geht in den SOC, der Planer plant danach entsprechend weniger. | beschlossen | unit |
 | FR-PLAN-04 | Der Plan hat Vorrang vor der Regelung. Läufe werden nur verlängert, wenn der Planer Laden vorsieht. | beschlossen | unit |
 | FR-SRC-01 | Als Temperatur zählt allein die Gerätetemperatur des Innengeräts (ganze Grad). Raumsensoren werden nicht verwendet. | beschlossen | unit,integration |
@@ -35,7 +35,7 @@
 ## Abnahmeszenarien (Auszug)
 
 **FR-PLAN-02 Schwelle.** Gegeben Pmin 1,3 kW und Anlage aus. Wenn der Plan 1,0 kW zeigt, bleibt sie aus (unter 1,04 kW).
-Wenn er 1,1 kW zeigt, startet sie mit mindestens 1,3 kW. Läuft sie, bleibt sie bei 0,8 kW Plan an und geht bei 0,6 kW aus (unter 0,65 kW).
+Wenn er 1,1 kW zeigt, startet sie mit mindestens 1,3 kW. Läuft sie, bleibt sie bei 0,8 kW Plan an und geht bei 0,6 kW aus (unter 0,65 kW), frühestens jedoch 10 Minuten nach ihrem Start. Fällt der Plan davor auf 0 und steigt wieder, läuft sie ununterbrochen weiter.
 
 **FR-DIST-02 Gleichstand.** Gegeben Räume A (Abweichung 3 K), B und C (je 1 K) und Band 1 K. Zuerst wird A bedient.
 Sinkt A auf 1 K, sind alle gleichauf und werden nach Gruppe und angelegter Reihenfolge parallel bedient.
