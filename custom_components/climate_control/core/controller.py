@@ -84,8 +84,8 @@ class Controller:
             state = rooms.get(room.id)
             if state is None or state.temperature_c is None:
                 continue
-            # FR-SRC-01: the indoor unit's own reading, whole degrees.
-            temps[room.id] = self._filter.accept(room.id, float(round(state.temperature_c)))
+            # FR-SRC-01: the indoor unit's own reading, as reported (the devices report in 0.5 K steps).
+            temps[room.id] = self._filter.accept(room.id, float(state.temperature_c))
         active = [
             r
             for r in cfg.rooms

@@ -34,4 +34,4 @@ def test_storage_is_never_negative_and_unknown_rooms_have_no_values() -> None:
 @pytest.mark.req("FR-OBS-02")
 def test_cycle_reports_the_temperatures_it_used() -> None:
     result = Controller(installation(room("a"))).step(T0, plan(0), states({"a": 20.6}))
-    assert result.temperatures == {"a": 21.0}
+    assert result.temperatures == {"a": 20.6}

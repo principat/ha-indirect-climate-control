@@ -30,7 +30,7 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 0. Betriebsart `season` (FR-SEAS-01): Schalter an = Kühlen, sonst Heizen (auch ohne Schalter oder bei `unavailable`).
    `Season.sign` (+1 Heizen, −1 Kühlen) spiegelt Abweichung, SOC, Grenzen und Schutz; ein Wechsel setzt Glättung, Lauf und
    Zeitgeber zurück. Überlastgrenze im Kühlen = `RoomConfig.mirrored(overload_max_c)` (Spiegelung am Sollwert).
-1. Gerätetemperatur je Raum lesen, auf ganze Grad runden, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
+1. Gerätetemperatur je Raum lesen, unverändert (0,5-K-Schritte) übernehmen, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
 3. SOC = Skala(Temperatur des Raums mit kleinster Differenz Temperatur − eigener Sollwert), Median über 15 min.
 4. Überhitzungs-Zeitgeber je Raum führen.

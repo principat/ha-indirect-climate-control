@@ -17,7 +17,7 @@ Test-Integration `climate_control_sim`, eingebunden über `.devcontainer/docker-
 - sieben Klima-Entitäten mit den Namen aus `config/reference-case.yaml`;
 - Heizen, während ein anderes Gerät kühlt/entfeuchtet → Gerät springt auf Kühlen (Konflikt);
 - Wechsel auf Heizen/Kühlen setzt gemerkten Sollwert (18/26 °C); Lüften/Entfeuchten ohne Sollwert;
-- `current_temperature` in ganzen Grad;
+- `current_temperature` in ganzen Grad (gröber als die 0,5-K-Schritte der echten Geräte, die Regelung rundet nicht);
 - `sensor.klima_aussen_leistung_w` (Lüfter + Nennleistung anfordernder Geräte);
 - `sensor.sim_planner_power` (kW, `forecast`), steuerbar über Dienste `set_plan`, `set_reading`, `reset`;
 - `input_boolean.sim_cooling` (in `configuration.yaml`): Kühlen-Schalter der Anlage (FR-SEAS-01).

@@ -129,7 +129,7 @@
           "sections": {
             "help_entity_id": {
               "name": "Help: Indoor unit",
-              "description": "The air conditioner of this room. Only the temperature reported by this unit counts as room temperature (whole degrees); room sensors are not used. Each indoor unit can be configured only once per installation.",
+              "description": "The air conditioner of this room. Only the temperature reported by this unit counts as room temperature (as reported, in 0.5 K steps); room sensors are not used. Each indoor unit can be configured only once per installation.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }

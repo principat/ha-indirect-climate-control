@@ -13,5 +13,5 @@ Entwicklungstemplate, nicht Teil der allgemeinen Anforderungen. Instanzdaten ste
 - Heizen und Kühlen an verschiedenen Innengeräten gleichzeitig führt zum Konflikt am Außengerät.
 - Nach einem Moduswechsel setzt das Gerät seinen eigenen gemerkten Sollwert, daher muss er neu gesetzt werden.
 - Im Lüften und Entfeuchten fehlt der Sollwert, die Gerätetemperatur bleibt.
-- Die Gerätetemperatur kommt in ganzen Grad.
+- Die Gerätetemperatur kommt in Schritten von 0,5 K.
 - Alle sieben Geräte im Lüften: etwa 85 W gesamt.

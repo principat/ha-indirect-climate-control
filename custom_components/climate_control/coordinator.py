@@ -183,7 +183,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         return Season.HEAT
 
     def _learn(self, now: datetime, season: Season, running: bool, rooms: dict[str, RoomState]) -> None:
-        """FR-PLNR-02: raw device temperatures (the control rounds to whole degrees) and the power."""
+        """FR-PLNR-02: device temperatures as reported and the power."""
         power: float | None = None
         state = self.hass.states.get(self._power_entity) if self._power_entity else None
         if state is not None and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):

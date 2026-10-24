@@ -129,7 +129,7 @@
           "sections": {
             "help_entity_id": {
               "name": "Hilfe: Innengerät",
-              "description": "Das Klimagerät dieses Raums. Als Raumtemperatur zählt allein die Temperatur, die dieses Gerät meldet (ganze Grad); Raumsensoren werden nicht verwendet. Jedes Innengerät kann je Anlage nur einmal erfasst werden.",
+              "description": "Das Klimagerät dieses Raums. Als Raumtemperatur zählt allein die Temperatur, die dieses Gerät meldet (wie gemeldet, in 0,5-K-Schritten); Raumsensoren werden nicht verwendet. Jedes Innengerät kann je Anlage nur einmal erfasst werden.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }

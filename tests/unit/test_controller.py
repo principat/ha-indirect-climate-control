@@ -65,10 +65,14 @@ def test_neutral_mode_is_fan_by_default_and_configurable() -> None:
 
 
 @pytest.mark.req("FR-SRC-01")
-def test_temperature_is_the_device_reading_in_whole_degrees() -> None:
+def test_temperature_is_the_device_reading_as_reported_without_rounding() -> None:
     ctrl = Controller(installation(room("a")))
-    result = ctrl.step(T0, plan(0), {"a": RoomState(Mode.FAN, 20.6)})
-    assert result.soc_pct == pytest.approx((21 - 15) / 15 * 100, abs=0.01)
+    result = ctrl.step(T0, plan(0), {"a": RoomState(Mode.FAN, 20.5)})
+    assert result.soc_pct == pytest.approx((20.5 - 15) / 15 * 100, abs=0.01)  # 36.67 %, not 33.3 or 40
+    for reading, soc in ((21.5, 43.33), (22.0, 46.67), (22.5, 50.0)):  # the half steps stay apart
+        assert Controller(installation(room("a"))).step(
+            T0, plan(0), {"a": RoomState(Mode.FAN, reading)}
+        ).soc_pct == (pytest.approx(soc, abs=0.01))
 
 
 @pytest.mark.req("FR-SAFE-01")

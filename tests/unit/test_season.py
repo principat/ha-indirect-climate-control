@@ -99,11 +99,9 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
 @pytest.mark.req("FR-SEAS-02")
 def test_cooling_target_never_goes_below_the_mirrored_overload_limit() -> None:
     cfg = installation(room("a", setpoint=21), room("b"), room("c"))
-    # overload 28 mirrored at the setpoint 21 = 14 degC; the room is already at 14.5
-    result = _cool(Controller(cfg), {"a": 14.5, "b": 22.0, "c": 22.0}, 1.5)
-    assert (
-        "a" not in result.served and result.commands["a"].mode is Mode.FAN
-    )  # 14.5 reads as 14: at the limit
+    # overload 28 mirrored at the setpoint 21 = 14 degC; the room is already there
+    result = _cool(Controller(cfg), {"a": 14.0, "b": 22.0, "c": 22.0}, 1.5)
+    assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible
 
 
 @pytest.mark.req("FR-SEAS-02")
