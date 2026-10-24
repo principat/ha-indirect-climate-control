@@ -213,7 +213,7 @@ async def test_planner_model_values_are_published(hass: HomeAssistant, units: Fa
     }
     values = {key: _state(hass, f"sensor.climate_control_{slug}") for key, slug in names.items()}
     assert values["min_charge"].attributes["friendly_name"] == "Climate Control Min Charge Level"
-    assert float(values["capacity"].state) == 105.0  # default 7 kWh/K x 15 K
+    assert float(values["capacity"].state) == 45.0  # default 3 kWh/K x 15 K
     assert float(values["efficiency"].state) == 92.0
     assert float(values["max_discharge_power"].state) == 3.5
     assert float(values["min_charge"].state) <= 40.0
@@ -281,9 +281,9 @@ async def test_diagnostic_sensors_per_indoor_unit(hass: HomeAssistant, units: Fa
     )
     assert device is not None and device.name == "A"
     assert float(_state(hass, room_entities["room_deviation"]).state) == 2.0
-    # default capacity 7 kWh/K, three rooms of 10 m2 -> 7/3 kWh/K per room
-    assert float(_state(hass, room_entities["room_heat_demand"]).state) == pytest.approx(7 / 3 * 2, abs=0.001)
-    assert float(_state(hass, room_entities["room_storage"]).state) == pytest.approx(7 / 3 * 9, abs=0.001)
+    # default capacity 3 kWh/K, three rooms of 10 m2 -> 1 kWh/K per room
+    assert float(_state(hass, room_entities["room_heat_demand"]).state) == pytest.approx(1 * 2, abs=0.001)
+    assert float(_state(hass, room_entities["room_storage"]).state) == pytest.approx(1 * 9, abs=0.001)
 
 
 @pytest.mark.req("FR-SAFE-01")
@@ -300,3 +300,32 @@ async def test_any_of_several_window_contacts_opens_the_room(
     hass.states.async_set("binary_sensor.window_a2", "off")
     await run_cycle(hass)
     assert units.mode(A) == "heat"
+
+
+@pytest.mark.req("FR-PLAN-02")
+async def test_started_plant_keeps_running_for_the_minimum_run_time(
+    hass: HomeAssistant,
+    units: FakeUnits,
+    setup_entry,  # noqa: ANN001
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    running = "binary_sensor.climate_control_running"
+    set_plan(hass, 2.0)
+    await setup_entry()
+    assert _state(hass, running).state == "on" and {units.mode(e) for e in ROOMS} == {"heat"}
+    freezer.tick(timedelta(minutes=2))
+    set_plan(hass, 0)  # the planner flips to 0, as HAEO does every other update
+    await run_cycle(hass)
+    assert _state(hass, running).state == "on" and {units.mode(e) for e in ROOMS} == {"heat"}
+    assert float(_state(hass, "sensor.climate_control_requested_power").state) == 1300  # held at Pmin
+    freezer.tick(timedelta(minutes=7))
+    set_plan(hass, 0)
+    await run_cycle(hass)
+    assert _state(hass, running).state == "on"  # 9 minutes after the start
+    freezer.tick(timedelta(minutes=1))
+    set_plan(hass, 0)
+    await run_cycle(hass)
+    assert _state(hass, running).state == "off" and {units.mode(e) for e in ROOMS} == {"fan_only"}
+    set_plan(hass, 2.0)  # no minimum pause: the plant may start again right away
+    await run_cycle(hass)
+    assert _state(hass, running).state == "on"

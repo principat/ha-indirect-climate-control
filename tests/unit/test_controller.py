@@ -19,7 +19,8 @@ def test_below_stop_threshold_all_units_go_neutral() -> None:
     ctrl = Controller(installation())
     temps = {"a": 20.0, "b": 20.0, "c": 20.0}
     assert ctrl.step(T0, plan(2000), states(temps)).running
-    result = ctrl.step(T0 + MIN, plan(600), states(temps, Mode.HEAT))
+    later = T0 + 10 * MIN  # after the minimum run time
+    result = ctrl.step(later, plan(600, later), states(temps, Mode.HEAT))
     assert not result.running
     assert set(_modes(result).values()) == {Mode.FAN}
 
@@ -48,9 +49,10 @@ def test_plan_has_priority_over_regulation() -> None:
     warm = {"a": 23.0, "b": 23.0, "c": 23.0}
     # Plan charges although every room is above its setpoint.
     assert ctrl.step(T0, plan(2000), states(warm)).running
-    # Plan stops although rooms are below setpoint: the run is not extended.
+    # Plan stops although rooms are below setpoint: the run is not extended beyond the minimum run time.
     cool = {"a": 20.0, "b": 20.0, "c": 20.0}
-    result = ctrl.step(T0 + MIN, plan(0), states(cool, Mode.HEAT))
+    later = T0 + 10 * MIN
+    result = ctrl.step(later, plan(0, later), states(cool, Mode.HEAT))
     assert not result.running and Mode.HEAT not in _modes(result).values()
 
 

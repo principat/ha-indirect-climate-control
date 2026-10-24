@@ -35,7 +35,8 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
    schrittweise (`fallback_step_s`, 120 s) je eine Gruppe gleicher Nennleistung auf Heizen mit Standard-Sollwert,
    größte Abweichung zuerst; laufende Geräte bleiben an. Kommt der Plan zurück, beginnt beim nächsten Ausfall
    die Wartezeit von vorn. Hartes Minimum und Überhitzung gelten in jedem Zweig, Fenster überschreiben alles.
-   Sonst: Schwellenentscheidung, bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
+   Sonst: Schwellenentscheidung mit Hysterese und Mindestlaufzeit der Anlage (`min_run_s`, 600 s ab jedem Start, Halten
+   mit mindestens Pmin, Zeitgeber nur bei Aus → An neu, keine Mindestpause), bei Betrieb Räume auswählen (Ziel = Gerätetemperatur + Heiz-Offset,
    höchstens Überlastgrenze), übrige neutral; hartes Minimum → Heizen; Überhitzung ≥ Dauer und kein Heizziel → Kühlen.
 6. Offenes Fenster → neutral (überschreibt alles, auch den Rückfall).
 7. `next_modes` gegen die aktuellen Modi: bei Konflikt zuerst alle nicht neutralen Geräte neutral.
@@ -59,7 +60,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Nachtabsenkung | senkt Untergrenze und hartes Minimum für den Planer um 1 K; Raumschutz unverändert | `night_setback_k` |
 | Obergrenze ohne Aufschlag | 24 °C je Innengerät; für den Planer flächengewichtet gemittelt (wie die Überlastgrenze) | `comfort_max_c` je Innengerät |
 | Aufschlag Überlast | 0,003 je kWh | `overcharge_cost` |
-| Pufferkapazität | Startwert 7 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
+| Pufferkapazität | Startwert 3 kWh/K, keine Einstellung; Lernen siehe 50-capacity-learning.md (Konzept) | – |
 | Aufschlag Spätladen „fällt mit der Zeit" | linear vom Startwert auf 0 über den Horizont, damit bei gleichem Preis später geladen wird | `late_charge_surcharge` |
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 | Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |

@@ -260,6 +260,7 @@
         "data": {
           "start_ratio": "Startschwelle (Anteil von Pmin)",
           "stop_ratio": "Abschaltschwelle (Anteil von Pmin)",
+          "min_run_s": "Mindestlaufzeit der Anlage (s)",
           "tie_band_k": "Gleichstand-Band (K)",
           "heat_offset_k": "Heiz-Offset über Gerätetemperatur (K)",
           "neutral_mode": "Neutraler Modus",
@@ -276,6 +277,13 @@
           "help_stop_ratio": {
             "name": "Hilfe: Abschaltschwelle (Anteil von Pmin)",
             "description": "Eine laufende Anlage bleibt in Betrieb, bis der Plan unter diesen Anteil von Pmin fällt; dazwischen gibt es keinen Pulsbetrieb. Darf nicht größer als die Startschwelle sein. Standard 0,5 (50 %).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_min_run_s": {
+            "name": "Hilfe: Mindestlaufzeit der Anlage (s)",
+            "description": "Hat das Außengerät gestartet, läuft es mindestens so lange, gezählt ab dem Start, auch wenn der Plan zwischendurch unter die Abschaltschwelle fällt (dann wird mindestens Pmin angefordert). Der Zeitgeber beginnt bei jedem Wechsel von Aus auf An neu, Laständerungen verlängern ihn nicht. Eine Mindestpause gibt es nicht. Das verhindert häufiges Takten, wenn die geplante Leistung springt. Standard 600 s (10 min).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

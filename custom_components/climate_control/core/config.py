@@ -68,6 +68,7 @@ class Parameters:
     plan_max_age_s: float = 1800.0
     neutral_mode: Mode = Mode.FAN
     cycle_s: float = 60.0
+    min_run_s: float = 600.0
     fallback_delay_s: float = 600.0
     fallback_step_s: float = 120.0
 
@@ -94,6 +95,8 @@ class Parameters:
             raise ConfigError("neutral mode must be fan or off")
         if self.fallback_delay_s < 0 or self.fallback_step_s <= 0:
             raise ConfigError("fallback delay >= 0 and fallback step > 0 required")
+        if self.min_run_s < 0:
+            raise ConfigError("minimum run time must not be negative")
 
 
 @dataclass(frozen=True)

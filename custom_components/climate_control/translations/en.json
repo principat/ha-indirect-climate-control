@@ -260,6 +260,7 @@
         "data": {
           "start_ratio": "Start threshold (share of Pmin)",
           "stop_ratio": "Stop threshold (share of Pmin)",
+          "min_run_s": "Minimum run time of the plant (s)",
           "tie_band_k": "Tie band (K)",
           "heat_offset_k": "Heating offset above device temperature (K)",
           "neutral_mode": "Neutral mode",
@@ -276,6 +277,13 @@
           "help_stop_ratio": {
             "name": "Help: Stop threshold (share of Pmin)",
             "description": "A running outdoor unit keeps running until the plan falls below this share of Pmin; there is no pulse operation in between. Must not be larger than the start threshold. Default 0.5 (50 %).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_min_run_s": {
+            "name": "Help: Minimum run time of the plant (s)",
+            "description": "Once the outdoor unit has started, it keeps running for at least this long, counted from its start, even if the plan falls below the stop threshold in the meantime (at least Pmin is requested then). The timer restarts with every change from off to on, load changes do not extend it. There is no minimum pause. This prevents short cycling when the planned power jumps. Default 600 s (10 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

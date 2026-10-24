@@ -269,7 +269,7 @@ async def test_without_planner_output_nothing_is_controlled(hass: HomeAssistant,
     await run_cycle(hass)
     assert units.calls == []
     assert hass.states.get("sensor.klima_state_of_charge").state != "unavailable"  # type: ignore[union-attr]
-    assert hass.states.get("sensor.klima_capacity").state == "105.0"  # type: ignore[union-attr]
+    assert hass.states.get("sensor.klima_capacity").state == "45.0"  # type: ignore[union-attr]
     assert hass.states.get("binary_sensor.klima_fallback").state == "off"  # type: ignore[union-attr]
 
     set_plan(hass, 0)
@@ -340,7 +340,7 @@ async def test_stored_version_1_configuration_is_migrated(hass: HomeAssistant, u
     assert "power_class" not in rooms[0]
     assert (rooms[0]["comfort_max_c"], rooms[0]["overload_max_c"]) == (23.0, 27.0)  # from the old options
     assert (rooms[1]["comfort_max_c"], rooms[1]["overload_max_c"]) == (22.0, 25.0)  # own values win
-    assert entry.runtime_data.cfg.capacity_kwh_per_k == 7.0
+    assert entry.runtime_data.cfg.capacity_kwh_per_k == 3.0
     state = hass.states.get("sensor.cc_untergrenze")
     assert state is not None and state.attributes["friendly_name"] == "Climate Control Min Charge Level"
 

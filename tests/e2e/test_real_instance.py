@@ -68,6 +68,9 @@ def entry(ha: requests.Session) -> dict[str, Any]:
     result = dict(flow["result"])
     for room in REFERENCE["rooms"]:
         _add_room(ha, result["entry_id"], room)
+    # The minimum run time is covered on unit and integration level; here a started plant would still run
+    # when the next test starts and mask what that test looks at.
+    _set_option(ha, result["entry_id"], "control", "min_run_s", 0)
     return result
 
 

@@ -53,7 +53,7 @@ Above every non-trivial field there is a collapsible **"Help: …"** section exp
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
-The buffer capacity is not a setting. It starts at 7 kWh_el/K; learning it from operating data is planned
+The buffer capacity is not a setting. It starts at 3 kWh_el/K; learning it from operating data is planned
 (concept in `docs/spec/technical/50-capacity-learning.md`).
 
 ### Diagnostic sensors per indoor unit
@@ -246,7 +246,7 @@ Deshalb in dieser Reihenfolge einrichten:
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
-Die Pufferkapazität ist keine Einstellung. Sie startet mit 7 kWh_el/K; das Lernen aus Betriebsdaten ist
+Die Pufferkapazität ist keine Einstellung. Sie startet mit 3 kWh_el/K; das Lernen aus Betriebsdaten ist
 geplant (Konzept in `docs/spec/technical/50-capacity-learning.md`).
 
 ### Diagnose-Sensoren je Innengerät

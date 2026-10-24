@@ -40,7 +40,13 @@ class Controller:
         self._smoother = SocSmoother(p.soc_smoothing_s)
         self._overheat_since: dict[str, datetime] = {}
         self._plan_missing_since: datetime | None = None
+        self._run_since: datetime | None = None
         self.running = False
+
+    def _held(self, now: datetime) -> bool:
+        """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
+        since = self._run_since
+        return since is not None and (now - since).total_seconds() < self.cfg.params.min_run_s
 
     def step(
         self,
@@ -97,6 +103,7 @@ class Controller:
             # Fallback: units are switched to heating with their standard setpoints step by step,
             # largest deviation first, one power class group per step. Running units stay on.
             self.running = False
+            self._run_since = None
             tiers = rank([(r, r.setpoint_c - temps[r.id]) for r in active], p.tie_band_k, cfg.class_order)
             groups = [group for tier in tiers for group in tier]
             steps = 1 + int((missing_s - p.fallback_delay_s) // p.fallback_step_s)
@@ -108,9 +115,17 @@ class Controller:
         else:
             # FR-PLAN-02/03/04: the plan alone decides whether the outdoor unit runs.
             decision = decide(planned_w or 0.0, self.running, self._threshold)
-            self.running = decision.run
-            requested_w = decision.power_w
-            if decision.run:
+            run, requested_w = decision.run, decision.power_w
+            if run and not self.running:
+                self._run_since = (
+                    now  # the timer restarts at every change from off to on, not at load changes
+                )
+            elif not run and self.running and self._held(now):
+                run, requested_w = True, self.cfg.p_min_w  # minimum run time: keep running at least with Pmin
+            if not run:
+                self._run_since = None
+            self.running = run
+            if run:
                 eligible = [r for r in active if temps[r.id] < r.overload_max_c]
                 tiers = rank(
                     [(r, r.setpoint_c - temps[r.id]) for r in eligible], p.tie_band_k, cfg.class_order

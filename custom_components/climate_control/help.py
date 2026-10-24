@@ -50,7 +50,15 @@ def split_help(user_input: Mapping[str, Any], expanded: bool) -> tuple[dict[str,
 
 # Options are grouped into menu steps: form sections cannot be nested, help sections already are sections.
 PARAMETER_GROUPS: dict[str, tuple[str, ...]] = {
-    "control": ("start_ratio", "stop_ratio", "tie_band_k", "heat_offset_k", "neutral_mode", "cycle_s"),
+    "control": (
+        "start_ratio",
+        "stop_ratio",
+        "min_run_s",
+        "tie_band_k",
+        "heat_offset_k",
+        "neutral_mode",
+        "cycle_s",
+    ),
     "soc": ("soc_min_c", "soc_max_c", "soc_smoothing_s", "outlier_k"),
     "safety": (
         "hard_min_below_k",
