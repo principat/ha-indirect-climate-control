@@ -171,14 +171,26 @@ def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> No
         assert 20.5 <= target <= SETPOINT + 3 and (target - 20) % 0.5 == 0
 
 
-def _wait_loaded(ha: requests.Session, entry_id: str, timeout: float = 30) -> None:
+def _wait_loaded(ha: requests.Session, entry_id: str, timeout: float = 60, stable_s: float = 2.0) -> None:
+    """Wait until the entry is loaded and stays loaded.
+
+    Every change of the configuration reloads the entry in the background, one after the other. Right after a
+    change it still reads `loaded` before the reload begins, so one reading is not enough: it must stay loaded
+    for `stable_s` without a reload starting.
+    """
     deadline = time.time() + timeout
+    loaded_since: float | None = None
     while time.time() < deadline:
         entries = ha.get(_url(ha, "/api/config/config_entries/entry"), timeout=30).json()
-        if any(e["entry_id"] == entry_id and e["state"] == "loaded" for e in entries):
+        loaded = any(e["entry_id"] == entry_id and e["state"] == "loaded" for e in entries)
+        if not loaded:
+            loaded_since = None
+        elif loaded_since is None:
+            loaded_since = time.time()
+        elif time.time() - loaded_since >= stable_s:
             return
-        time.sleep(0.1)
-    raise AssertionError(f"entry {entry_id} did not load again")
+        time.sleep(0.2)
+    raise AssertionError(f"entry {entry_id} did not stay loaded")
 
 
 def _set_option(ha: requests.Session, entry_id: str, group: str, name: str, value: float) -> None:
