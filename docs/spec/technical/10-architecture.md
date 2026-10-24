@@ -77,7 +77,8 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | Gewichtung Untergrenzen | Fläche der Räume | Fläche je Innengerät |
 | Kapazität je Raum (Diagnose) | Pufferkapazität nach Fläche auf die Räume verteilt | Fläche je Innengerät |
 
-Nicht umgesetzt (Status nicht `beschlossen`): FR-DIST-03 (offen), FR-LOAD-01 (Vorschlag).
+Nicht umgesetzt (Status nicht `beschlossen`): FR-LOAD-01 (Vorschlag). Noch nicht umgesetzt, aber beschlossen: Temperaturdifferenzen in der
+Einheit der Anlage (FR-UNIT-01, bisher K).
 
 ## Aufzeichnung (FR-OBS-01)
 

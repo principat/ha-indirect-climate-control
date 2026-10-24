@@ -15,3 +15,5 @@ Pufferkapazität aus dem Betrieb, Aufzeichnung der Betriebsdaten.
 
 **Nicht Teil des Projekts:** die Optimierung selbst, die Prognose der Heizlast aus der Wetterprognose
 (beides Sache des Planers) und Änderungen am Planer-Kern.
+
+**Bewusst nicht vorgesehen:** eine Mindestlaufzeit je Innengerät (entschieden am 24.10.2026) und eine eigene dynamische Lastgrenze aus dem Plan (der Plan enthält nur die Soll-Last, die Obergrenze Pmax hält der Planer selbst ein).

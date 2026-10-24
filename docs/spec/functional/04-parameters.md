@@ -1,6 +1,6 @@
 # 4 Parameter
 
-Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
+Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Temperaturdifferenzen und Schrittweiten (in der Tabelle mit „K“ angegeben) gelten in der Temperatureinheit der Anlage: Bei Fahrenheit bedeutet 1 K hier 1 °F (FR-UNIT-01).
 
 | Parameter | Startwert | Bedeutung |
 | --- | --- | --- |
@@ -10,7 +10,8 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
 | Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (zwei Gerätestufen) |
-| Offset-Schritt | 0,5 K | je Regelschritt |
+| Offset-Schritt | 0,5 K | je Regelschritt, je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
+| Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
 | Wartezeit | 2 min | nach jedem Schritt |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |
 | Schritt des Rückfalls | 2 min | je Schritt wird eine weitere Gerätegruppe auf Heizen gestellt |
@@ -26,7 +27,6 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar.
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |
 | Aufschlag Spätladen | 0,001 €/kWh | fällt mit der Zeit, entscheidet nur zwischen gleich teuren Zeitfenstern |
 | Strafwert Sollwert bis hartes Minimum | 0,003 €/kWh | etwas unter dem der Zoe-Ladung |
-| Mindestlaufzeit je Gerät | offen | siehe FR-DIST-03 |
 | Startwert Kapazität | 3 kWh je K (elektrisch) | gilt, bis genug Messungen vorliegen |
 | Lernschritt | 0,1 K | Bezugsgröße der gelernten Energie |
 | Mindestfenster Lernen | 0,35 K | kleinste Temperaturänderung je Schätzung |

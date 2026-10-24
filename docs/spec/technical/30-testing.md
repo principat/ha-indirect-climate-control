@@ -53,5 +53,5 @@ Maßnahmen aus der Messung:
 
 - Prognose-Attribute (`forecast`) werden nicht im Recorder gespeichert (`_unrecorded_attributes`); sie sind
   groß und ändern sich mindestens stündlich. Ohne Änderung entstehen keine Recorder-Zeilen.
-- Befehle an die Innengeräte nur bei Änderung. Im Stresstest wechseln Rangfolge und Sollwerte häufig; die
-  offene Mindestlaufzeit je Gerät (FR-DIST-03) würde die Zahl der Befehle weiter senken.
+- Befehle an die Innengeräte nur bei Änderung. Im Stresstest wechseln Rangfolge und Sollwerte häufig;
+  eine Mindestlaufzeit je Gerät ist bewusst nicht vorgesehen.
