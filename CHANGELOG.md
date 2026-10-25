@@ -1,3 +1,9 @@
+## [0.10.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.9.0...v0.10.0) (2026-10-25)
+
+### Features
+
+* serve one room at a time and let the rooms take turns ([dd296a5](https://github.com/principat/ha-indirect-climate-control/commit/dd296a5448844cffb2fe915af93843863778ad72))
+
 ## [0.9.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.8.0...v0.9.0) (2026-10-24)
 
 ### Features
