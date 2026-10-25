@@ -1,3 +1,9 @@
+## [0.11.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.10.0...v0.11.0) (2026-10-25)
+
+### Features
+
+* record the command of the control for every indoor unit ([f503958](https://github.com/principat/ha-indirect-climate-control/commit/f5039582e2cb7f5c1c3b23dfb3fe3f118c7b053c))
+
 ## [0.10.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.9.0...v0.10.0) (2026-10-25)
 
 ### Features
