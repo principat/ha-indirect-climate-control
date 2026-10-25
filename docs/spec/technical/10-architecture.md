@@ -85,7 +85,7 @@ Alle beschlossenen Anforderungen sind umgesetzt.
 
 `core/journal.py` vergleicht je Zyklus den Zustand (Anlage läuft, Modus, Gerätetemperatur, Sollwert, Lüfterstufe je Innengerät)
 mit dem letzten und liefert nur Änderungen als Einträge: `plant` bei Start/Stopp (mit SOC, geplanter und angeforderter Leistung,
-Betriebsart, Rückfall) `power` bei einer Änderung der Außenleistung um mindestens 20 W seit dem letzten Eintrag (`POWER_STEP_W`, Mittel der letzten zwei Messwerte) und `unit` je geändertem Gerät. Der erste Zyklus schreibt den Ausgangszustand. `record_file.py` hängt die
+Betriebsart, Rückfall) `power` bei einer Änderung der Außenleistung um mindestens 20 W seit dem letzten Eintrag (`POWER_STEP_W`, Mittel der letzten zwei Messwerte) `command` je geändertem Befehl der Regelung (Modus, Sollwert, Schritte; steht vor den `unit`-Einträgen desselben Zyklus) und `unit` je geändertem Gerät. Der `unit`-Eintrag zeigt den Zustand, den das Gerät unmittelbar nach dem Befehl meldet; er kann dem Befehl nachlaufen (Beobachtung: der gemerkte Sollwert 24 °C steht dort oft einen Zyklus lang). Der erste Zyklus schreibt den Ausgangszustand. `record_file.py` hängt die
 Einträge als JSON-Zeilen an `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` an (Executor, seltene Schreibzugriffe wegen
 der SD-Karte) und ersetzt bei mehr als 1 MB die Vorgängerdatei `.jsonl.1`, es bleiben also höchstens etwa 2 MB. Der Recorder von
 Home Assistant bleibt unberührt, die Datei ergänzt ihn um Lüfterstufe und die Gründe der Anlage.

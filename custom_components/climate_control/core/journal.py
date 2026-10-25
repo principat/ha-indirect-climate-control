@@ -20,17 +20,29 @@ class UnitRecord:
     fan: str | None
 
 
+@dataclass(frozen=True)
+class CommandRecord:
+    """What the control orders of one indoor unit (the state of the unit follows later)."""
+
+    mode: str
+    target_c: float | None
+    steps: int  # power steps above the start threshold the control asks of the unit (0: not served)
+
+
 class Journal:
     """Turns the state of every cycle into records. Only changes produce a record, so the volume stays small.
 
     The first cycle writes the starting state. A `plant` record marks every start and stop of the outdoor unit
     with the reasons known to the control (state of charge, planned and requested power, season). The outdoor
     power of the plant is recorded in a `power` record whenever it moved by `POWER_STEP_W` since the last one.
+    A `command` record holds what the control orders of a unit (mode, setpoint, steps) when that changed: the
+    `unit` record shows the state the device reports right after the order, which can lag behind.
     """
 
     def __init__(self) -> None:
         self._running: bool | None = None
         self._units: dict[str, UnitRecord] = {}
+        self._commands: dict[str, CommandRecord] = {}
         self._power_w: float | None = None
 
     def record(
@@ -40,6 +52,7 @@ class Journal:
         units: Mapping[str, UnitRecord],
         context: Mapping[str, Any],
         power_w: float | None = None,
+        commands: Mapping[str, CommandRecord] | None = None,
     ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         stamp = now.isoformat()
@@ -49,6 +62,10 @@ class Journal:
         if power_w is not None and (self._power_w is None or abs(power_w - self._power_w) >= POWER_STEP_W):
             rows.append({"time": stamp, "event": "power", "power_w": round(power_w, 1)})
             self._power_w = power_w
+        for unit_id, command in (commands or {}).items():
+            if self._commands.get(unit_id) != command:
+                rows.append({"time": stamp, "event": "command", "unit": unit_id, **asdict(command)})
+                self._commands[unit_id] = command
         for unit_id, unit in units.items():
             if self._units.get(unit_id) != unit:
                 rows.append({"time": stamp, "event": "unit", "unit": unit_id, **asdict(unit)})

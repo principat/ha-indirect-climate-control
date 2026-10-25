@@ -96,7 +96,7 @@ Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einze
 
 ## Aufzeichnung (FR-OBS-01)
 
-Datei `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` (JSON-Zeilen, Ereignisse `plant` mit u. a. `expected_w` und `unit`, `power` mit `power_w` bei Änderung ab 20 W), Aufbau siehe
+Datei `<Konfigurationsordner>/climate_control/<entry_id>.jsonl` (JSON-Zeilen, Ereignisse `plant` mit u. a. `expected_w` und `unit`, `power` mit `power_w` bei Änderung ab 20 W, `command` mit `unit`, `mode`, `target_c`, `steps` bei Änderung des Befehls der Regelung), Aufbau siehe
 `10-architecture.md`.
 
 ## Geräte

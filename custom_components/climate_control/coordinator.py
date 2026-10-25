@@ -45,7 +45,7 @@ from .const import (
 from .core.config import SETPOINT_MAX_C, SETPOINT_MIN_C, InstallationConfig, Parameters, valid_setpoint
 from .core.controller import Controller, CycleResult
 from .core.diagnostics import RoomDiagnostics, room_diagnostics
-from .core.journal import Journal, UnitRecord
+from .core.journal import CommandRecord, Journal, UnitRecord
 from .core.learning import CapacityLearner, Learned
 from .core.load import start_power_w
 from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
@@ -219,7 +219,11 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             "expected_w": result.expected_w,
             "fallback": result.fallback,
         }
-        rows = self._journal.record(now, result.running, units, context, power_w)
+        commands = {
+            entity_id: CommandRecord(str(command.mode), command.target_c, result.steps.get(entity_id, 0))
+            for entity_id, command in result.commands.items()
+        }
+        rows = self._journal.record(now, result.running, units, context, power_w, commands)
         if rows:
             try:
                 await self.hass.async_add_executor_job(append_records, self._journal_path, rows)

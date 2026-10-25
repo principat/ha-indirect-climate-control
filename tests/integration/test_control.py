@@ -365,6 +365,8 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
     assert len({r["unit"] for r in heating}) == 1 and heating[0]["target_c"] == 18.5
+    orders = [r for r in rows if r["event"] == "command" and r["mode"] == "heat"]
+    assert [r["unit"] for r in orders] == [heating[0]["unit"]] and orders[0]["steps"] == 1
     size = path.stat().st_size
     await run_cycle(hass)  # nothing changed: nothing recorded
     assert path.stat().st_size == size

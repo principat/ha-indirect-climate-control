@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.climate_control.core.journal import Journal, UnitRecord
+from custom_components.climate_control.core.journal import CommandRecord, Journal, UnitRecord
 from custom_components.climate_control.record_file import append_records
 
 from .helpers import T0
@@ -62,6 +62,34 @@ def test_the_outdoor_power_is_recorded_when_it_moves() -> None:
     spike = journal.record(T0 + 3 * minute, True, {"a": FAN}, CONTEXT, 1970.0)
     assert [r["power_w"] for r in spike] == [1970.0]
     assert journal.record(T0 + 4 * minute, True, {"a": FAN}, CONTEXT, None) == []  # no reading: nothing
+
+
+@pytest.mark.req("FR-OBS-01")
+def test_the_command_of_the_control_is_recorded_when_it_changes() -> None:
+    journal = Journal()
+    minute = timedelta(minutes=1)
+    serve = {"a": CommandRecord("heat", 19.5, 1), "b": CommandRecord("fan_only", None, 0)}
+    first = journal.record(T0, True, {"a": FAN, "b": FAN}, CONTEXT, None, serve)
+    assert [(r["event"], r.get("unit")) for r in first] == [
+        ("plant", None),
+        ("command", "a"),
+        ("command", "b"),
+        ("unit", "a"),
+        ("unit", "b"),
+    ]
+    assert first[1] == {
+        "time": T0.isoformat(),
+        "event": "command",
+        "unit": "a",
+        "mode": "heat",
+        "target_c": 19.5,
+        "steps": 1,
+    }
+    assert journal.record(T0 + minute, True, {"a": FAN, "b": FAN}, CONTEXT, None, serve) == []
+    handover = {"a": CommandRecord("heat", 19.5, 1), "b": CommandRecord("heat", 20.0, 1)}
+    changed = journal.record(T0 + 2 * minute, True, {"a": FAN, "b": FAN}, CONTEXT, None, handover)
+    assert [(r["event"], r["unit"]) for r in changed] == [("command", "b")]  # only the changed order
+    assert changed[0]["mode"] == "heat" and changed[0]["target_c"] == 20.0 and changed[0]["steps"] == 1
 
 
 @pytest.mark.req("FR-OBS-01")
