@@ -255,11 +255,9 @@ class Controller:
                 self._reset_load()
             for r in active:
                 if unit_steps.get(r.id, 0) > 0:
-                    # FR-LOAD-01: `steps x step` above the start threshold (start distance below the
-                    # device reading when heating), never beyond the limit
-                    target = temps[r.id] + sign * (unit_steps[r.id] * r.step - r.start_offset)
-                    limit = r.setpoint_c + sign * r.charge_limit(season)
-                    targets[r.id] = Command(main_mode, min(target, limit) if sign > 0 else max(target, limit))
+                    # FR-LOAD-01: the setpoint of a served unit does not steer its power, it is set to the
+                    # limit of the room once
+                    targets[r.id] = Command(main_mode, r.setpoint_c + sign * r.charge_limit(season))
                 else:
                     targets[r.id] = Command(p.neutral_mode)
 

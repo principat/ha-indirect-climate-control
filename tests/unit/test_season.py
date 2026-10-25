@@ -102,8 +102,8 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
     result = _cool(Controller(installation()), warm, 1.1)
     assert result.running and result.requested_w == 1300
     assert result.served == ("a",)  # one room carries Pmin: the largest deviation (+2) before b (+1)
-    # mirrored: one step above the start threshold, which lies the start distance above the reading
-    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 23.0 + 2.0 - 0.5
+    # mirrored: the limit of the room below the setpoint (21 - 3), set once
+    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 18.0
     assert (
         result.commands["b"].mode is Mode.FAN and result.commands["c"].mode is Mode.FAN
     )  # not served: neutral
@@ -111,13 +111,13 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
 
 @pytest.mark.req("FR-SEAS-02")
 def test_cooling_target_never_goes_below_the_absolute_limit_below_the_setpoint() -> None:
-    cfg = installation(replace(room("a", setpoint=21), start_offset=0.0), room("b"), room("c"))
+    cfg = installation(room("a", setpoint=21), room("b"), room("c"))
     # absolute limit below the setpoint is 3: the room is already there
     result = _cool(Controller(cfg), {"a": 18.0, "b": 22.0, "c": 22.0}, 1.5)
     assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible
     near = _cool(Controller(cfg), {"a": 18.5, "b": 18.5, "c": 18.5}, 1.5)
     assert "a" in near.served
-    assert near.commands["a"].target_c == 18.0  # 18.5 - 1 step would pass the limit: held at it
+    assert near.commands["a"].target_c == 18.0  # the limit below the setpoint, not beyond it
 
 
 @pytest.mark.req("FR-SEAS-02")

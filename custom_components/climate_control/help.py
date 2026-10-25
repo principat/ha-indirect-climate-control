@@ -23,7 +23,6 @@ ROOM_HELP = (
     "band_up",
     "limit_down",
     "limit_up",
-    "start_offset",
     "step",
     "nominal_power_w",
     "area_m2",

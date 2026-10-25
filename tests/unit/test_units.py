@@ -46,8 +46,8 @@ def test_the_control_uses_differences_so_the_numbers_work_in_any_unit() -> None:
         result = Controller(cfg).step(T0, plan(2000), states({"a": reading}))
         assert result.soc_pct == pytest.approx(26.67, abs=0.01)
         assert result.commands["a"].mode is Mode.HEAT
-        # the start distance (2) and the steps are numbers in the unit of the plant
-        assert result.commands["a"].target_c == reading - 2 + result.steps["a"] * 0.5
+        # the limit above the setpoint (3) is a number in the unit of the plant
+        assert result.commands["a"].target_c == cfg.room("a").setpoint_c + 3.0
 
 
 @pytest.mark.req("FR-UNIT-01")

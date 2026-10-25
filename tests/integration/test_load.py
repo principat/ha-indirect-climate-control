@@ -51,14 +51,14 @@ async def test_the_step_size_is_an_optional_field_of_the_indoor_unit_in_the_unit
 
 
 @pytest.mark.req("FR-LOAD-01")
-async def test_the_setpoint_of_the_served_unit_lies_one_step_beyond_its_start_threshold(
+async def test_the_setpoint_of_the_served_unit_is_the_limit_of_its_room(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any
 ) -> None:
     set_plan(hass, 2.0)
     entry = await setup_entry(a={"step": 1.0})
     result = entry.runtime_data.data.result
     assert result.steps == {A: 1}  # one room first, the second follows half a rotation time later
-    assert units.target(A) == pytest.approx(20 - 2 + 1.0)  # one step of 1.0 above the start threshold
+    assert units.target(A) == pytest.approx(24.0)  # setpoint 21 plus the limit of 3, whatever the step
     assert result.expected_w == 1300.0
     assert units.mode(B) == "fan_only" and units.mode(C) == "fan_only"
 

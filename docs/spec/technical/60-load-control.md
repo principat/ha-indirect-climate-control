@@ -33,11 +33,7 @@ Gedächtnis dafür, welche Last ein Schritt bewirkt.
 
 ## Mechanismus
 
-1. **Anlaufschwelle und Schritt.** Ein Innengerät an der Decke misst zu warm und läuft schon an, wenn seine Anzeige um den
-   Anlaufabstand `start_offset` (Standard 2, je Innengerät, in der Einheit der Anlage) über dem Sollwert liegt, bei einem Sollwert von
-   20 °C also bei 22 °C. Die Anlaufschwelle liegt daher beim Heizen **unter** der Gerätetemperatur: `Sollwert = Gerätetemperatur −
-   Anlaufabstand + Schrittweite` für das bediente Gerät (ein Schritt), begrenzt durch die absolute Grenze des Raums. Die Schrittweite
-   `step` ist je Innengerät einstellbar (Standard 0,5). Im Kühlbetrieb gilt es gespiegelt (Annahme, nicht gemessen).
+1. **Sollwert.** Der Sollwert des bedienten Geräts ist die Grenze des Raums auf der geladenen Seite (Sollwert des Raums ± Überlastgrenze, `charge_limit`), einmal gesetzt und unabhängig von der Gerätetemperatur. Messung am 26.10.2026 (Wohnzimmer, Gerätetemperatur 22,5 °C, je 5 Minuten): Sollwerte 19,5, 24 und 28 °C ergaben denselben Verlauf der Außenleistung (Anlauf nach 15 bis 30 s, 1,0 kW nach etwa einer Minute, Spitze 1,36 bis 1,37 kW nach 2 bis 3 Minuten). Die Schrittweite `step` ist je Innengerät einstellbar (Standard 0,5) und steuert nur den Wechsel (frühes Ablösen, angenommener Anstieg). Im Kühlbetrieb gilt es gespiegelt (Annahme, nicht gemessen).
 2. **Zahl der Geräte.** Die erwartete Last ist `0` ohne bedientes Gerät, sonst `Pmin + p̄ × (Zahl − 1)`, mit `p̄` als Mittel der
    gelernten Leistung der bedienten Geräte (`core/load.py: expected_load_w`). `_lanes_wanted` wählt die Zahl der gleichzeitig
    bedienten Geräte aus der angeforderten Leistung: Ist der Abstand größer als das Totband und ein Gerät mehr (weniger) näher an der
@@ -93,7 +89,7 @@ und Änderung ergänzt, damit man es an echten Daten prüfen kann.
 
 `Controller._begin_handover`, `_finish_handover` und `_holds`. Gibt ein Raum seine Bahn an einen anderen ab (Wechselzeit, Anstieg über der
 Schrittweite, Überlastgrenze, `LoadControl.replaced`), wird er nicht aus den Bedienten gestrichen, sondern in `_retiring` geführt: Er behält
-einen Schritt (und damit den Sollwert Gerätetemperatur + Schrittweite − Anlaufabstand, begrenzt auf die Grenze des Raums), zählt aber nicht
+einen Schritt (und damit den Sollwert, die Grenze des Raums), zählt aber nicht
 mehr zur erwarteten Last. Die neuen Bahnen tragen die ganze angeforderte Leistung allein. In dieser Zeit laufen beide, die Last ist kurz höher
 als angefordert. Die Beobachtung der Außenleistung wird verworfen (`disturbed`), solange ein Raum übergibt.
 
@@ -118,8 +114,7 @@ Zyklus von einer Minute wird ein Raum meist im Zyklus nach seinem Start freigege
 5. **Lernen der Leistung je Gerät:** wird beim Wechselbetrieb kaum noch beobachtet, weil fast immer eine Übergabe läuft (die Beobachtung wird
    dann verworfen). Mögliche Auswege: Beobachtung nur über die Zahl der Geräte, ohne Rücksicht auf die Übergabe, oder Schätzung aus allen
    Zyklen (rekursive kleinste Quadrate).
-6. **Anlaufschwelle im Kühlbetrieb:** gespiegelt angenommen (Sollwert Anlaufabstand über der Anzeige). Ob ein Gerät an der Decke beim
-   Kühlen so anläuft, ist nicht gemessen.
+6. **Sollwert und Abschalten:** Getestet ist ein Gerät (Wohnzimmer) mit Sollwerten von 18 bis 28 °C bei 22,5 °C Anzeige, je fünf Minuten. Ob andere Geräte gleich reagieren und wann ein Gerät bei erreichtem Sollwert von selbst aufhört, ist nicht gemessen. Die Regelung schaltet allein per Moduswechsel ab. Im Kühlbetrieb ist alles gespiegelt angenommen.
 7. **Rückführung auf die Messung** (Absenken, wenn die Außenleistung dauerhaft über der Anforderung liegt): Vorschlag, noch nicht
    freigegeben.
 8. **Lernrate** und Ausreißergrenzen für `p_i`: wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den Startwert durch

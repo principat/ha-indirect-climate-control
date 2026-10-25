@@ -141,8 +141,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
-            "start_offset": "Anlaufabstand (unter der Gerätetemperatur, optional)",
-            "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
+            "step": "Meldeschritt des Geräts (optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -202,16 +201,9 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
-            "help_start_offset": {
-              "name": "Hilfe: Anlaufabstand (unter der Gerätetemperatur, optional)",
-              "description": "Wie weit der Sollwert dieses Geräts unter der Gerätetemperatur liegen darf, bevor das Gerät beim Außengerät Leistung anfordert (Standard 2, in der Einheit der Anlage). Ein Gerät an der Decke misst zu warm und heizt schon, während seine Anzeige noch über dem Sollwert liegt. Die Lastregelung zählt ihre Leistungsschritte ab dieser Anlaufschwelle: Bei 2 ist die Schwelle ein Sollwert von Gerätetemperatur minus 2, und zwei Geräte einen Schritt darüber (minus 1,5) bringen das Außengerät auf seine Mindestleistung.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
             "help_step": {
-              "name": "Hilfe: Leistungsschritt (Sollwertschritt des Geräts, optional)",
-              "description": "Größe eines Leistungsschritts: Die Lastregelung verstellt den Sollwert dieses Geräts in Schritten dieser Größe (Abstand in der Einheit der Anlage, Standard 0,5). Den Sollwertschritt wählen, den das Gerät annimmt. Ein Gerät zieht mehr Leistung, je weiter sein Sollwert über der Gerätetemperatur liegt; die Leistung je Schritt wird je Gerät aus dem Betrieb gelernt.",
+              "name": "Hilfe: Meldeschritt des Geräts (optional)",
+              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Der Wechselbetrieb gibt den Raum früher an den nächsten ab, wenn die Gerätetemperatur seit der Bedienung um mehr als diesen Schritt gestiegen ist, und ein Raum, der gerade bedient wurde, zählt mit einem angenommenen Anstieg um einen Schritt, bis sein Gerät einen neuen Wert meldet.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -266,8 +258,7 @@
             "limit_up": "Absolute Grenze über dem Sollwert → Overcharge percentage",
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
-            "start_offset": "Anlaufabstand (unter der Gerätetemperatur, optional)",
-            "step": "Leistungsschritt (Sollwertschritt des Geräts, optional)",
+            "step": "Meldeschritt des Geräts (optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -320,16 +311,9 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
-            "help_start_offset": {
-              "name": "Hilfe: Anlaufabstand (unter der Gerätetemperatur, optional)",
-              "description": "Wie weit der Sollwert dieses Geräts unter der Gerätetemperatur liegen darf, bevor das Gerät beim Außengerät Leistung anfordert (Standard 2, in der Einheit der Anlage). Ein Gerät an der Decke misst zu warm und heizt schon, während seine Anzeige noch über dem Sollwert liegt. Die Lastregelung zählt ihre Leistungsschritte ab dieser Anlaufschwelle: Bei 2 ist die Schwelle ein Sollwert von Gerätetemperatur minus 2, und zwei Geräte einen Schritt darüber (minus 1,5) bringen das Außengerät auf seine Mindestleistung.",
-              "data": {
-                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-              }
-            },
             "help_step": {
-              "name": "Hilfe: Leistungsschritt (Sollwertschritt des Geräts, optional)",
-              "description": "Größe eines Leistungsschritts: Die Lastregelung verstellt den Sollwert dieses Geräts in Schritten dieser Größe (Abstand in der Einheit der Anlage, Standard 0,5). Den Sollwertschritt wählen, den das Gerät annimmt. Ein Gerät zieht mehr Leistung, je weiter sein Sollwert über der Gerätetemperatur liegt; die Leistung je Schritt wird je Gerät aus dem Betrieb gelernt.",
+              "name": "Hilfe: Meldeschritt des Geräts (optional)",
+              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Der Wechselbetrieb gibt den Raum früher an den nächsten ab, wenn die Gerätetemperatur seit der Bedienung um mehr als diesen Schritt gestiegen ist, und ein Raum, der gerade bedient wurde, zählt mit einem angenommenen Anstieg um einen Schritt, bis sein Gerät einen neuen Wert meldet.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }

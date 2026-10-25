@@ -1,6 +1,5 @@
 """FR-LOAD-01/02/03: load control by lanes, power per room learned per indoor unit, handover."""
 
-from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -141,24 +140,25 @@ def test_rooms_that_are_no_longer_eligible_are_replaced() -> None:
 
 
 @pytest.mark.req("FR-LOAD-01")
-def test_the_controller_sets_the_setpoint_one_step_beyond_the_start_threshold() -> None:
+def test_the_controller_sets_the_limit_of_the_room_as_setpoint_of_the_served_unit() -> None:
     cfg = rooms4()
     ctrl = Controller(cfg)
     result = ctrl.step(T0, plan(1300), states({f"r{i}": 20.0 for i in range(1, 5)}))
     assert len(result.steps) == 1
     ((rid, n),) = result.steps.items()
+    served = next(r for r in cfg.rooms if r.id == rid)
     assert n == 1 and result.commands[rid].mode is Mode.HEAT
-    assert result.commands[rid].target_c == pytest.approx(20.0 - 2.0 + 0.5)  # above the start threshold
+    assert result.commands[rid].target_c == served.setpoint_c + served.limit_up  # once, at the limit
     assert all(c.mode is Mode.FAN for other, c in result.commands.items() if other != rid)
     assert result.expected_w == 1300.0
 
 
 @pytest.mark.req("FR-LOAD-01")
-def test_the_step_size_is_set_per_unit() -> None:
-    result = Controller(installation(replace(room("a"), step=1.0))).step(T0, plan(1300), states({"a": 20.0}))
-    assert result.commands["a"].target_c == pytest.approx(20.0 - 2.0 + 1.0)
-    result = Controller(installation(room("b"))).step(T0, plan(1300), states({"b": 20.0}))
-    assert result.commands["b"].target_c == pytest.approx(20.0 - 2.0 + 0.5)
+def test_the_setpoint_of_a_served_unit_does_not_follow_the_device_temperature() -> None:
+    for reading in (19.0, 20.0, 22.0):
+        ctrl = Controller(installation(room("a", setpoint=20.0)))
+        result = ctrl.step(T0, plan(1300), states({"a": reading}))
+        assert result.commands["a"].target_c == 23.0  # setpoint 20 plus the limit of 3, whatever the reading
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -281,26 +281,15 @@ def test_the_controller_restarts_the_load_control_with_the_plant_and_the_season(
 
 
 @pytest.mark.req("FR-LOAD-01")
-def test_one_unit_one_step_above_the_start_threshold_is_the_minimum_stage() -> None:
+def test_one_served_unit_is_the_minimum_stage() -> None:
     cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
     ctrl = Controller(cfg)
-    # the units read 22: a setpoint of 22 - 2 + 0.5 = 20.5 is one step above their start threshold of 20
     result = ctrl.step(T0, plan(1300), states({"r1": 22.0, "r2": 22.0, "r3": 22.0}))
     assert list(result.steps.values()) == [1]
     assert result.expected_w == 1300.0  # the minimum stage is Pmin
     for rid in result.steps:
-        assert result.commands[rid].target_c == 20.5  # below the reading, as the unit starts nevertheless
+        assert result.commands[rid].target_c == 23.0  # the limit of the room, not the reading
     assert sum(1 for c in result.commands.values() if c.mode is Mode.HEAT) == 1
-
-
-@pytest.mark.req("FR-LOAD-01")
-def test_the_start_distance_is_set_per_unit_and_zero_puts_the_threshold_at_the_reading() -> None:
-    zero = installation(replace(room("a", setpoint=20.0), start_offset=0.0))
-    result = Controller(zero).step(T0, plan(1300), states({"a": 22.0}))
-    assert result.commands["a"].target_c == 22.0 + 0.5  # threshold at the reading, one step above
-    one = installation(replace(room("b", setpoint=20.0), start_offset=1.0))
-    result = Controller(one).step(T0, plan(1300), states({"b": 22.0}))
-    assert result.commands["b"].target_c == 22.0 - 1.0 + 0.5  # threshold 1 below the reading
 
 
 @pytest.mark.req("FR-LOAD-02")

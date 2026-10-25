@@ -70,7 +70,7 @@ async def test_setpoint_is_set_again_after_mode_change(
     assert heating == [
         A
     ]  # one room first (equal deviations: the first), the second follows half a rotation later
-    assert units.target(A) == 18.5  # 20 - start distance 2 + 1 power step of 0.5, not the remembered 18
+    assert units.target(A) == 24.0  # the limit of the room (setpoint 21 + 3), not the remembered 18
     own = [c[1] for c in units.calls if c[0] == A]
     assert own == ["set_hvac_mode", "set_temperature"]
     units.calls.clear()
@@ -364,7 +364,7 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
-    assert len({r["unit"] for r in heating}) == 1 and heating[0]["target_c"] == 18.5
+    assert len({r["unit"] for r in heating}) == 1 and heating[0]["target_c"] == 24.0
     orders = [r for r in rows if r["event"] == "command" and r["mode"] == "heat"]
     assert [r["unit"] for r in orders] == [heating[0]["unit"]] and orders[0]["steps"] == 1
     size = path.stat().st_size

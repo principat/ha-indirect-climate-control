@@ -192,12 +192,10 @@ def test_variable_setpoint_is_used_by_safety_and_fallback() -> None:
 def test_overload_limit_is_per_room() -> None:
     from dataclasses import replace
 
-    cool_room = replace(
-        room("a"), band_up=0.8, limit_up=0.8, start_offset=0.0
-    )  # limit 0.8 above the setpoint of 21
+    cool_room = replace(room("a"), band_up=0.8, limit_up=0.8)  # limit 0.8 above the setpoint of 21
     ctrl = Controller(installation(cool_room, room("b")))
     result = ctrl.step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a reached its own overload limit
     ctrl = Controller(installation(cool_room, room("b")))
     result = ctrl.step(T0, plan(1300), states({"a": 21.5, "b": 22.5}))
-    assert result.commands["a"].target_c == 21.8  # 21.5 + 1 step capped at the room's own limit
+    assert result.commands["a"].target_c == 21.8  # the room's own limit above the setpoint

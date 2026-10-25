@@ -26,7 +26,7 @@ class CommandRecord:
 
     mode: str
     target_c: float | None
-    steps: int  # power steps above the start threshold the control asks of the unit (0: not served)
+    steps: int  # 1: the unit is served, 0: it is not
 
 
 class Journal:

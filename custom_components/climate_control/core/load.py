@@ -1,8 +1,8 @@
 """FR-LOAD-01 / FR-LOAD-02 / FR-LOAD-04: load control by lanes, power per room learned per indoor unit.
 
-A served room has one power step: its setpoint lies one `step` above its start threshold, which is the start
-distance below the device temperature. One such unit (a lane) brings the outdoor unit to Pmin. More requested
-power adds lanes, every lane adds the learned power of its room. Which rooms are served is decided by the
+A served room is one lane: its unit gets the limit of the room as setpoint once (the setpoint does not steer
+the power). One lane brings the outdoor unit to Pmin. More requested power adds lanes, every lane adds the
+learned power of its room. Which rooms are served is decided by the
 rotation (`rotation.py`): the rooms take turns, the room with the largest deviation next. A dead band around
 the request and the limits of the rooms bound it. It runs on every cycle and every temperature event, there
 is no time window.

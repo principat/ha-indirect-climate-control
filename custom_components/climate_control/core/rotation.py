@@ -1,6 +1,6 @@
 """FR-LOAD-01 / FR-LOAD-04: the served rooms take turns instead of heating one room for a long time.
 
-A lane is one indoor unit that asks for power (one power step above its start threshold). The plant runs with
+A lane is one indoor unit that is served (it heats towards the limit of its room). The plant runs with
 one lane at the minimum load; more power adds lanes, each started half a rotation time (one over the number of
 lanes) after the latest change so that the lanes do not change at once. A lane gives its room to the next one
 when the rotation time is over, when the room's device temperature rose by more than its step since it became

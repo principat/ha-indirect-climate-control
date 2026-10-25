@@ -10,8 +10,7 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
 | Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
 | Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich; gilt für die Rangfolge im Rückfall (im Wechselbetrieb zählt nur genau gleiche Abweichung) |
-| Schrittweite Sollwert | 0,5 K | Schritt, in dem der Lastregler den Sollwert eines Innengeräts verstellt; je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
-| Anlaufabstand | 2 K | je Innengerät einstellbar (optional); Abstand, um den die Anlaufschwelle unter der Gerätetemperatur liegt |
+| Schrittweite Gerät | 0,5 K | kleinste Änderung der Gerätetemperatur, die ein Innengerät meldet; Schwelle für den frühen Wechsel und angenommener Anstieg (FR-LOAD-04); je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
 | Wechselzeit | 2 min | so lange wird ein Raum bedient, bis der nächste übernimmt; ein zweites Gerät wechselt um die halbe Zeit versetzt (FR-LOAD-04) |
 | Mindeststufe Lastregler | 1 bedientes Gerät | Pmin; Untergrenze beim Nachregeln nach unten |
 | Startwert Last je weiterem Gerät | (Pmax − Pmin) / 2 | je Innengerät, gilt bis zur ersten Messung |

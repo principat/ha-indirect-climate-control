@@ -22,7 +22,6 @@ from .const import (
     ROOM_SETPOINT,
     ROOM_SETPOINT_ENTITY,
     ROOM_SETPOINT_SOURCE,
-    ROOM_START_OFFSET,
     ROOM_STEP,
     SOURCE_CONSTANT,
     SOURCE_ENTITY,
@@ -78,7 +77,6 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
             limit_down=float(r.get(ROOM_LIMIT_DOWN, RoomConfig.limit_down)),
             limit_up=float(r.get(ROOM_LIMIT_UP, RoomConfig.limit_up)),
             step=float(r.get(ROOM_STEP, RoomConfig.step)),
-            start_offset=float(r.get(ROOM_START_OFFSET, RoomConfig.start_offset)),
         )
         for r in room_data(entry)
     )

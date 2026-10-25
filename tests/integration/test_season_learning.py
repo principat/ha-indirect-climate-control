@@ -67,7 +67,7 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     assert units.mode(A) == "cool" and {units.mode(B), units.mode(C)} == {
         "fan_only"
     }  # the room of 2 kW first
-    assert units.target(A) == 21.0  # beyond the hard maximum: cooled to the setpoint
+    assert units.target(A) == 18.0  # the limit of the room below its setpoint of 21, set once
     soc = hass.states.get("sensor.climate_control_state_of_charge")
     assert soc is not None and float(soc.state) == pytest.approx(13.33, abs=0.01)  # 4 above the setpoint
     assert soc.attributes["worst_room"] == A
