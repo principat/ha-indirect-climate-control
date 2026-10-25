@@ -64,7 +64,9 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     set_plan(hass, 2.0)
     hass.states.async_set(SWITCH, "on")
     await _setup(hass)
-    assert {units.mode(e) for e in (A, B)} == {"cool"} and units.mode(C) == "fan_only"  # the pair of 2 kW
+    assert units.mode(A) == "cool" and {units.mode(B), units.mode(C)} == {
+        "fan_only"
+    }  # the room of 2 kW first
     assert units.target(A) == 21.0  # beyond the hard maximum: cooled to the setpoint
     soc = hass.states.get("sensor.climate_control_state_of_charge")
     assert soc is not None and float(soc.state) == pytest.approx(13.33, abs=0.01)  # 4 above the setpoint

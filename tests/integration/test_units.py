@@ -49,8 +49,8 @@ async def test_fahrenheit_plant_works_with_the_numbers_as_they_are(
     assert _value(hass, "sensor.climate_control_state_of_charge") == pytest.approx(26.67, abs=0.01)
     assert "heat" in {units.mode(e) for e in ROOMS}
     assert (
-        units.target(A) == 67.0
-    )  # 68 - start distance 2 + 2 power steps of 0.5, in degF as the device reports
+        units.target(A) == 66.5
+    )  # 68 - start distance 2 + 1 power step of 0.5, in degF as the device reports
     units.calls.clear()
     await run_cycle(hass)
     assert units.calls == []  # nothing to change, nothing sent

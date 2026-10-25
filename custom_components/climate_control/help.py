@@ -63,6 +63,7 @@ PARAMETER_GROUPS: dict[str, tuple[str, ...]] = {
         "tie_band_k",
         "load_deadband_ratio",
         "load_settle_max_s",
+        "rotation_s",
         "neutral_mode",
         "cycle_s",
     ),

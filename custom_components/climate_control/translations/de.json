@@ -414,6 +414,7 @@
           "tie_band_k": "Gleichstand-Band",
           "load_deadband_ratio": "Totband der Lastregelung (Anteil von Pmin)",
           "load_settle_max_s": "Höchstzeit für die Beruhigung der Außenleistung (s)",
+          "rotation_s": "Wechselzeit der Räume (s)",
           "neutral_mode": "Neutraler Modus",
           "cycle_s": "Regelzyklus (s)"
         },
@@ -456,6 +457,13 @@
           "help_load_settle_max_s": {
             "name": "Hilfe: Höchstzeit für die Beruhigung der Außenleistung (s)",
             "description": "Nach einer Verstellung wartet die Lastregelung, bis sich die Außenleistung beruhigt hat, um die Leistung je Schritt zu lernen. Beruhigt sie sich in dieser Zeit nicht, wird nichts gelernt. Die Wartezeit passt sich der Anlage an (das Dreifache der üblichen Beruhigungszeit, höchstens dieser Wert). Standard 600 s (10 min).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_rotation_s": {
+            "name": "Hilfe: Wechselzeit der Räume (s)",
+            "description": "Wie lange ein Raum bedient wird, bevor der nächste Raum übernimmt. Die Räume wechseln sich ab, jeder bekommt nur kurz Wärme und wird dazwischen gelüftet. Ein zweiter Raum läuft um die halbe Zeit versetzt. Kürzere Zeiten schonen kleine Räume vor Überhitzung, schalten aber öfter. Standard 120 s (2 min).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

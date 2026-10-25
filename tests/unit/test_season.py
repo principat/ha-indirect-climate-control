@@ -7,7 +7,7 @@ import pytest
 
 from custom_components.climate_control.core.controller import Controller
 from custom_components.climate_control.core.diagnostics import room_diagnostics
-from custom_components.climate_control.core.model import Mode, Season
+from custom_components.climate_control.core.model import Mode, RoomState, Season
 from custom_components.climate_control.core.planner_model import planner_inputs
 from custom_components.climate_control.core.soc import deviation_to_soc
 
@@ -101,11 +101,12 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
     }  # +2, +1, 0 against the setpoint: nobody beyond the absolute limit
     result = _cool(Controller(installation()), warm, 1.1)
     assert result.running and result.requested_w == 1300
-    assert result.served == ("a", "b")  # 2 x 700 W >= 1300 W, a (+2) before b (+1)
-    # mirrored: one step each above the start threshold, which lies the start distance above the reading
+    assert result.served == ("a",)  # one room carries Pmin: the largest deviation (+2) before b (+1)
+    # mirrored: one step above the start threshold, which lies the start distance above the reading
     assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 23.0 + 2.0 - 0.5
-    assert result.commands["b"].target_c == 22.0 + 2.0 - 0.5
-    assert result.commands["c"].mode is Mode.FAN  # not served: neutral
+    assert (
+        result.commands["b"].mode is Mode.FAN and result.commands["c"].mode is Mode.FAN
+    )  # not served: neutral
 
 
 @pytest.mark.req("FR-SEAS-02")
@@ -214,6 +215,11 @@ def test_minimum_run_time_does_not_heat_a_room_at_its_absolute_limit() -> None:
     assert ctrl.step(T0, plan(1500), states(cold)).running
     mixed = {"a": 24.0, "b": 20.0, "c": 20.0}  # only a is full
     result = _confirmed(ctrl, mixed, Mode.HEAT)
+    assert result.running and "b" in result.served  # the next room has taken over (FR-LOAD-03) ...
+    # ... and as soon as it holds its setpoint, a, which is at its limit, is not heated any further
+    applied = {rid: RoomState(c.mode, mixed[rid], False, c.target_c) for rid, c in result.commands.items()}
+    later = T0 + 4 * MIN + timedelta(seconds=30)  # before the next change of the room
+    result = ctrl.step(later, plan(0, later), applied)
     assert result.running and "a" not in result.served
     assert result.commands["a"].mode is Mode.FAN
 

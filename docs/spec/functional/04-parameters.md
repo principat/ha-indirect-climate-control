@@ -9,11 +9,12 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Startschwelle | 80 % von Pmin | Plan darunter wird ignoriert |
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
 | Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
-| Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich (zwei Gerätestufen) |
+| Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich; gilt für die Rangfolge im Rückfall (im Wechselbetrieb zählt nur genau gleiche Abweichung) |
 | Schrittweite Sollwert | 0,5 K | Schritt, in dem der Lastregler den Sollwert eines Innengeräts verstellt; je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
 | Anlaufabstand | 2 K | je Innengerät einstellbar (optional); Abstand, um den die Anlaufschwelle unter der Gerätetemperatur liegt |
-| Mindeststufe Lastregler | 2 Leistungsschritte | Pmin; Untergrenze beim Nachregeln nach unten, vorzugsweise auf zwei Geräte verteilt |
-| Startwert Last je Schritt | (Pmax − Pmin) / (2 × Zahl der Innengeräte) | je Innengerät, gilt bis zur ersten Messung |
+| Wechselzeit | 2 min | so lange wird ein Raum bedient, bis der nächste übernimmt; ein zweites Gerät wechselt um die halbe Zeit versetzt (FR-LOAD-04) |
+| Mindeststufe Lastregler | 1 bedientes Gerät | Pmin; Untergrenze beim Nachregeln nach unten |
+| Startwert Last je weiterem Gerät | (Pmax − Pmin) / 2 | je Innengerät, gilt bis zur ersten Messung |
 | Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
 | Höchstzeit Übergabe | 10 min | so lange läuft ein Gerät an seiner Grenze höchstens weiter, bis das nächste seinen Sollwert hält (FR-LOAD-03) |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |

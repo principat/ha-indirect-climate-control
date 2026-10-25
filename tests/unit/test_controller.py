@@ -36,11 +36,11 @@ def test_no_pulse_operation_between_thresholds() -> None:
 
 
 @pytest.mark.req("FR-PLAN-03")
-def test_running_requests_at_least_pmin_and_serves_enough_units() -> None:
+def test_running_requests_at_least_pmin_and_serves_one_room_for_it() -> None:
     ctrl = Controller(installation())
     result = ctrl.step(T0, plan(1100), states({"a": 20.0, "b": 18.0, "c": 21.0}))
     assert result.requested_w == 1300
-    assert result.served == ("b", "a")  # 2 x 700 W >= 1300 W
+    assert result.served == ("b",)  # one room carries Pmin: the one with the largest deviation
 
 
 @pytest.mark.req("FR-PLAN-04")
@@ -193,10 +193,11 @@ def test_overload_limit_is_per_room() -> None:
     from dataclasses import replace
 
     cool_room = replace(
-        room("a"), band_up=1.0, limit_up=1.0, start_offset=0.0
-    )  # limit 1 above the setpoint of 21
+        room("a"), band_up=0.8, limit_up=0.8, start_offset=0.0
+    )  # limit 0.8 above the setpoint of 21
     ctrl = Controller(installation(cool_room, room("b")))
     result = ctrl.step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a reached its own overload limit
-    result = ctrl.step(T0, plan(2000), states({"a": 21.5, "b": 20.0}))
-    assert result.commands["a"].target_c == 22.0  # 21.5 + 2 steps capped at the room's own limit
+    ctrl = Controller(installation(cool_room, room("b")))
+    result = ctrl.step(T0, plan(1300), states({"a": 21.5, "b": 22.5}))
+    assert result.commands["a"].target_c == 21.8  # 21.5 + 1 step capped at the room's own limit

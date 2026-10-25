@@ -17,6 +17,7 @@
 | Leistungsklasse | Gruppe von Innengeräten gleicher Nennleistung |
 | Gleichstand-Band | Spanne, in der Abweichungen als gleich gelten |
 | Übergabe | Ablösung eines bedienten Geräts an seiner Grenze durch das nächste: erst das nächste an, dann das erste in den neutralen Modus |
+| Wechselbetrieb | die Räume werden im Wechsel bedient, jeder nur für die Wechselzeit, und dazwischen gelüftet |
 | Rückfall | Normalbetrieb ohne Planer nach einer Wartezeit: alle Geräte heizen schrittweise mit Standard-Sollwerten |
 | Temperatureinheit | Celsius (Standard) oder Fahrenheit, je Anlage; gilt für alle Temperaturen der Klimaanlagen und für Differenzen und Schrittweiten (dort als Zahl, 1 K wird 1 °C bzw. 1 °F) |
 | Betriebsart | Heizen (Standard) oder Kühlen, je Anlage, wählbar über einen optionalen externen Schalter |

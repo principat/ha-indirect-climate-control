@@ -51,33 +51,32 @@ async def test_the_step_size_is_an_optional_field_of_the_indoor_unit_in_the_unit
 
 
 @pytest.mark.req("FR-LOAD-01")
-async def test_the_setpoint_of_a_served_unit_lies_the_steps_beyond_its_device_temperature(
+async def test_the_setpoint_of_the_served_unit_lies_one_step_beyond_its_start_threshold(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any
 ) -> None:
     set_plan(hass, 2.0)
     entry = await setup_entry(a={"step": 1.0})
     result = entry.runtime_data.data.result
-    assert result.steps and sum(result.steps.values()) >= 2
-    for entity_id, steps in result.steps.items():
-        step = 1.0 if entity_id == A else 0.5
-        assert units.target(entity_id) == pytest.approx(20 - 2 + steps * step)  # above the start threshold
-    assert abs(result.expected_w - 2000) <= 130 + 170  # within the dead band and the size of a step
+    assert result.steps == {A: 1}  # one room first, the second follows half a rotation time later
+    assert units.target(A) == pytest.approx(20 - 2 + 1.0)  # one step of 1.0 above the start threshold
+    assert result.expected_w == 1300.0
+    assert units.mode(B) == "fan_only" and units.mode(C) == "fan_only"
 
 
 @pytest.mark.req("FR-LOAD-03")
-async def test_a_unit_at_its_limit_stays_on_until_the_next_unit_is_running_and_then_goes_to_standby(
+@pytest.mark.req("FR-LOAD-04")
+async def test_the_next_room_starts_first_and_the_room_that_gives_way_goes_to_standby_afterwards(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any
 ) -> None:
     set_plan(hass, 1.3)
     await setup_entry()
-    assert [e for e in ROOMS if units.mode(e) == "heat"] == [A, B]  # the minimum stage on two units
-    for temperature in (22.0, 23.5, 24.0):  # A heats up to 3 above its setpoint of 21: its limit
-        units.set(A, "heat", temperature, units.target(A))
-        await run_cycle(hass)
-    assert units.mode(C) == "heat"  # the next unit has started ...
+    assert [e for e in ROOMS if units.mode(e) == "heat"] == [A]  # the minimum load: one room
+    units.set(A, "heat", 21.0, units.target(A))  # A rose by more than its step: the next room is up
+    await run_cycle(hass)
+    assert units.mode(B) == "heat"  # the next room has started ...
     assert units.mode(A) == "heat"  # ... while A still runs
-    await run_cycle(hass)  # C shows its setpoint now
-    assert units.mode(A) == "fan_only" and {units.mode(B), units.mode(C)} == {"heat"}
+    await run_cycle(hass)  # B shows its setpoint now
+    assert units.mode(A) == "fan_only" and units.mode(B) == "heat"  # A is aired until its turn comes again
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -96,8 +95,8 @@ async def test_the_power_per_step_is_a_diagnostic_sensor_per_indoor_unit_with_th
     assert {e.entity_category for e in sensors} == {er.EntityCategory.DIAGNOSTIC}
     for sensor in sensors:
         assert float(hass.states.get(sensor.entity_id).state) == pytest.approx(
-            2000 / 6
-        )  # (Pmax - Pmin) / (2 x 3)
+            1000.0
+        )  # (Pmax - Pmin) / 2 per further room
 
 
 @pytest.mark.req("FR-OBS-02")

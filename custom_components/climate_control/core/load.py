@@ -1,23 +1,21 @@
-"""FR-LOAD-01 / FR-LOAD-02: load control on temperature events, power per step learned per indoor unit.
+"""FR-LOAD-01 / FR-LOAD-02 / FR-LOAD-04: load control by lanes, power per room learned per indoor unit.
 
-The control variable is the number of power steps `n` of each served unit: its setpoint lies `n x step`
-above its start threshold, which is the start distance below the device temperature. Two steps on two units
-(the minimum stage) bring the outdoor unit to Pmin, every further step adds the learned power per step.
-The controller compares it with the requested power and changes the steps of one unit at a time: the room
-with the largest deviation first, the rooms within the tie band of it in turn (fewest steps first, then the
-power class), so the rooms are brought to one level and then rise together. Lowering takes the fullest room
-first. A dead band around the request, a floor of two steps on two units and the absolute limits of the
-rooms bound it. It runs on every cycle and every temperature event, there is no time window.
+A served room has one power step: its setpoint lies one `step` above its start threshold, which is the start
+distance below the device temperature. One such unit (a lane) brings the outdoor unit to Pmin. More requested
+power adds lanes, every lane adds the learned power of its room. Which rooms are served is decided by the
+rotation (`rotation.py`): the rooms take turns, the room with the largest deviation next. A dead band around
+the request and the limits of the rooms bound it. It runs on every cycle and every temperature event, there
+is no time window.
 
-Learning: after an adjustment the outdoor unit's power is watched until it has settled (cycle means within the
-dead band over three cycles, with a maximum time that adapts to the plant). The change divided by the changed
-steps updates the power per step of the units involved. Disturbed observations are dropped.
+Learning: after the number of lanes changed, the outdoor unit's power is watched until it has settled (cycle
+means within the dead band over three cycles, with a maximum time that adapts to the plant). The change
+divided by the changed lanes updates the power of the rooms involved. Disturbed observations are dropped.
 """
 
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from statistics import mean, median
@@ -26,8 +24,8 @@ from typing import Any
 from .config import InstallationConfig, RoomConfig
 from .distribution import Tier
 from .model import Season
+from .rotation import Rotation
 
-MIN_STAGE = 2  # power steps, spread over two units if possible
 SETTLE_CYCLES = 3
 BOOTSTRAP_ESTIMATES = 3  # the first estimates of a unit replace the start value by their median
 RATE = 0.2
@@ -38,23 +36,20 @@ MAX_ITERATIONS = 200
 
 
 def start_power_w(cfg: InstallationConfig) -> float:
-    """FR-LOAD-02: (Pmax - Pmin) spread over twice the number of units."""
-    return (cfg.p_max_w - cfg.p_min_w) / (2 * len(cfg.rooms))
+    """FR-LOAD-02: half of the range between Pmin and Pmax per further room (Pmax with three rooms)."""
+    return (cfg.p_max_w - cfg.p_min_w) / 2
 
 
 def expected_load_w(steps: Mapping[str, int], power: Mapping[str, float], p_min_w: float) -> float:
-    """Outdoor power for the steps: Pmin at the minimum stage (two steps), each further step adds power.
+    """Outdoor power for the served rooms: Pmin with one room, each further room adds its power.
 
-    A further step counts with the mean power per step of the served units weighted by their steps.
-    Without a step there is no load.
+    A further room counts with the mean power of the served rooms. Without a room there is no load.
     """
-    total = sum(steps.values())
-    if total <= 0:
+    served = [rid for rid, n in steps.items() if n > 0]
+    if not served:
         return 0.0
-    if total <= MIN_STAGE:
-        return p_min_w
-    mean_w = sum(power[rid] * n for rid, n in steps.items()) / total
-    return p_min_w + mean_w * (total - MIN_STAGE)
+    mean_w = sum(power.get(rid, 0.0) for rid in served) / len(served)
+    return p_min_w + mean_w * (len(served) - 1)
 
 
 @dataclass
@@ -148,6 +143,8 @@ class LoadControl:
     def __init__(self, model: LoadModel | None = None) -> None:
         self.model = model if model is not None else LoadModel()
         self.steps: dict[str, int] = {}
+        self.replaced: list[str] = []  # rooms that gave their lane to another room in the last cycle
+        self.rotation = Rotation()
         self.expected_w = 0.0
         self._recent: deque[float] = deque(maxlen=SETTLE_CYCLES)
         self._observation: _Observation | None = None
@@ -158,6 +155,8 @@ class LoadControl:
     def reset(self) -> None:
         """The plant stopped, the season changed or the plan is gone: the next run starts afresh."""
         self.steps = {}
+        self.replaced = []
+        self.rotation.reset()
         self.expected_w = 0.0
         self._observation = None
 
@@ -222,30 +221,36 @@ class LoadControl:
         requested_w: float,
         tiers: Sequence[Tier],
         disturbed: bool = False,
+        temps: Mapping[str, float] | None = None,
     ) -> dict[str, int]:
-        """Steps per served unit for the requested power. `tiers` are the eligible units, most urgent first.
+        """Served rooms (one step each) for the requested power; `tiers`: eligible units, most urgent first.
 
-        `disturbed` tells that something else changed the load since the last cycle (a room under protection,
-        a window, a change of the season): a running observation is then not trustworthy.
+        `temps` are the device temperatures of the cycle (the rotation switches a room when it rose by more
+        than its step). `disturbed` tells that something else changed the load since the last cycle (a room
+        under protection, a window, a change of the season): a running observation is then not trustworthy.
         """
         dead = cfg.params.load_deadband_ratio * cfg.p_min_w
         ranked = _flat(tiers)
         ids = {r.id for r in ranked}
-        lost = [rid for rid in self.steps if rid not in ids]
-        if disturbed or lost:
+        if disturbed or any(rid not in ids for rid in self.steps):
             self._observation = None
-        before = {r.id: self.steps.get(r.id, 0) for r in ranked}
-        limit = {r.id: max(1, int(r.charge_limit(season) / r.step + 1e-9)) for r in ranked}
         power = {r.id: self._power(cfg, r.id) for r in ranked}
-        after = self._adjust(before, limit, power, tiers, requested_w, dead, cfg.p_min_w)
-        changed = {rid: after[rid] - before[rid] for rid in after if after[rid] != before[rid]}
-        if changed:
-            # a run that starts from standby only reaches the minimum stage (Pmin): nothing to learn from it
+        before = dict(self.steps)
+        alive = sum(1 for lane in self.rotation.lanes if lane.room_id in ids)
+        wanted = _lanes_wanted(alive, requested_w, power, cfg, dead)
+        turn = self.rotation.step(now, cfg.params.rotation_s, wanted, tiers, temps or {}, season.sign)
+        after = {rid: 1 for rid in turn.active}
+        self.replaced = list(turn.replaced)
+        added = {rid for rid in after if rid not in before}
+        dropped = {rid for rid in before if rid not in after}
+        if len(after) != len(before) and (added or dropped):
+            # a run that starts from standby only reaches Pmin (one room): nothing to learn from it
             expected_delta = expected_load_w(after, power, cfg.p_min_w) - expected_load_w(
                 before, power, cfg.p_min_w
             )
-            self._begin(now, changed, expected_delta if sum(before.values()) > 0 else 0.0)
-        self.steps = {rid: n for rid, n in after.items() if n > 0}
+            changed = {rid: 1 for rid in added} if len(after) > len(before) else {rid: -1 for rid in dropped}
+            self._begin(now, changed, expected_delta if before else 0.0)
+        self.steps = after
         self.expected_w = expected_load_w(after, power, cfg.p_min_w)
         return dict(self.steps)
 
@@ -262,110 +267,36 @@ class LoadControl:
             expected_delta_w=expected_delta_w,
         )
 
-    def _adjust(
-        self,
-        steps: dict[str, int],
-        limit: dict[str, int],
-        power: dict[str, float],
-        tiers: Sequence[Tier],
-        requested_w: float,
-        dead: float,
-        p_min_w: float,
-    ) -> dict[str, int]:
-        def expected(n: Mapping[str, int]) -> float:
-            return expected_load_w(n, power, p_min_w)
-
-        n = dict(steps)
-        for _ in range(MAX_ITERATIONS):
-            error = requested_w - expected(n)
-            if error > dead:
-                candidate = _raise(n, limit, tiers)
-            elif error < -dead:
-                candidate = self._lower(n, expected, tiers, requested_w)
-            else:
-                break
-            if candidate is None:
-                break
-            # below the minimum stage the load stays at Pmin, so a step there cannot improve the error
-            if abs(requested_w - expected(candidate)) >= abs(error) and sum(n.values()) >= MIN_STAGE:
-                break
-            n = candidate
-        return self._enforce_floor(n, limit, tiers)
-
-    def _lower(
-        self,
-        n: Mapping[str, int],
-        expected: Callable[[Mapping[str, int]], float],
-        tiers: Sequence[Tier],
-        requested_w: float,
-    ) -> dict[str, int] | None:
-        """One step less for the fullest served room (of equal fill the one with the most steps)."""
-        ranked = _flat(tiers)
-        for r in _fullest_first(n, tiers):
-            candidate = dict(n)
-            candidate[r.id] -= 1
-            if not _floor_ok(candidate, ranked):
-                continue
-            return candidate
-        return None
-
-    def _enforce_floor(
-        self, n: dict[str, int], limit: Mapping[str, int], tiers: Sequence[Tier]
-    ) -> dict[str, int]:
-        """The plant never runs below two power steps (spread over two units if there are two)."""
-        ranked = _flat(tiers)
-        for _ in range(MAX_ITERATIONS):
-            if _floor_ok(n, ranked):
-                break
-            units = sum(1 for v in n.values() if v > 0)
-            pick = _pick_up(n, limit, tiers, fresh=units < min(2, len(ranked)))
-            if pick is None:
-                break
-            n = dict(n)
-            n[pick.id] += 1
-        return n
-
 
 def _flat(tiers: Sequence[Tier]) -> list[RoomConfig]:
     return [r for tier in tiers for group in tier for r in group]
 
 
-def _raise(n: Mapping[str, int], limit: Mapping[str, int], tiers: Sequence[Tier]) -> dict[str, int] | None:
-    pick = _pick_up(n, limit, tiers)
-    if pick is None:
-        return None
-    candidate = dict(n)
-    candidate[pick.id] += 1
-    return candidate
+def _lanes_wanted(
+    current: int, requested_w: float, power: Mapping[str, float], cfg: InstallationConfig, dead: float
+) -> int:
+    """Number of rooms served at the same time: at least one while the plant runs, more for more power.
 
-
-def _pick_up(
-    n: Mapping[str, int], limit: Mapping[str, int], tiers: Sequence[Tier], fresh: bool = False
-) -> RoomConfig | None:
-    """The unit to raise: the room with the largest deviation, the rooms within its tie band in turn.
-
-    The tiers are ordered by deviation, so the first tier with a unit that has room left decides. Inside
-    the tier the unit with the fewest steps comes first, of equal steps the first of the tier (power class
-    group, configured order): the power class decides only on a tie. `fresh` takes a unit without steps.
+    Nothing changes inside the dead band around the request. A further room counts with the mean power of
+    the eligible rooms; Pmax bounds the number.
     """
-    for tier in tiers:
-        members = [
-            r for group in tier for r in group if n[r.id] < limit[r.id] and (not fresh or n[r.id] == 0)
-        ]
-        if members:
-            return min(members, key=lambda r: n[r.id])
-    return None
+    if not power:
+        return 0
+    mean_w = sum(power.values()) / len(power)
 
+    def expected(n: int) -> float:
+        return cfg.p_min_w + mean_w * (n - 1)
 
-def _fullest_first(n: Mapping[str, int], tiers: Sequence[Tier]) -> list[RoomConfig]:
-    """Served units, the last tier (least deviation) first, inside a tier the most steps first."""
-    order: list[RoomConfig] = []
-    for tier in reversed(tiers):
-        members = [r for group in tier for r in group if n[r.id] > 0]
-        order.extend(sorted(members, key=lambda r: -n[r.id]))
-    return order
-
-
-def _floor_ok(n: Mapping[str, int], ranked: Sequence[RoomConfig]) -> bool:
-    units = sum(1 for v in n.values() if v > 0)
-    return sum(n.values()) >= MIN_STAGE and units >= min(2, len(ranked))
+    n_max = len(power)
+    if mean_w > 0:
+        n_max = min(n_max, 1 + max(0, round((cfg.p_max_w - cfg.p_min_w) / mean_w)))
+    n = max(1, min(current, n_max))
+    for _ in range(MAX_ITERATIONS):
+        error = requested_w - expected(n)
+        if error > dead and n < n_max and abs(requested_w - expected(n + 1)) < abs(error):
+            n += 1
+        elif error < -dead and n > 1 and abs(requested_w - expected(n - 1)) < abs(error):
+            n -= 1
+        else:
+            break
+    return n

@@ -15,6 +15,8 @@ from .plan import Plan
 from .soc import OutlierFilter, SocSmoother, deviation_to_soc, worst_room
 from .threshold import ThresholdConfig, decide
 
+EQUAL_K = 1e-9  # deviations closer than this are equal
+
 
 @dataclass(frozen=True)
 class CycleResult:
@@ -58,17 +60,18 @@ class Controller:
         self._load.reset()
         self._retiring.clear()
 
-    def _start_handover(self, now: datetime, active: list[RoomConfig], eligible: list[RoomConfig]) -> None:
-        """FR-LOAD-03: a served unit that reaches its limit is not switched off at once."""
-        eligible_ids = {r.id for r in eligible}
-        at_limit = {r.id for r in active if r.id not in eligible_ids}
-        self._retiring = {rid: v for rid, v in self._retiring.items() if rid in at_limit}
-        if not eligible_ids:  # nobody to hand over to
+    def _begin_handover(self, now: datetime, active: list[RoomConfig], steps: Mapping[str, int]) -> None:
+        """FR-LOAD-03: a room that gave its lane to another one is not switched off at once."""
+        active_ids = {r.id for r in active}
+        self._retiring = {
+            rid: v for rid, v in self._retiring.items() if rid not in steps and rid in active_ids
+        }
+        if not steps:  # nobody to hand over to
             self._retiring.clear()
             return
-        for rid, n in self._load.steps.items():
-            if rid in at_limit and rid not in self._retiring:
-                self._retiring[rid] = (now, n)
+        for rid in self._load.replaced:
+            if rid in active_ids and rid not in steps and rid not in self._retiring:
+                self._retiring[rid] = (now, 1)
 
     def _finish_handover(
         self, now: datetime, rooms: Mapping[str, RoomState], mode: Mode, steps: Mapping[str, int]
@@ -222,13 +225,15 @@ class Controller:
             self.running = run
             unit_steps: dict[str, int] = {}
             if run:
+                # FR-LOAD-04: a just served room counts with an assumed rise until its device reports anew
+                assumed = self._load.rotation.effective(temps, sign)
+                # the rooms take turns, so only exactly equal deviations are a tie (the class decides then)
                 tiers = rank(
-                    [(r, sign * (r.setpoint_c - temps[r.id])) for r in eligible],
-                    p.tie_band_k,
+                    [(r, sign * (r.setpoint_c - assumed[r.id])) for r in eligible],
+                    EQUAL_K,
                     cfg.class_order,
                 )
                 ranked = [r for tier in tiers for group in tier for r in group]
-                self._start_handover(now, active, eligible)
                 disturbance = self._disturbance_of(cfg, rooms, active, temps, season)
                 unit_steps = self._load.update(
                     now,
@@ -237,12 +242,14 @@ class Controller:
                     requested_w,
                     tiers,
                     disturbance != self._disturbance or bool(self._retiring),
+                    temps,
                 )
                 self._disturbance = disturbance
+                self._begin_handover(now, active, unit_steps)
                 self._finish_handover(now, rooms, main_mode, unit_steps)
                 unit_steps = {**unit_steps, **{rid: n for rid, (_, n) in self._retiring.items()}}
                 served = tuple(r for r in ranked if unit_steps.get(r.id, 0) > 0) + tuple(
-                    r for r in active if r.id in self._retiring
+                    r for r in active if r.id in self._retiring and r not in ranked
                 )
             else:
                 self._reset_load()

@@ -91,6 +91,7 @@ class Parameters:
     load_settle_max_s: float = (
         600.0  # FR-LOAD-02: longest wait for the outdoor power to settle after an adjustment
     )
+    rotation_s: float = 120.0  # FR-LOAD-04: how long a room is served before the next one takes over
     fallback_delay_s: float = 600.0
     fallback_step_s: float = 120.0
 
@@ -121,6 +122,8 @@ class Parameters:
             raise ConfigError("minimum run time must not be negative")
         if not 0 <= self.load_deadband_ratio < 1 or self.load_settle_max_s <= 0:
             raise ConfigError("load dead band in [0, 1) and a positive settling time required")
+        if self.rotation_s <= 0:
+            raise ConfigError("the rotation time must be positive")
 
     @property
     def scale_k(self) -> float:

@@ -414,6 +414,7 @@
           "tie_band_k": "Tie band",
           "load_deadband_ratio": "Load control dead band (share of Pmin)",
           "load_settle_max_s": "Longest wait for the outdoor power to settle (s)",
+          "rotation_s": "Rotation time of the rooms (s)",
           "neutral_mode": "Neutral mode",
           "cycle_s": "Control cycle (s)"
         },
@@ -456,6 +457,13 @@
           "help_load_settle_max_s": {
             "name": "Help: Longest wait for the outdoor power to settle (s)",
             "description": "After an adjustment the load control waits until the outdoor power has settled to learn the power per step. If it does not settle within this time, nothing is learned. The wait adapts to the plant (three times the typical settling time, at most this value). Default 600 s (10 min).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_rotation_s": {
+            "name": "Help: Rotation time of the rooms (s)",
+            "description": "How long one room is served before the next room takes over. The rooms take turns, so each room gets heat only for a short time and is aired in between. A second room runs half of this time later. Shorter times protect small rooms from overheating but switch more often. Default 120 s (2 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
