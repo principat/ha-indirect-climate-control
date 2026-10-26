@@ -542,7 +542,9 @@ async def test_an_indoor_unit_added_while_the_entry_is_being_set_up_is_not_lost(
         )
 
     monkeypatch.setattr(ClimateControlCoordinator, "async_load_learned", load_and_add)
-    assert await hass.config_entries.async_setup(entry.entry_id)
+    # the return value of the setup is not checked: the reload that the new unit causes may be done or not
+    # yet when it returns, the state after the settling is what counts
+    await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     monkeypatch.undo()
     assert entry.state is ConfigEntryState.LOADED

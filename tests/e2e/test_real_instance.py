@@ -286,8 +286,10 @@ def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: reques
         _cycle(sim)
         cooling = [u for u in UNITS if _state(sim, u)["state"] == "cool"]
         assert cooling and not [u for u in UNITS if _state(sim, u)["state"] == "heat"]
-        for unit in cooling:  # the limit of the room below its setpoint (3), set once
-            assert _state(sim, unit)["attributes"]["temperature"] == SETPOINT - 3
+        targets = [_state(sim, unit)["attributes"]["temperature"] for unit in cooling]
+        # the served unit gets the limit of its room below the setpoint (3), a room beyond its limit that is
+        # not served is cooled to the setpoint (protection)
+        assert set(targets) <= {SETPOINT - 3, SETPOINT} and SETPOINT - 3 in targets
         # The state of charge runs the other way: warm rooms are a low cold store (heating would show 40 %).
         assert float(_state(sim, "sensor.climate_control_state_of_charge")["state"]) < 60.0
 
