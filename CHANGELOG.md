@@ -1,3 +1,9 @@
+## [0.12.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.11.0...v0.12.0) (2026-10-26)
+
+### Features
+
+* set the limit of the room as setpoint of a served unit once ([4ebe940](https://github.com/principat/ha-indirect-climate-control/commit/4ebe940294a2150d1bbfdd68149afa0581448a52))
+
 ## [0.11.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.10.0...v0.11.0) (2026-10-25)
 
 ### Features
