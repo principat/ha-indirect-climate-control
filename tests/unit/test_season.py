@@ -7,7 +7,7 @@ import pytest
 
 from custom_components.climate_control.core.controller import Controller
 from custom_components.climate_control.core.diagnostics import room_diagnostics
-from custom_components.climate_control.core.model import Mode, RoomState, Season
+from custom_components.climate_control.core.model import Mode, Season
 from custom_components.climate_control.core.planner_model import planner_inputs
 from custom_components.climate_control.core.soc import deviation_to_soc
 
@@ -102,22 +102,22 @@ def test_cooling_serves_the_largest_deviation_first_and_steps_the_setpoint_down(
     result = _cool(Controller(installation()), warm, 1.1)
     assert result.running and result.requested_w == 1300
     assert result.served == ("a",)  # one room carries Pmin: the largest deviation (+2) before b (+1)
-    # mirrored: the limit of the room below the setpoint (21 - 3), set once
-    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 18.0
+    # mirrored: the setpoint of the room, without buffer
+    assert result.commands["a"].mode is Mode.COOL and result.commands["a"].target_c == 21.0
     assert (
         result.commands["b"].mode is Mode.FAN and result.commands["c"].mode is Mode.FAN
     )  # not served: neutral
 
 
 @pytest.mark.req("FR-SEAS-02")
-def test_cooling_target_never_goes_below_the_absolute_limit_below_the_setpoint() -> None:
+def test_cooling_a_room_at_the_absolute_limit_below_the_setpoint_is_not_served() -> None:
     cfg = installation(room("a", setpoint=21), room("b"), room("c"))
     # absolute limit below the setpoint is 3: the room is already there
     result = _cool(Controller(cfg), {"a": 18.0, "b": 22.0, "c": 22.0}, 1.5)
     assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible
     near = _cool(Controller(cfg), {"a": 18.5, "b": 18.5, "c": 18.5}, 1.5)
     assert "a" in near.served
-    assert near.commands["a"].target_c == 18.0  # the limit below the setpoint, not beyond it
+    assert near.commands["a"].target_c == 21.0  # the setpoint of the room, without buffer
 
 
 @pytest.mark.req("FR-SEAS-02")
@@ -201,34 +201,29 @@ def test_diagnostics_are_mirrored_when_cooling() -> None:
 @pytest.mark.req("FR-PLAN-02")
 def test_minimum_run_time_is_not_used_when_every_room_is_at_its_absolute_limit() -> None:
     ctrl = Controller(installation())
-    cold = {"a": 20.0, "b": 20.0, "c": 20.0}
-    assert ctrl.step(T0, plan(1500), states(cold)).running
     full = {"a": 24.0, "b": 24.0, "c": 24.0}  # 3 above the setpoint: the limit above is reached everywhere
-    result = _confirmed(ctrl, full, Mode.HEAT)
+    assert ctrl.step(T0, plan(1500), states(full)).running  # the plan starts the plant ...
+    later = T0 + MIN  # ... and inside the minimum run time nothing holds it: no room can take up energy
+    result = ctrl.step(later, plan(0, later), states(full))
     assert not result.running and set(_modes(result).values()) == {Mode.FAN}
 
 
 @pytest.mark.req("FR-PLAN-02")
 def test_minimum_run_time_does_not_heat_a_room_at_its_absolute_limit() -> None:
     ctrl = Controller(installation())
-    cold = {"a": 20.0, "b": 20.0, "c": 20.0}
-    assert ctrl.step(T0, plan(1500), states(cold)).running
     mixed = {"a": 24.0, "b": 20.0, "c": 20.0}  # only a is full
-    result = _confirmed(ctrl, mixed, Mode.HEAT)
-    assert result.running and "b" in result.served  # the next room has taken over (FR-LOAD-03) ...
-    # ... and as soon as it holds its setpoint, a, which is at its limit, is not heated any further
-    applied = {rid: RoomState(c.mode, mixed[rid], False, c.target_c) for rid, c in result.commands.items()}
-    later = T0 + 4 * MIN + timedelta(seconds=30)  # before the next change of the room
-    result = ctrl.step(later, plan(0, later), applied)
-    assert result.running and "a" not in result.served
+    first = ctrl.step(T0, plan(1500), states(mixed))
+    assert first.running and "a" not in first.served
+    later = T0 + MIN
+    result = ctrl.step(later, plan(0, later), states(mixed))
+    assert result.running and "a" not in result.served  # held by the others, a is not heated any further
     assert result.commands["a"].mode is Mode.FAN
 
 
 @pytest.mark.req("FR-PLAN-02")
 def test_minimum_run_time_is_not_used_in_cooling_when_every_room_reached_the_limit_below() -> None:
     ctrl = Controller(installation())
-    assert _cool(ctrl, HOT, 1.5).running
     cold = {"a": 18.0, "b": 18.0, "c": 18.0}  # the absolute limit below a setpoint of 21 is 18
-    _cool(ctrl, cold, 0, 3, Mode.COOL)  # a jump above 2 is an outlier until the next cycle confirms it
-    result = _cool(ctrl, cold, 0, 4, Mode.COOL)
+    assert _cool(ctrl, cold, 1.5).running  # the plan starts the plant ...
+    result = _cool(ctrl, cold, 0, 1)  # ... and no room can take up cold: nothing holds the plant
     assert not result.running

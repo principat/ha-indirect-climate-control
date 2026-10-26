@@ -20,7 +20,7 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 | `threshold.py` | FR-PLAN-02, FR-PLAN-03 | Start-/Abschaltschwelle mit Hysterese, mindestens Pmin |
 | `soc.py` | FR-SOC-01, FR-SOC-02 | Skala, schlechtester Raum, Ausreißerfilter, Median-Glättung |
 | `distribution.py` | FR-DIST-01, FR-DIST-02 | Rangstufen nach Abweichung mit Gleichstand-Band, Gruppen je Leistungsklasse (= gleiche Nennleistung, kein eigenes Feld); die Stufen gehen an `core/load.py` |
-| `rotation.py` | FR-LOAD-04, FR-LOAD-03 | Bahnen der bedienten Räume, Wechsel nach Wechselzeit, Anstieg über die Schrittweite oder Grenze, angenommener Anstieg bis zum neuen Wert des Geräts |
+| `serving.py` | FR-LOAD-05 bis FR-LOAD-08 | bediente Räume im Dauerbetrieb: Abschaltabstand am Livewert, Zuschalten nach Leistung und Temperatur, Aktivierung, Abgabe, Überschuss |
 | `diagnostics.py` | FR-OBS-02 | Abweichung, Wärmebedarf und Speicherkapazität je Raum aus den im Zyklus verwendeten Temperaturen |
 | `modes.py` | FR-MODE-01 | nächster zulässiger Moduszustand (Heizen/Kühlen nur über neutral) |
 | `planner_model.py` | FR-PLNR-01 | Vorgaben für den Planer inkl. Stundenprognosen |
@@ -67,7 +67,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 | --- | --- | --- |
 | SOC relativ zum Sollwert | Abweichung zum aktuellen Sollwert des schlechtesten Raums, Sollwert = 40 %, feste Steigung für alle Räume | `soc_below_k`, `soc_above_k` |
 | Gleichstand „innerhalb des Bandes" | Differenz zur größten Abweichung der Stufe < Band | `tie_band_k` |
-| Last (FR-LOAD-01/02/03/04) | Lastregelung `core/load.py`: Zahl der gleichzeitig bedienten Geräte aus der angeforderten Leistung, erwartete Last = Pmin + gelernte Leistung je weiterem Gerät, Totband, Sollwert = Grenze des Raums, einmal gesetzt; Wechselbetrieb `core/rotation.py` (Bahnen, nächster Raum nach Abweichung mit angenommenem Anstieg, Versatz der weiteren Bahnen); Übergabe im Controller (`_retiring`); Lernen je Innengerät nach Beruhigung der Außenleistung (siehe 60-load-control.md) | `step` je Innengerät, `load_deadband_ratio`, `load_settle_max_s`, `rotation_s` |
+| Last (FR-LOAD-01/02/05/06/07/08) | Lastregelung `core/load.py`: erwartete Last = Pmin + gelernte Leistung je weiterem Gerät, Totband, höchstens so viele Räume wie Pmax erlaubt; Dauerbetrieb `core/serving.py` (siehe 60-load-control.md); Sollwert = Sollwert des Raums, ohne Puffer; Einfrieren der Gerätetemperaturen im Controller (FR-SRC-02); Lernen je Innengerät nach Beruhigung der Außenleistung | `step` je Innengerät (nur zur Information), `load_deadband_ratio`, `load_settle_max_s`, `cutoff_k`, `join_margin_k`, `activation_rise_k`, `startup_s`, `settle_s` |
 | Ausreißer | einmal verworfen, bei Bestätigung im nächsten Zyklus übernommen | `outlier_k` |
 | Fenster offen | Gerät neutral, nicht im SOC, nicht verteilt, auch im Rückfall | – |
 | Plan veraltet | älter als `plan_max_age_s` (1800 s) oder Zeitpunkt außerhalb der Prognose | `plan_max_age_s` |

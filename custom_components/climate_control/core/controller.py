@@ -9,7 +9,7 @@ from datetime import datetime
 from .config import InstallationConfig, RoomConfig
 from .distribution import rank
 from .load import LoadControl, LoadModel
-from .model import WITH_SETPOINT, Command, Mode, RoomState, Season
+from .model import WITH_SETPOINT, Command, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
 from .soc import OutlierFilter, SocSmoother, deviation_to_soc, worst_room
@@ -52,52 +52,46 @@ class Controller:
         self.load_model = LoadModel()
         self._load = LoadControl(self.load_model)
         self._disturbance: tuple[object, ...] = ()
-        # FR-LOAD-03: units at their limit that keep running until the next unit has taken over
-        self._retiring: dict[str, tuple[datetime, int]] = {}
         self._issued: dict[str, Command] = {}  # what the last cycle commanded
+        # FR-SRC-02: while a unit works the device temperatures are frozen at the last settled value
+        self._frozen: dict[str, float] | None = None
+        self._calm_since: datetime | None = None
+        self._assessed: dict[str, float] = {}
 
     def _reset_load(self) -> None:
         self._load.reset()
-        self._retiring.clear()
 
-    def _begin_handover(self, now: datetime, active: list[RoomConfig], steps: Mapping[str, int]) -> None:
-        """FR-LOAD-03: a room that gave its lane to another one is not switched off at once."""
-        active_ids = {r.id for r in active}
-        self._retiring = {
-            rid: v for rid, v in self._retiring.items() if rid not in steps and rid in active_ids
-        }
-        if not steps:  # nobody to hand over to
-            self._retiring.clear()
-            return
-        for rid in self._load.replaced:
-            if rid in active_ids and rid not in steps and rid not in self._retiring:
-                self._retiring[rid] = (now, 1)
+    def _assess(
+        self, now: datetime, rooms: Mapping[str, RoomState], live: Mapping[str, float]
+    ) -> dict[str, float]:
+        """FR-SRC-02: the temperatures that rank, protect and fill the SOC.
 
-    def _finish_handover(
-        self, now: datetime, rooms: Mapping[str, RoomState], mode: Mode, steps: Mapping[str, int]
-    ) -> None:
-        """FR-LOAD-03: the retiring units go to standby once the units that took over hold their setpoint."""
-        if not self._retiring:
-            return
-        successors = [rid for rid, n in steps.items() if n > 0]
-        taken_over = bool(successors) and all(self._holds(rooms.get(rid), rid, mode) for rid in successors)
-        for rid, (since, _) in list(self._retiring.items()):
-            waited = (now - since).total_seconds()
-            if not successors or taken_over or waited >= self.cfg.params.load_settle_max_s:
-                del self._retiring[rid]
-
-    def _holds(self, state: RoomState | None, room_id: str, mode: Mode) -> bool:
-        """The unit shows the mode and setpoint that the last cycle commanded."""
-        issued = self._issued.get(room_id)
-        return (
-            state is not None
-            and issued is not None
-            and issued.mode is mode
-            and state.mode is mode
-            and issued.target_c is not None
-            and state.target_c is not None
-            and abs(state.target_c - issued.target_c) < 0.01
+        As soon as a unit works in heating or cooling mode the values freeze, because the working unit
+        distorts the readings of all units. The freeze ends once every unit is back in the neutral mode and
+        the readings have settled for the settling time.
+        """
+        if self.cfg.params.settle_s <= 0:  # a settling time of 0 switches the freezing off
+            self._frozen = None
+            self._calm_since = None
+            self._assessed = dict(live)
+            return dict(live)
+        working = any(c.mode in WITH_SETPOINT for c in self._issued.values()) or any(
+            s.mode in WITH_SETPOINT for s in rooms.values()
         )
+        if working:
+            self._calm_since = None
+            if self._frozen is None:
+                self._frozen = dict(self._assessed) if self._assessed else dict(live)
+        elif self._frozen is not None:
+            if self._calm_since is None:
+                self._calm_since = now
+            if (now - self._calm_since).total_seconds() >= self.cfg.params.settle_s:
+                self._frozen = None
+                self._calm_since = None
+        frozen = self._frozen
+        assessed = {rid: frozen.get(rid, t) if frozen is not None else t for rid, t in live.items()}
+        self._assessed = dict(assessed)
+        return assessed
 
     def _held(self, now: datetime) -> bool:
         """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
@@ -145,13 +139,15 @@ class Controller:
             self._reset_load()
         sign = season.sign
         main_mode = season.mode
-        temps: dict[str, float] = {}
+        live: dict[str, float] = {}
         for room in cfg.rooms:
             state = rooms.get(room.id)
             if state is None or state.temperature_c is None:
                 continue
             # FR-SRC-01: the indoor unit's own reading, as reported (the devices report in 0.5 K steps).
-            temps[room.id] = self._filter.accept(room.id, float(state.temperature_c))
+            live[room.id] = self._filter.accept(room.id, float(state.temperature_c))
+        # FR-SRC-02: ranking, SOC and protection use the frozen values, served rooms the live ones
+        temps = self._assess(now, rooms, live)
         active = [
             r
             for r in cfg.rooms
@@ -209,7 +205,13 @@ class Controller:
         else:
             # FR-PLAN-02/03/04: the plan alone decides whether the outdoor unit runs.
             # a room at its absolute limit on the charged side is not heated (or cooled) any further
-            eligible = [r for r in active if sign * (temps[r.id] - r.setpoint_c) < r.charge_limit(season)]
+            # (a unit whose device temperature is already at the cut-off distance has done its part)
+            eligible = [
+                r
+                for r in active
+                if sign * (temps[r.id] - r.setpoint_c) < r.charge_limit(season)
+                and sign * (live[r.id] - r.setpoint_c) < p.cutoff_k
+            ]
             decision = decide(planned_w or 0.0, self.running, self._threshold)
             run, requested_w = decision.run, decision.power_w
             if run and not self.running:
@@ -225,15 +227,12 @@ class Controller:
             self.running = run
             unit_steps: dict[str, int] = {}
             if run:
-                # FR-LOAD-04: a just served room counts with an assumed rise until its device reports anew
-                assumed = self._load.rotation.effective(temps, sign)
-                # the rooms take turns, so only exactly equal deviations are a tie (the class decides then)
+                # only exactly equal deviations are a tie (the power class decides then, FR-DIST-02)
                 tiers = rank(
-                    [(r, sign * (r.setpoint_c - assumed[r.id])) for r in eligible],
+                    [(r, sign * (r.setpoint_c - temps[r.id])) for r in eligible],
                     EQUAL_K,
                     cfg.class_order,
                 )
-                ranked = [r for tier in tiers for group in tier for r in group]
                 disturbance = self._disturbance_of(cfg, rooms, active, temps, season)
                 unit_steps = self._load.update(
                     now,
@@ -241,23 +240,18 @@ class Controller:
                     season,
                     requested_w,
                     tiers,
-                    disturbance != self._disturbance or bool(self._retiring),
-                    temps,
+                    disturbance != self._disturbance,
+                    live,
+                    {r.id for r in active},
                 )
                 self._disturbance = disturbance
-                self._begin_handover(now, active, unit_steps)
-                self._finish_handover(now, rooms, main_mode, unit_steps)
-                unit_steps = {**unit_steps, **{rid: n for rid, (_, n) in self._retiring.items()}}
-                served = tuple(r for r in ranked if unit_steps.get(r.id, 0) > 0) + tuple(
-                    r for r in active if r.id in self._retiring and r not in ranked
-                )
+                served = tuple(r for r in active if unit_steps.get(r.id, 0) > 0)
             else:
                 self._reset_load()
             for r in active:
                 if unit_steps.get(r.id, 0) > 0:
-                    # FR-LOAD-01: the setpoint of a served unit does not steer its power, it is set to the
-                    # limit of the room once
-                    targets[r.id] = Command(main_mode, r.setpoint_c + sign * r.charge_limit(season))
+                    # FR-LOAD-05: a served unit gets the setpoint of its room, without buffer
+                    targets[r.id] = Command(main_mode, r.setpoint_c)
                 else:
                     targets[r.id] = Command(p.neutral_mode)
 
@@ -302,6 +296,6 @@ class Controller:
             plan_missing_s=missing_s,
             temperatures=temps,
             season=season,
-            steps={**self._load.steps, **{rid: n for rid, (_, n) in self._retiring.items()}},
+            steps=dict(self._load.steps),
             expected_w=self._load.expected_w,
         )

@@ -46,8 +46,8 @@ def test_above_the_absolute_limit_the_room_is_not_heated_any_further() -> None:
     result = Controller(cfg).step(T0, plan(2000), states({"a": 22.0, "b": 22.0}))
     assert result.served == ("b",)  # a is 1 above its setpoint: at its limit
     near = Controller(cfg).step(T0, plan(2000), states({"a": 21.5, "b": 21.5}))
-    # a gets the limit of the room as setpoint: 1 above its setpoint of 21
-    assert near.commands["a"].target_c == 22.0 and near.commands["a"].mode is Mode.HEAT
+    # a gets the setpoint of its room, without buffer
+    assert near.commands["a"].target_c == 21.0 and near.commands["a"].mode is Mode.HEAT
 
 
 @pytest.mark.req("FR-BAND-01")

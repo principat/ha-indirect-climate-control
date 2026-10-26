@@ -69,8 +69,8 @@ async def test_setpoint_is_set_again_after_mode_change(
     heating = [e for e in ROOMS if units.mode(e) == "heat"]
     assert heating == [
         A
-    ]  # one room first (equal deviations: the first), the second follows half a rotation later
-    assert units.target(A) == 24.0  # the limit of the room (setpoint 21 + 3), not the remembered 18
+    ]  # one room first (equal deviations: the first), further rooms follow only when the power is short
+    assert units.target(A) == 21.0  # the setpoint of the room, not the remembered 18
     own = [c[1] for c in units.calls if c[0] == A]
     assert own == ["set_hvac_mode", "set_temperature"]
     units.calls.clear()
@@ -91,9 +91,10 @@ async def test_open_window_room_is_not_heated(
     assert units.mode(A) == "fan_only"
     assert units.mode(B) == "heat"
     hass.states.async_set("binary_sensor.window_a", "off")
-    freezer.tick(timedelta(seconds=61))
+    freezer.tick(timedelta(minutes=11))
     set_plan(hass, 3.3)
-    await run_cycle(hass)  # the window is closed: the next lane takes the room with the largest deviation
+    hass.states.async_set("sensor.outdoor_power", "1300", {"unit_of_measurement": "W"})
+    await run_cycle(hass)  # window closed, the plant draws less than requested: A is the next room
     assert units.mode(A) == "heat"
 
 
@@ -314,8 +315,9 @@ async def test_any_of_several_window_contacts_opens_the_room(
     await setup_entry(a={"window_entity": ["binary_sensor.window_a1", "binary_sensor.window_a2"]})
     assert units.mode(A) == "fan_only" and units.mode(B) == "heat"
     hass.states.async_set("binary_sensor.window_a2", "off")
-    freezer.tick(timedelta(seconds=61))
+    freezer.tick(timedelta(minutes=11))
     set_plan(hass, 3.3)
+    hass.states.async_set("sensor.outdoor_power", "1300", {"unit_of_measurement": "W"})
     await run_cycle(hass)
     assert units.mode(A) == "heat"
 
@@ -364,7 +366,7 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert rows[0]["event"] == "plant" and rows[0]["soc_pct"] is not None
     assert {r["unit"] for r in rows if r["event"] == "unit"} == set(ROOMS)  # the starting state of every unit
     heating = [r for r in rows if r["event"] == "unit" and r["mode"] == "heat"]
-    assert len({r["unit"] for r in heating}) == 1 and heating[0]["target_c"] == 24.0
+    assert len({r["unit"] for r in heating}) == 1 and heating[0]["target_c"] == 21.0
     orders = [r for r in rows if r["event"] == "command" and r["mode"] == "heat"]
     assert [r["unit"] for r in orders] == [heating[0]["unit"]] and orders[0]["steps"] == 1
     size = path.stat().st_size
@@ -384,3 +386,19 @@ async def test_operating_data_is_recorded_when_something_changes(
     assert grown > size
     await run_cycle(hass)
     assert path.stat().st_size == grown
+
+
+@pytest.mark.req("FR-SRC-02")
+async def test_the_readings_are_frozen_while_a_unit_works(
+    hass: HomeAssistant, units: FakeUnits, setup_entry
+) -> None:  # noqa: ANN001
+    set_plan(hass, 2.0)
+    await setup_entry()
+    assert units.mode(A) == "heat"
+    soc = _state(hass, "sensor.climate_control_state_of_charge")
+    before = float(soc.state)
+    units.set(C, "fan_only", 18.5)  # the reading of a neutral unit moves while A heats: it is not rated
+    await run_cycle(hass)
+    await run_cycle(hass)
+    soc = _state(hass, "sensor.climate_control_state_of_charge")
+    assert float(soc.state) == pytest.approx(before) and soc.attributes["worst_room"] != C

@@ -9,9 +9,8 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Startschwelle | 80 % von Pmin | Plan darunter wird ignoriert |
 | Abschaltschwelle | 50 % von Pmin | laufende Anlage bleibt bis darunter in Betrieb |
 | Mindestlaufzeit Anlage | 10 min | ab jedem Start, danach gilt die Abschaltschwelle; keine Mindestpause |
-| Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich; gilt für die Rangfolge im Rückfall (im Wechselbetrieb zählt nur genau gleiche Abweichung) |
-| Schrittweite Gerät | 0,5 K | kleinste Änderung der Gerätetemperatur, die ein Innengerät meldet; Schwelle für den frühen Wechsel und angenommener Anstieg (FR-LOAD-04); je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
-| Wechselzeit | 2 min | so lange wird ein Raum bedient, bis der nächste übernimmt; ein zweites Gerät wechselt um die halbe Zeit versetzt (FR-LOAD-04) |
+| Gleichstand-Band | 1 K | Abweichungen darin gelten als gleich; gilt für die Rangfolge im Rückfall (im Betrieb zählt nur genau gleiche Abweichung) |
+| Schrittweite Gerät | 0,5 K | kleinste Änderung der Gerätetemperatur, die ein Innengerät meldet; Zuschaltabstand und Aktivierungsanstieg sollen nicht kleiner sein; je Innengerät einstellbar (optional), vorbelegt mit 0,5 der Temperatureinheit |
 | Mindeststufe Lastregler | 1 bedientes Gerät | Pmin; Untergrenze beim Nachregeln nach unten |
 | Startwert Last je weiterem Gerät | (Pmax − Pmin) / 2 | je Innengerät, gilt bis zur ersten Messung |
 | Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
@@ -19,9 +18,9 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Zuschaltabstand | Abschaltabstand − 1 K (2,5 K) | Gerätetemperatur über dem Sollwert, ab der ein weiteres Gerät bedient wird, bevor das erste sich abregelt; der Abzug von 1 berücksichtigt die Auflösung von 0,5 K und den Versatz von bis zu 5 Minuten zwischen den Messungen (FR-LOAD-06) |
 | Aktivierungsanstieg | 1 K | Anstieg der gemeldeten Gerätetemperatur (Livewert, nicht eingefroren) gegenüber dem Wert beim Start, ab dem ein zugeschaltetes Gerät als aktiv gilt (FR-LOAD-06) |
 | Anlaufdauer | 10 min | in dieser Zeit wird die Leistung nicht zum Herunterregeln herangezogen (FR-LOAD-07) |
-| Einschwingzeit | 10 min | nach dem Wechsel in den neutralen Modus, danach endet das Einfrieren (FR-SRC-02) |
+| Einschwingzeit | 10 min | nach dem Wechsel in den neutralen Modus, danach endet das Einfrieren (FR-SRC-02); 0 schaltet das Einfrieren aus |
 | Sperrzeit Außengerät | 4 min | nach einem Stopp läuft das Außengerät nicht wieder an; nur gemessen, im Anlernmodus zu lernen (FR-LRN-01) |
-| Höchstzeit Übergabe | 10 min | so lange läuft ein Gerät an seiner Grenze höchstens weiter, bis das nächste seinen Sollwert hält (FR-LOAD-03) |
+| Höchstzeit Aktivierung | 10 min | so lange wartet ein zugeschaltetes Gerät auf den Aktivierungsanstieg, danach gilt es als aktiv (FR-LOAD-06); zugleich längste Wartezeit der Beruhigung beim Lernen der Leistung (FR-LOAD-02) |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |
 | Schritt des Rückfalls | 2 min | je Schritt wird eine weitere Gerätegruppe auf Heizen gestellt |
 | SOC-Glättung | 15 min | Mittelwert oder Median |

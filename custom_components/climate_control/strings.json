@@ -203,7 +203,7 @@
             },
             "help_step": {
               "name": "Help: Reading step of the unit (optional)",
-              "description": "Smallest change of the device temperature the unit reports (distance in the unit of the installation, default 0.5). The rotation hands the room over to the next one early when the device temperature rose by more than this step since the room was served, and a room that was just served counts with an assumed rise of one step until its unit reports a new value.",
+              "description": "Smallest change of the device temperature the unit reports (distance in the unit of the installation, default 0.5). Informational: the join margin and the activation rise should not be smaller than one step.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -313,7 +313,7 @@
             },
             "help_step": {
               "name": "Help: Reading step of the unit (optional)",
-              "description": "Smallest change of the device temperature the unit reports (distance in the unit of the installation, default 0.5). The rotation hands the room over to the next one early when the device temperature rose by more than this step since the room was served, and a room that was just served counts with an assumed rise of one step until its unit reports a new value.",
+              "description": "Smallest change of the device temperature the unit reports (distance in the unit of the installation, default 0.5). Informational: the join margin and the activation rise should not be smaller than one step.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -398,7 +398,11 @@
           "tie_band_k": "Tie band",
           "load_deadband_ratio": "Load control dead band (share of Pmin)",
           "load_settle_max_s": "Longest wait for the outdoor power to settle (s)",
-          "rotation_s": "Rotation time of the rooms (s)",
+          "cutoff_k": "Cut-off distance (K)",
+          "join_margin_k": "Join margin (K)",
+          "activation_rise_k": "Activation rise (K)",
+          "startup_s": "Start-up phase (s)",
+          "settle_s": "Settling time of the device temperatures (s)",
           "neutral_mode": "Neutral mode",
           "cycle_s": "Control cycle (s)"
         },
@@ -445,9 +449,37 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
-          "help_rotation_s": {
-            "name": "Help: Rotation time of the rooms (s)",
-            "description": "How long one room is served before the next room takes over. The rooms take turns, so each room gets heat only for a short time and is aired in between. A second room runs half of this time later. Shorter times protect small rooms from overheating but switch more often. Default 120 s (2 min).",
+          "help_cutoff_k": {
+            "name": "Help: Cut-off distance (K)",
+            "description": "Distance of the device temperature above the setpoint (cooling: below) where an indoor unit regulates itself down. A served room stays served until its device temperature has reached this distance. Measured on two units: about 3.5. Default 3.5.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_join_margin_k": {
+            "name": "Help: Join margin (K)",
+            "description": "The next room is started this far below the cut-off distance, so that it starts before the first unit cuts off and has time to draw load. 1 K covers the resolution of 0.5 K and the offset of up to 5 minutes between the readings. Default 1.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_activation_rise_k": {
+            "name": "Help: Activation rise (K)",
+            "description": "A room that was started counts as active only when its live device temperature rose by this much since its start. Until then the room it is to relieve stays served. Default 1.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_startup_s": {
+            "name": "Help: Start-up phase (s)",
+            "description": "After the start of the plant and after every added room the measured outdoor power does not count for adjusting the number of served rooms: the power peaks a few minutes after a start and then settles. Default 600 s (10 min).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_settle_s": {
+            "name": "Help: Settling time of the device temperatures (s)",
+            "description": "While a unit heats or cools the device temperatures are frozen at their last settled value because the working unit distorts the readings. The freeze ends when all units are neutral again and this time has passed. Only then rooms are checked for undercooling again. 0 switches the freezing off. Default 600 s (10 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

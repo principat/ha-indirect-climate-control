@@ -29,7 +29,7 @@ ROOM_BAND_DOWN = "band_down"  # FR-BAND-01: control range and absolute limit, di
 ROOM_BAND_UP = "band_up"
 ROOM_LIMIT_DOWN = "limit_down"
 ROOM_LIMIT_UP = "limit_up"
-ROOM_STEP = "step"  # FR-LOAD-04: smallest change of the device temperature the unit reports
+ROOM_STEP = "step"  # smallest change of the device temperature the unit reports (informational)
 
 SERVICE_RUN_CYCLE = "run_cycle"
 SERVICE_RESET_LEARNED = "reset_learned_capacity"

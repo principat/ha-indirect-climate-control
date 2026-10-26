@@ -198,4 +198,4 @@ def test_overload_limit_is_per_room() -> None:
     assert result.served == ("b",)  # a reached its own overload limit
     ctrl = Controller(installation(cool_room, room("b")))
     result = ctrl.step(T0, plan(1300), states({"a": 21.5, "b": 22.5}))
-    assert result.commands["a"].target_c == 21.8  # the room's own limit above the setpoint
+    assert result.commands["a"].target_c == 21.0  # the setpoint of the room, whatever its own limit is

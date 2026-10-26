@@ -75,6 +75,8 @@ def entry(ha: requests.Session) -> dict[str, Any]:
     # The minimum run time is covered on unit and integration level; here a started plant would still run
     # when the next test starts and mask what that test looks at.
     _set_option(ha, result["entry_id"], "control", "min_run_s", 0)
+    # Likewise the frozen device temperatures: a running unit would freeze the readings the next test sets.
+    _set_option(ha, result["entry_id"], "control", "settle_s", 0)
     return result
 
 
@@ -174,9 +176,9 @@ def test_setpoint_is_set_again_after_switch_to_heat(sim: requests.Session) -> No
     heating = [u for u in UNITS if _state(sim, u)["state"] == "heat"]
     assert heating, "plan of 2 kW must start units"
     for unit in heating:
-        # The simulated unit restores its remembered 18 degC; the integration sets the room's limit again.
+        # The simulated unit restores its remembered 18 degC; the integration sets the room's setpoint again.
         target = _state(sim, unit)["attributes"]["temperature"]
-        assert 18.0 < target <= SETPOINT + 3
+        assert target == SETPOINT
 
 
 def _wait_loaded(ha: requests.Session, entry_id: str, timeout: float = 60, stable_s: float = 2.0) -> None:
@@ -287,9 +289,9 @@ def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: reques
         cooling = [u for u in UNITS if _state(sim, u)["state"] == "cool"]
         assert cooling and not [u for u in UNITS if _state(sim, u)["state"] == "heat"]
         targets = [_state(sim, unit)["attributes"]["temperature"] for unit in cooling]
-        # the served unit gets the limit of its room below the setpoint (3), a room beyond its limit that is
-        # not served is cooled to the setpoint (protection)
-        assert set(targets) <= {SETPOINT - 3, SETPOINT} and SETPOINT - 3 in targets
+        # the served unit gets the setpoint of its room, a room beyond its limit that is not served is
+        # cooled to the setpoint as well (protection)
+        assert set(targets) == {SETPOINT}
         # The state of charge runs the other way: warm rooms are a low cold store (heating would show 40 %).
         assert float(_state(sim, "sensor.climate_control_state_of_charge")["state"]) < 60.0
 

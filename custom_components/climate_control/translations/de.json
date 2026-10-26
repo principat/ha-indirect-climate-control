@@ -203,7 +203,7 @@
             },
             "help_step": {
               "name": "Hilfe: Meldeschritt des Geräts (optional)",
-              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Der Wechselbetrieb gibt den Raum früher an den nächsten ab, wenn die Gerätetemperatur seit der Bedienung um mehr als diesen Schritt gestiegen ist, und ein Raum, der gerade bedient wurde, zählt mit einem angenommenen Anstieg um einen Schritt, bis sein Gerät einen neuen Wert meldet.",
+              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Zur Information: Zuschaltabstand und Aktivierungsanstieg sollten nicht kleiner als ein Schritt sein.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -313,7 +313,7 @@
             },
             "help_step": {
               "name": "Hilfe: Meldeschritt des Geräts (optional)",
-              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Der Wechselbetrieb gibt den Raum früher an den nächsten ab, wenn die Gerätetemperatur seit der Bedienung um mehr als diesen Schritt gestiegen ist, und ein Raum, der gerade bedient wurde, zählt mit einem angenommenen Anstieg um einen Schritt, bis sein Gerät einen neuen Wert meldet.",
+              "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Zur Information: Zuschaltabstand und Aktivierungsanstieg sollten nicht kleiner als ein Schritt sein.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -398,7 +398,11 @@
           "tie_band_k": "Gleichstand-Band",
           "load_deadband_ratio": "Totband der Lastregelung (Anteil von Pmin)",
           "load_settle_max_s": "Höchstzeit für die Beruhigung der Außenleistung (s)",
-          "rotation_s": "Wechselzeit der Räume (s)",
+          "cutoff_k": "Abschaltabstand (K)",
+          "join_margin_k": "Zuschaltabstand unter dem Abschaltabstand (K)",
+          "activation_rise_k": "Aktivierungsanstieg (K)",
+          "startup_s": "Anlaufphase (s)",
+          "settle_s": "Einschwingzeit der Gerätetemperaturen (s)",
           "neutral_mode": "Neutraler Modus",
           "cycle_s": "Regelzyklus (s)"
         },
@@ -445,9 +449,37 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
-          "help_rotation_s": {
-            "name": "Hilfe: Wechselzeit der Räume (s)",
-            "description": "Wie lange ein Raum bedient wird, bevor der nächste Raum übernimmt. Die Räume wechseln sich ab, jeder bekommt nur kurz Wärme und wird dazwischen gelüftet. Ein zweiter Raum läuft um die halbe Zeit versetzt. Kürzere Zeiten schonen kleine Räume vor Überhitzung, schalten aber öfter. Standard 120 s (2 min).",
+          "help_cutoff_k": {
+            "name": "Hilfe: Abschaltabstand (K)",
+            "description": "Abstand der Gerätetemperatur über dem Sollwert (beim Kühlen darunter), bei dem sich ein Innengerät selbst abregelt. Ein bedienter Raum bleibt bedient, bis seine Gerätetemperatur diesen Abstand erreicht hat. An zwei Geräten gemessen: etwa 3,5. Standard 3,5.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_join_margin_k": {
+            "name": "Hilfe: Zuschaltabstand unter dem Abschaltabstand (K)",
+            "description": "Das nächste Gerät wird um diesen Abstand unter dem Abschaltabstand gestartet, damit es startet, bevor das erste sich abregelt, und Zeit hat, Last zu ziehen. 1 K deckt die Auflösung von 0,5 K und den Versatz von bis zu 5 Minuten zwischen den Messungen ab. Standard 1.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_activation_rise_k": {
+            "name": "Hilfe: Aktivierungsanstieg (K)",
+            "description": "Ein gestarteter Raum gilt erst als aktiv, wenn seine Gerätetemperatur (Livewert) seit seinem Start um so viel gestiegen ist. Bis dahin bleibt der Raum bedient, den er ablösen soll. Standard 1.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_startup_s": {
+            "name": "Hilfe: Anlaufphase (s)",
+            "description": "Nach dem Start der Anlage und nach jedem zugeschalteten Raum zählt die gemessene Außenleistung nicht zum Nachstellen der Zahl der bedienten Räume: Die Leistung hat wenige Minuten nach einem Start eine Spitze und beruhigt sich dann. Standard 600 s (10 min).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_settle_s": {
+            "name": "Hilfe: Einschwingzeit der Gerätetemperaturen (s)",
+            "description": "Solange ein Gerät heizt oder kühlt, sind die Gerätetemperaturen auf ihrem zuletzt eingeschwungenen Wert eingefroren, weil das arbeitende Gerät die Messung verfälscht. Das Einfrieren endet, wenn alle Geräte wieder neutral sind und diese Zeit vergangen ist. Erst dann werden Räume wieder auf Unterkühlung geprüft. 0 schaltet das Einfrieren aus. Standard 600 s (10 min).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

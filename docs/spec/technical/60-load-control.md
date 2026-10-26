@@ -1,121 +1,77 @@
-# 60 Lastregelung über Temperaturereignisse
+# 60 Lastregelung: Dauerbetrieb der bedienten Räume
 
-Status: **umgesetzt am 25.10.2026** (`core/load.py`, `core/rotation.py`, Anbindung in `controller.py` und `coordinator.py`). Grundlage
-sind FR-LOAD-01 bis FR-LOAD-04 und die Vorgaben des Nutzers aus diesem Gespräch. Das Konzept ist an Messwerten noch nicht geprüft.
+Status: **umgesetzt am 26.10.2026** (`core/serving.py`, `core/load.py`, Anbindung in `controller.py` und `coordinator.py`). Grundlage
+sind FR-LOAD-01, FR-LOAD-02, FR-LOAD-05 bis FR-LOAD-08 und FR-SRC-02 sowie die Messungen vom 26.10.2026 (`docs/environment/devices-lg-multi-v.md`).
+Das Konzept ersetzt den Wechselbetrieb mit Bahnen und Übergabe (bis Version 0.12.0). Es ist an Messwerten noch nicht im Betrieb geprüft.
 
-## Warum keine festen Zeitfenster
+## Warum der Wechselbetrieb entfiel
 
-Erreicht ein Innengerät seinen Zielwert, zieht es keine Leistung mehr. Die Last am Außengerät fällt, wird aber verzögert gemessen. Ein
-Regler mit festem Fenster merkt es erst, wenn das Außengerät schon ausgeht und unnötig taktet. Das Ereignis, auf das es ankommt, ist
-die Änderung der Gerätetemperatur (0,5-K-Schritte). Die Anlage reagiert nicht synchron darauf, deshalb braucht der Regler ein
-Gedächtnis dafür, welche Last ein Schritt bewirkt.
-
-## Vorgaben des Nutzers
-
-- **Ein Raum, im Wechsel (Stand 25.10.2026).** Beobachtung der Läufe vom 24. und 25.10.2026 (Version 0.8.0, zwei Geräte mit je einem Schritt,
-  Plan 1,3 kW): Die Außenleistung stand drei bis fünf Minuten bei etwa 1,2 kW, stieg dann auf 2,1 bis 2,3 kW, obwohl die Schritte
-  konstant blieben. Annahme des Nutzers: Zwei Geräte sind zu viel, das erste hält Pmin, das zweite legt nach einigen Minuten rund 1 kW
-  dazu. Kleine Räume heizen schnell (Bad 5 K in 15 min), die Geräte melden in 0,5-K-Schritten. Daher ein Raum, bei mehr Leistung ein
-  zweites Gerät, um die halbe Wechselzeit versetzt. Die Räume wechseln sich mit Überlapp ab und werden dazwischen gelüftet.
-- **Nächster Raum:** die größte Abweichung, nur bei genau gleicher Abweichung entscheidet die Leistungsklasse. Für einen Raum, der
-  bedient wurde und dessen Gerät noch nichts Neues gemeldet hat, gilt ein angenommener Anstieg um einen Schritt. Steigt die Anzeige des
-  bedienten Raums um mehr als die Schrittweite, wird sofort gewechselt.
-- **Wenn mehr als Pmin gefordert ist**, wird ein zweites Gerät mit einem Versatz von der halben Wechselzeit gestartet.
-- **Totband bleibt: 10 % von Pmin** um die angeforderte Leistung (für die Zahl der Geräte).
-- **Bezug ist die angeforderte Leistung** (mindestens Pmin im Betrieb, FR-PLAN-03), nicht die reine Planleistung.
-- **Zurücksetzen** beim Stopp der Anlage und beim Wechsel der Betriebsart auf den Standard.
-- **Die Leistung eines weiteren Geräts wird je Innengerät gelernt.** Die Lüfterstufe braucht keinen eigenen Schlüssel, sie steckt in der
-  gelernten Geräteleistung. Eine Änderung der Lüfterleistung würde den Komfort beeinflussen und kommt als Stellgröße nicht in Frage.
-- **Anlauf (Messung des Nutzers):** Bei einem Sollwert von 20 °C läuft ein Gerät schon bei einer Anzeige von 22 °C an (Gerät an der
-  Decke).
-- **Startwert je weiterem Gerät:** (Pmax − Pmin) / 2, also 1 kW bei 1,3 und 3,3 kW. Das stützt sich auf die Läufe (zweites Gerät etwa
-  +1 kW) und nimmt an, dass Pmax mit drei Geräten erreicht wird. Beides ist nicht einzeln gemessen.
+Messungen am 26.10.2026 zeigten: Das Außengerät hat nach einem Stopp eine Sperrzeit von etwa 4 Minuten, ein Innengerät braucht Minuten bis
+zur vollen Leistung (Spitze nach 3 bis 4 Minuten), und der Verdichter stoppt innerhalb von Sekunden, wenn das tragende Gerät in den neutralen
+Modus geht, solange der Nachfolger noch nicht trägt. Ein Wechsel alle zwei Minuten gab dem Außengerät nie Zeit, Last aufzubauen, und die Übergabe
+löste den Stopp aus. Die Geräte regeln sich außerdem selbst ab (Sollwert plus etwa 3,5 K).
 
 ## Mechanismus
 
-1. **Sollwert.** Der Sollwert des bedienten Geräts ist die Grenze des Raums auf der geladenen Seite (Sollwert des Raums ± Überlastgrenze, `charge_limit`), einmal gesetzt und unabhängig von der Gerätetemperatur. Messung am 26.10.2026 (Wohnzimmer, Gerätetemperatur 22,5 °C, je 5 Minuten): Sollwerte 19,5, 24 und 28 °C ergaben denselben Verlauf der Außenleistung (Anlauf nach 15 bis 30 s, 1,0 kW nach etwa einer Minute, Spitze 1,36 bis 1,37 kW nach 2 bis 3 Minuten). Die Schrittweite `step` ist je Innengerät einstellbar (Standard 0,5) und steuert nur den Wechsel (frühes Ablösen, angenommener Anstieg). Im Kühlbetrieb gilt es gespiegelt (Annahme, nicht gemessen).
-2. **Zahl der Geräte.** Die erwartete Last ist `0` ohne bedientes Gerät, sonst `Pmin + p̄ × (Zahl − 1)`, mit `p̄` als Mittel der
-   gelernten Leistung der bedienten Geräte (`core/load.py: expected_load_w`). `_lanes_wanted` wählt die Zahl der gleichzeitig
-   bedienten Geräte aus der angeforderten Leistung: Ist der Abstand größer als das Totband und ein Gerät mehr (weniger) näher an der
-   Anforderung, wird eines ergänzt (gestrichen), mindestens eines im Betrieb, höchstens `1 + round((Pmax − Pmin) / p̄)` und höchstens die
-   Zahl der zulässigen Räume. Die Rechnung läuft bei jedem Zyklus und Ereignis, es gibt kein festes Fenster.
-3. **Wechselbetrieb** (`core/rotation.py`). Jedes bediente Gerät belegt eine Bahn (`Lane`: Raum, Beginn, Anzeige bei Beginn). Eine
-   Bahn gibt ihren Raum ab, wenn die Wechselzeit (`rotation_s`, Standard 120 s, 5 s Toleranz wegen des Zyklus) um ist, wenn die Anzeige des
-   Raums seit Beginn um mehr als `step` gestiegen ist (Heizen, im Kühlen gespiegelt; genau ein Schritt reicht nicht) oder wenn der Raum
-   nicht mehr zulässig ist (Überlastgrenze, Fenster, kein Wert). Der nächste Raum ist der erste der Rangfolge, der keine Bahn hat. Die
-   Rangfolge (`rank` mit 1e-9 als Band) ordnet nach der Abweichung mit dem angenommenen Anstieg, bei genau gleicher Abweichung nach Gruppe
-   und angelegter Reihenfolge. Ist kein anderer Raum frei, bleibt der Raum. Eine weitere Bahn startet, wenn seit dem Beginn der jüngsten
-   Bahn mindestens `rotation_s / (Zahl der Bahnen + 1)` vergangen sind, also für die zweite die halbe Wechselzeit. Wird die Zahl der
-   Geräte verringert, endet die Bahn des Raums mit der geringsten Abweichung ohne Ersatz.
-4. **Angenommener Anstieg.** Verlässt ein Raum seine Bahn und hat sein Gerät in dieser Zeit keinen neuen Wert gemeldet (Anzeige gleich der
-   bei Beginn), gilt er mit einem zusätzlichen Schritt (`step`, je weitere Bedienung ohne neuen Wert aufsummiert) als erwärmt:
-   `Rotation.effective` liefert die Anzeige plus Anstieg, der Controller bildet die Rangfolge daraus. Meldet das Gerät einen anderen Wert,
-   verfällt die Annahme. Die Grenzen (Zulässigkeit, Schutz) verwenden stets die gemeldete Anzeige.
-5. **Gelernt wird `p_i`** nur, wenn sich die Zahl der Geräte ändert (nicht beim Wechsel eines Raums): Die Außenleistung wird beobachtet,
-   bis sie sich beruhigt hat (siehe Beruhigung). Die gemessene Änderung geteilt durch die erwartete bestimmt einen Faktor, mit dem die
-   Werte der beteiligten Geräte skaliert werden. Ein Lauf aus dem Stillstand erreicht nur Pmin und lehrt nichts. Beobachtungen, in die ein
-   anderes Ereignis hineinspielt (Betriebsartwechsel, Fenster, Raum unter Schutz, laufende Übergabe), werden verworfen. Da der Wechselbetrieb
-   fast immer eine Übergabe laufen hat, ist das Lernen damit weitgehend ausgesetzt (siehe Offen). Die Werte bleiben über Neustarts erhalten
-   und sind in der Diagnose sichtbar, nicht änderbar.
-6. **Startwert** `p_i = (Pmax − Pmin) / 2` je weiterem Gerät.
+1. **Sollwert.** Ein bedientes Gerät erhält den Sollwert seines Raums, ohne Puffer (`Command(main_mode, r.setpoint_c)`). Die Geräte heizen
+   über den Sollwert hinaus und regeln sich bei etwa 3,5 K darüber selbst ab (zwei Geräte, Keller und Marcel). Der Sollwert beeinflusst den
+   Verlauf der Außenleistung nicht (Wohnzimmer, 19,5 bis 28 °C, gleich).
+2. **Dauerbetrieb** (`core/serving.py`). Ein bedienter Raum (`Served`: Raum, Beginn, Anzeige bei Beginn, aktiv, niedrigste Leistung seit
+   Beginn) bleibt bedient, bis seine Livewert-Anzeige `cutoff_k` (3,5) über dem Sollwert liegt (im Kühlen gespiegelt). Der Abschaltabstand ersetzt
+   für bediente Räume die Überlastgrenze. Räume, deren Livewert den Abschaltabstand schon erreicht hat, sind nicht mehr zulässig
+   (`controller.py`, `eligible`). Die Rangfolge (`rank`, 1e-9 als Band) bleibt: größte Abweichung zuerst, bei genau gleicher Abweichung die
+   Leistungsklasse, Räume über dem Sollwert (Puffer) kommen danach.
+3. **Weitere Räume** (immer nur einer, nie, solange ein bedienter Raum noch nicht aktiv ist). Ein Raum wird zugeschaltet, wenn
+   - kein Raum bedient ist,
+   - die gemessene Leistung (Mittel der letzten drei Zyklen) nach der Anlaufphase um mehr als `max(Totband, p̄ / 2)` unter der Anforderung liegt
+     (`p̄`: erwartete Leistung eines weiteren Raums; so pendelt die Zahl nicht zwischen zwei Stufen), oder
+   - alle bedienten Räume den Zuschaltabstand `cutoff_k − join_margin_k` (2,5) erreicht haben oder abgeregelt sind.
+   Die Zahl ist durch Pmax begrenzt: `1 + round((Pmax − Pmin) / p̄)` (`load.py: _max_rooms`).
+4. **Aktiv.** Ein zugeschalteter Raum gilt als aktiv, wenn seine Livewert-Anzeige seit dem Start um `activation_rise_k` (1) gestiegen ist,
+   spätestens nach `load_settle_max_s` (10 min) oder wenn kein Messwert vorliegt.
+5. **Abgabe.** Ein Raum am Abschaltabstand geht in den neutralen Modus, wenn mindestens zwei andere aktiv sind, oder wenn genau ein anderer aktiv
+   ist und die Leistung seit dessen Start wieder gestiegen ist (Mittel > niedrigste Leistung seit dessen Start + Totband), oder wenn weder ein
+   anderer Raum bedient noch einer zulässig ist. Ist kein anderer aktiv, wartet der Raum auf den Nachfolger, der nach 3. sofort startet.
+6. **Überschuss.** Liegt die Leistung nach der Anlaufphase um mehr als `max(Totband, p̄ / 2)` über der Anforderung und sind mindestens zwei Räume
+   bedient und aktiv, gibt der Raum mit dem größten Abstand über dem Sollwert ab (FR-LOAD-07).
+7. **Anlaufphase** (`startup_s`, 600 s) zählt ab dem Start der Anlage und ab jeder Änderung (Zuschalten oder Abgabe) und gilt für das Zuschalten nach der
+   Leistung und für den Überschuss, nicht für das Zuschalten nach der Temperatur und nicht für die Abgabe am Abschaltabstand.
+8. **Zurücksetzen** beim Stopp der Anlage und beim Wechsel der Betriebsart.
 
-## Erster Blick auf die vorhandenen Daten (ungeprüft)
+## Einfrieren der Gerätetemperaturen (FR-SRC-02)
 
-Läufe der Version 0.8.0 (zwei Geräte, Plan 1,3 kW), 24.10.2026 23:27 bis 23:37 und 25.10.2026 00:02 bis 00:15: Plateau bei 1,2 kW für drei bis
-fünf Minuten, dann Anstieg auf 2,08 und 2,33 kW bei unveränderten Schritten (Wohnen/Jelle, Keller/Isa). Die vorherigen Läufe (0.7.0,
-Sollwerte 2 K über der Anzeige) zeigten dasselbe Muster. Die Erklärung „acht Schritte über der Schwelle“ trägt damit nicht allein. Die
-Erklärung des Nutzers „zwei Geräte sind zu viel“ ist die Grundlage der jetzigen Umsetzung, aus den Daten allein nicht zu trennen. Ein Lauf mit
-nur einem Raum (Version 0.9.x) zeigt, ob die Außenleistung bei Pmin bleibt.
+`Controller._assess`. Sobald ein Gerät auf Heizen oder Kühlen gestellt ist (befohlen im letzten Zyklus oder gemeldet), gelten für Rangfolge, SOC,
+Überhitzungsregel und Schutz die zuletzt eingeschwungenen Werte (`_frozen`, aus `_assessed` des Zyklus davor). Das Einfrieren endet, wenn kein Gerät
+mehr arbeitet und `settle_s` (600 s) seit dem ersten ruhigen Zyklus vergangen sind (`_calm_since`). `settle_s = 0` schaltet das Einfrieren aus
+(die e2e-Tests nutzen das). Die Livewerte (`live`) gehen nur an den Dauerbetrieb: Abschaltabstand, Zuschaltabstand und Aktivierung. Die Prüfung auf
+Unterkühlung (FR-SAFE-02) arbeitet mit den eingefrorenen Werten und kann daher erst nach dem Einschwingen einen neuen Raum finden.
 
-## Beruhigung der Außenleistung (allgemein, ohne Zahlen einer bestimmten Anlage)
+## Lernen der Leistung je Gerät (FR-LOAD-02)
 
-Das Kriterium nutzt nur Größen, die die Integration für jede Anlage kennt oder selbst misst:
+Unverändert: Nach einer Änderung der Zahl der bedienten Geräte wird die Außenleistung beobachtet, bis sie beruhigt ist (Mittel der letzten drei
+Zyklen innerhalb des Totbands, Höchstzeit `load_settle_max_s`, die sich der Anlage anpasst). Die gemessene Änderung geteilt durch die erwartete
+bestimmt einen Faktor für die beteiligten Geräte. Ein Lauf aus dem Stillstand lehrt nichts. Beobachtungen, in die anderes hineinspielt, werden
+verworfen. Durch die Anlaufphase von 10 Minuten zwischen zwei Änderungen ist das Lernen jetzt häufiger möglich als im Wechselbetrieb.
 
-1. **Takt:** Die Leistung wird je Regelzyklus gemittelt (Parameter `cycle_s`, Standard 60 s). Das macht das Kriterium unabhängig davon,
-   wie oft der Leistungssensor meldet.
-2. **Toleranz = Totband** (10 % von Pmin). Die Leistung gilt als beruhigt, wenn die Mittelwerte der letzten drei Regelzyklen höchstens
-   ein Totband auseinanderliegen. Die Toleranz wächst und schrumpft mit der Größe der Anlage, Watt-Schwellen gibt es nicht.
-3. **Höchstzeit:** Wird die Leistung nicht beruhigt, wird die Beobachtung verworfen (kein Lernen, der bisherige Wert bleibt). Die
-   Höchstzeit ist ein Parameter mit Standard 10 Minuten. Sie passt sich der Anlage an: Nach den ersten beruhigten Beobachtungen gilt
-   das Dreifache der beobachteten mittleren Beruhigungszeit, höchstens der Parameter und mindestens drei Regelzyklen. Eine
-   langsame Anlage bekommt so automatisch mehr Zeit, eine schnelle lernt häufiger.
-4. **Dauerhaft schwankende Leistung** (Takten, Abtauen) beruhigt sich nicht, das Lernen pausiert dann von selbst. Das ist gewollt: Es
-   gibt dann keine saubere Zuordnung der Änderung zum Schritt.
+## Beruhigung der Außenleistung
 
-Das Kriterium ist eine Annahme, bis es an Messwerten geprüft ist. Die Beobachtungen werden in der Aufzeichnung (FR-OBS-01) um Beruhigungszeit
-und Änderung ergänzt, damit man es an echten Daten prüfen kann.
+1. Die Leistung wird je Regelzyklus gemittelt (`cycle_s`, Standard 60 s).
+2. Toleranz ist das Totband (10 % von Pmin). Beruhigt heißt: die letzten drei Mittelwerte liegen höchstens ein Totband auseinander.
+3. Höchstzeit: sonst wird die Beobachtung verworfen. Sie passt sich an (das Dreifache der beobachteten mittleren Beruhigungszeit, höchstens der
+   Parameter, mindestens drei Zyklen).
+4. Dauerhaft schwankende Leistung beruhigt sich nicht, das Lernen pausiert dann von selbst.
 
-## Übergabe (FR-LOAD-03)
+## Offen (Annahmen, bis zur Prüfung im Betrieb)
 
-`Controller._begin_handover`, `_finish_handover` und `_holds`. Gibt ein Raum seine Bahn an einen anderen ab (Wechselzeit, Anstieg über der
-Schrittweite, Überlastgrenze, `LoadControl.replaced`), wird er nicht aus den Bedienten gestrichen, sondern in `_retiring` geführt: Er behält
-einen Schritt (und damit den Sollwert, die Grenze des Raums), zählt aber nicht
-mehr zur erwarteten Last. Die neuen Bahnen tragen die ganze angeforderte Leistung allein. In dieser Zeit laufen beide, die Last ist kurz höher
-als angefordert. Die Beobachtung der Außenleistung wird verworfen (`disturbed`), solange ein Raum übergibt.
-
-Freigegeben wird ein Raum (neutraler Modus), wenn alle bedienten Geräte im Zustand den Modus und Sollwert zeigen, den der letzte Zyklus
-befohlen hat (`_holds`, Vergleich auf 0,01), wenn die Höchstzeit (`load_settle_max_s`, 10 min, wie bei der Beruhigung) abgelaufen ist oder
-wenn kein Raum bedient wird (z. B. alle Räume an der Grenze). Ist kein Raum zulässig, endet der Lauf wie bisher sofort. Beim Stopp, bei
-Rückfall, fehlendem Plan und Wechsel der Betriebsart wird `_retiring` geleert.
-
-Annahme, nicht gemessen: Das Gerät „hält“ seinen Sollwert, sobald sein gemeldeter Sollwert dem befohlenen entspricht. Ob die Last des neuen
-Geräts bis dahin am Außengerät angekommen ist, wird nicht geprüft (Anlauf etwa eine Minute). Bei einer Wechselzeit von 2 Minuten und einem
-Zyklus von einer Minute wird ein Raum meist im Zyklus nach seinem Start freigegeben.
-
-## Offen (Annahmen, bis zur Prüfung an Messwerten)
-
-1. **Mindeststufe = ein Gerät = Pmin:** nach den Läufen vom 24./25.10.2026 vermutet, nicht an einem einzelnen Gerät gemessen.
-2. **Startwert (Pmax − Pmin) / 2 je weiterem Gerät** und die Obergrenze von drei Geräten bei Pmax 3,3 kW: aus den Läufen abgeleitet, nicht einzeln
-   gemessen.
-3. **Wechselzeit 2 Minuten:** Vorgabe des Nutzers, nicht an der Trägheit der Räume geprüft. Ein Wechsel pro Minute am Zyklus (60 s) ist die
-   Auflösung.
-4. **Anstieg „mehr als die Schrittweite“:** Die Geräte melden in 0,5-K-Schritten. Bei der Schrittweite 0,5 löst erst ein Anstieg um 1,0 den
-   frühen Wechsel aus, ein Anstieg um genau 0,5 nicht. Das folgt dem Wortlaut des Nutzers.
-5. **Lernen der Leistung je Gerät:** wird beim Wechselbetrieb kaum noch beobachtet, weil fast immer eine Übergabe läuft (die Beobachtung wird
-   dann verworfen). Mögliche Auswege: Beobachtung nur über die Zahl der Geräte, ohne Rücksicht auf die Übergabe, oder Schätzung aus allen
-   Zyklen (rekursive kleinste Quadrate).
-6. **Sollwert und Abschalten:** Getestet ist ein Gerät (Wohnzimmer) mit Sollwerten von 18 bis 28 °C bei 22,5 °C Anzeige, je fünf Minuten. Ob andere Geräte gleich reagieren und wann ein Gerät bei erreichtem Sollwert von selbst aufhört, ist nicht gemessen. Die Regelung schaltet allein per Moduswechsel ab. Im Kühlbetrieb ist alles gespiegelt angenommen.
-7. **Rückführung auf die Messung** (Absenken, wenn die Außenleistung dauerhaft über der Anforderung liegt): Vorschlag, noch nicht
-   freigegeben.
-8. **Lernrate** und Ausreißergrenzen für `p_i`: wie beim Lernen der Kapazität (erste drei Beobachtungen ersetzen den Startwert durch
-   ihren Median, danach gleitend mit Anteil 0,2, höchstens ±25 % je Beobachtung).
+1. **Abschaltabstand 3,5:** an zwei Geräten gemessen (zwischen 3,5 und 4), die Anzeige ändert sich nur alle 5 Minuten in 0,5-K-Schritten. Andere
+   Geräte sind nicht gemessen, das soll der Anlernmodus (FR-LRN-01, Vorschlag) leisten.
+2. **Abgabe bei einem anderen aktiven Raum:** nach der Leistung (steigend), an einem Fall gemessen. Ob die Anlage bei der Abgabe weiterläuft, hängt am
+   Nachfolger, der nach den Messungen mindestens zehn Minuten lief.
+3. **Zuschalten nach Temperatur:** Zuschaltabstand 2,5 und Aktivierungsanstieg 1 sind Vorgaben des Nutzers, die an einem Lauf mit zwei Geräten (Keller, Marcel)
+   erprobt sind.
+4. **Wiederanlauf nach dem Selbstabschalten:** Hysterese nicht gemessen. Die Sperrzeit von etwa 4 Minuten ist nur beobachtet, die Regelung nutzt sie nicht.
+5. **Überlastgrenze bedienter Räume:** Für bediente Räume gilt der Abschaltabstand statt der Überlastgrenze (Standard 3). Der Nutzer will noch prüfen, ob
+   die Überhitzungs- und Überlastgrenze nur im neutralen Modus berücksichtigt werden sollen (offener Punkt der Fachspec).
+6. **Kühlbetrieb:** alles gespiegelt angenommen, nicht gemessen.
+7. **Messwert der Leistung fehlt:** Ohne Messwert der Außenleistung startet nur der erste Raum und die Räume werden über den Abschaltabstand und
+   die Temperatur zugeschaltet. Die Messung ist Pflicht (FR-GEN-01), der Fall tritt nur beim Ausfall des Sensors auf.

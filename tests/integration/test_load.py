@@ -51,32 +51,42 @@ async def test_the_step_size_is_an_optional_field_of_the_indoor_unit_in_the_unit
 
 
 @pytest.mark.req("FR-LOAD-01")
-async def test_the_setpoint_of_the_served_unit_is_the_limit_of_its_room(
+@pytest.mark.req("FR-LOAD-05")
+async def test_the_setpoint_of_the_served_unit_is_the_setpoint_of_its_room(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any
 ) -> None:
     set_plan(hass, 2.0)
     entry = await setup_entry(a={"step": 1.0})
     result = entry.runtime_data.data.result
-    assert result.steps == {A: 1}  # one room first, the second follows half a rotation time later
-    assert units.target(A) == pytest.approx(24.0)  # setpoint 21 plus the limit of 3, whatever the step
+    assert result.steps == {A: 1}  # one room first, the second follows when the power is short
+    assert units.target(A) == pytest.approx(21.0)  # the setpoint of the room, without buffer
     assert result.expected_w == 1300.0
     assert units.mode(B) == "fan_only" and units.mode(C) == "fan_only"
 
 
-@pytest.mark.req("FR-LOAD-03")
-@pytest.mark.req("FR-LOAD-04")
-async def test_the_next_room_starts_first_and_the_room_that_gives_way_goes_to_standby_afterwards(
+@pytest.mark.req("FR-LOAD-05")
+@pytest.mark.req("FR-LOAD-06")
+@pytest.mark.req("FR-LOAD-08")
+async def test_the_next_room_starts_before_the_first_cuts_off_and_the_first_leaves_when_the_next_carries(
     hass: HomeAssistant, units: FakeUnits, setup_entry: Any
 ) -> None:
     set_plan(hass, 1.3)
+    hass.states.async_set(POWER, "1300", {"unit_of_measurement": "W"})
     await setup_entry()
     assert [e for e in ROOMS if units.mode(e) == "heat"] == [A]  # the minimum load: one room
-    units.set(A, "heat", 21.0, units.target(A))  # A rose by more than its step: the next room is up
     await run_cycle(hass)
-    assert units.mode(B) == "heat"  # the next room has started ...
-    assert units.mode(A) == "heat"  # ... while A still runs
-    await run_cycle(hass)  # B shows its setpoint now
-    assert units.mode(A) == "fan_only" and units.mode(B) == "heat"  # A is aired until its turn comes again
+    assert units.mode(B) == "fan_only"  # A has not reached the join distance: nothing changes
+    units.set(A, "heat", 23.5, units.target(A))  # 2.5 above the setpoint of 21 (the cut-off distance minus 1)
+    await run_cycle(hass)  # a jump of more than 2 counts as an outlier until the next cycle confirms it
+    await run_cycle(hass)
+    assert units.mode(B) == "heat" and units.mode(A) == "heat"  # the next room starts, A keeps running
+    units.set(B, "heat", 21.0, units.target(B))  # B rose by the activation rise of 1: it is active
+    units.set(A, "heat", 24.5, units.target(A))  # A is 3.5 above its setpoint: it has cut off
+    hass.states.async_set(POWER, "1800", {"unit_of_measurement": "W"})
+    await run_cycle(hass)
+    hass.states.async_set(POWER, "1900", {"unit_of_measurement": "W"})
+    await run_cycle(hass)  # the power rose again with B: A may leave
+    assert units.mode(A) == "fan_only" and units.mode(B) == "heat"
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -167,3 +177,22 @@ async def test_the_reset_service_also_resets_the_power_per_step(
     await hass.services.async_call(DOMAIN, SERVICE_RESET_LEARNED, blocking=True)
     await hass.async_block_till_done()
     assert not model.units
+
+
+@pytest.mark.req("FR-LOAD-06")
+@pytest.mark.req("FR-LOAD-07")
+async def test_the_measured_power_does_not_add_a_room_inside_the_start_up_phase(
+    hass: HomeAssistant, units: FakeUnits, setup_entry: Any, freezer: FrozenDateTimeFactory
+) -> None:
+    set_plan(hass, 3.3)
+    hass.states.async_set(POWER, "1300", {"unit_of_measurement": "W"})
+    await setup_entry()
+    assert [e for e in ROOMS if units.mode(e) == "heat"] == [A]
+    freezer.tick(timedelta(minutes=5))
+    set_plan(hass, 3.3)
+    await run_cycle(hass)
+    assert units.mode(B) == "fan_only"  # the power is short, but the start-up phase of 10 minutes is not over
+    freezer.tick(timedelta(minutes=6))
+    set_plan(hass, 3.3)
+    await run_cycle(hass)
+    assert units.mode(B) == "heat" and units.mode(A) == "heat"  # afterwards a further room follows

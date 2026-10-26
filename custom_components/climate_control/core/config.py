@@ -37,7 +37,7 @@ class RoomConfig:
     band_up: float = 2.0
     limit_down: float = 3.0  # absolute limit below the setpoint: protection heats even without plan
     limit_up: float = 3.0  # absolute limit above the setpoint: no further heating (overload limit)
-    step: float = 0.5  # FR-LOAD-04: smallest change of the device temperature the unit reports (plant's unit)
+    step: float = 0.5  # smallest change of the device temperature the unit reports (informational)
 
     # The buffer is charged towards "up" when heating and towards "down" when cooling (FR-SEAS-02).
     def discharge_band(self, season: Season) -> float:
@@ -88,7 +88,11 @@ class Parameters:
     load_settle_max_s: float = (
         600.0  # FR-LOAD-02: longest wait for the outdoor power to settle after an adjustment
     )
-    rotation_s: float = 120.0  # FR-LOAD-04: how long a room is served before the next one takes over
+    cutoff_k: float = 3.5  # FR-LOAD-05: distance above the setpoint where the unit cuts off (cooling: below)
+    join_margin_k: float = 1.0  # FR-LOAD-06: the next room starts this far below the cut-off distance
+    activation_rise_k: float = 1.0  # FR-LOAD-06: rise of the device temperature that makes a room active
+    startup_s: float = 600.0  # FR-LOAD-07: the measured power does not count after a start or a change
+    settle_s: float = 600.0  # FR-SRC-02: settling time of the readings after the units went neutral
     fallback_delay_s: float = 600.0
     fallback_step_s: float = 120.0
 
@@ -119,8 +123,12 @@ class Parameters:
             raise ConfigError("minimum run time must not be negative")
         if not 0 <= self.load_deadband_ratio < 1 or self.load_settle_max_s <= 0:
             raise ConfigError("load dead band in [0, 1) and a positive settling time required")
-        if self.rotation_s <= 0:
-            raise ConfigError("the rotation time must be positive")
+        if self.cutoff_k <= 0 or not 0 < self.join_margin_k < self.cutoff_k:
+            raise ConfigError("cut-off distance > 0 and 0 < join margin < cut-off distance required")
+        if self.activation_rise_k <= 0:
+            raise ConfigError("the activation rise must be positive")
+        if self.startup_s < 0 or self.settle_s < 0:
+            raise ConfigError("start-up and settling time must not be negative")
 
     @property
     def scale_k(self) -> float:

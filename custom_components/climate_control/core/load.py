@@ -1,11 +1,10 @@
-"""FR-LOAD-01 / FR-LOAD-02 / FR-LOAD-04: load control by lanes, power per room learned per indoor unit.
+"""FR-LOAD-01 / FR-LOAD-02 / FR-LOAD-05 to FR-LOAD-08: load control by served rooms, power per room learned.
 
-A served room is one lane: its unit gets the limit of the room as setpoint once (the setpoint does not steer
-the power). One lane brings the outdoor unit to Pmin. More requested power adds lanes, every lane adds the
-learned power of its room. Which rooms are served is decided by the
-rotation (`rotation.py`): the rooms take turns, the room with the largest deviation next. A dead band around
-the request and the limits of the rooms bound it. It runs on every cycle and every temperature event, there
-is no time window.
+A served room is an indoor unit that heats towards the setpoint of its room. One served room brings the
+outdoor unit to Pmin, every further room adds the learned power of its room. Which rooms are served, when a
+further one is added and when one leaves is decided by `serving.py`: a room stays served until its unit has
+cut off, the room with the largest deviation comes next. A dead band around the request and the limits of the
+rooms bound it. It runs on every cycle, there is no time window for a rotation.
 
 Learning: after the number of lanes changed, the outdoor unit's power is watched until it has settled (cycle
 means within the dead band over three cycles, with a maximum time that adapts to the plant). The change
@@ -24,7 +23,7 @@ from typing import Any
 from .config import InstallationConfig, RoomConfig
 from .distribution import Tier
 from .model import Season
-from .rotation import Rotation
+from .serving import Serving
 
 SETTLE_CYCLES = 3
 BOOTSTRAP_ESTIMATES = 3  # the first estimates of a unit replace the start value by their median
@@ -32,7 +31,6 @@ RATE = 0.2
 MAX_CHANGE = 0.25
 FACTOR_MIN, FACTOR_MAX = 0.1, 10.0  # plausible ratio between the observed and the expected change
 SETTLE_FACTOR = 3.0  # the maximum wait is this many times the typical settling time
-MAX_ITERATIONS = 200
 
 
 def start_power_w(cfg: InstallationConfig) -> float:
@@ -143,8 +141,8 @@ class LoadControl:
     def __init__(self, model: LoadModel | None = None) -> None:
         self.model = model if model is not None else LoadModel()
         self.steps: dict[str, int] = {}
-        self.replaced: list[str] = []  # rooms that gave their lane to another room in the last cycle
-        self.rotation = Rotation()
+        self.released: list[str] = []  # rooms that left in the last cycle
+        self.serving = Serving()
         self.expected_w = 0.0
         self._recent: deque[float] = deque(maxlen=SETTLE_CYCLES)
         self._observation: _Observation | None = None
@@ -155,8 +153,8 @@ class LoadControl:
     def reset(self) -> None:
         """The plant stopped, the season changed or the plan is gone: the next run starts afresh."""
         self.steps = {}
-        self.replaced = []
-        self.rotation.reset()
+        self.released = []
+        self.serving.reset()
         self.expected_w = 0.0
         self._observation = None
 
@@ -221,26 +219,37 @@ class LoadControl:
         requested_w: float,
         tiers: Sequence[Tier],
         disturbed: bool = False,
-        temps: Mapping[str, float] | None = None,
+        live: Mapping[str, float] | None = None,
+        present: set[str] | None = None,
     ) -> dict[str, int]:
         """Served rooms (one step each) for the requested power; `tiers`: eligible units, most urgent first.
 
-        `temps` are the device temperatures of the cycle (the rotation switches a room when it rose by more
-        than its step). `disturbed` tells that something else changed the load since the last cycle (a room
-        under protection, a window, a change of the season): a running observation is then not trustworthy.
+        `live` are the reported device temperatures of the cycle (a served room is measured on them, never on
+        the frozen value), `present` the rooms that are in the control at all (default: the eligible ones).
+        `disturbed` tells that something else changed the load since the last cycle (a room under protection,
+        a window, a change of the season): a running observation is then not trustworthy.
         """
-        dead = cfg.params.load_deadband_ratio * cfg.p_min_w
         ranked = _flat(tiers)
         ids = {r.id for r in ranked}
         if disturbed or any(rid not in ids for rid in self.steps):
             self._observation = None
         power = {r.id: self._power(cfg, r.id) for r in ranked}
         before = dict(self.steps)
-        alive = sum(1 for lane in self.rotation.lanes if lane.room_id in ids)
-        wanted = _lanes_wanted(alive, requested_w, power, cfg, dead)
-        turn = self.rotation.step(now, cfg.params.rotation_s, wanted, tiers, temps or {}, season.sign)
+        measured = mean(self._recent) if self._recent else None
+        turn = self.serving.step(
+            now,
+            cfg,
+            season,
+            requested_w,
+            measured,
+            ranked,
+            present if present is not None else ids,
+            live or {},
+            _max_rooms(power, cfg),
+            sum(power.values()) / len(power) if power else 0.0,
+        )
         after = {rid: 1 for rid in turn.active}
-        self.replaced = list(turn.replaced)
+        self.released = list(turn.released)
         added = {rid for rid in after if rid not in before}
         dropped = {rid for rid in before if rid not in after}
         if len(after) != len(before) and (added or dropped):
@@ -272,31 +281,12 @@ def _flat(tiers: Sequence[Tier]) -> list[RoomConfig]:
     return [r for tier in tiers for group in tier for r in group]
 
 
-def _lanes_wanted(
-    current: int, requested_w: float, power: Mapping[str, float], cfg: InstallationConfig, dead: float
-) -> int:
-    """Number of rooms served at the same time: at least one while the plant runs, more for more power.
-
-    Nothing changes inside the dead band around the request. A further room counts with the mean power of
-    the eligible rooms; Pmax bounds the number.
-    """
+def _max_rooms(power: Mapping[str, float], cfg: InstallationConfig) -> int:
+    """Largest number of rooms served at once: Pmax bounds it (a further room adds its mean power)."""
     if not power:
         return 0
     mean_w = sum(power.values()) / len(power)
-
-    def expected(n: int) -> float:
-        return cfg.p_min_w + mean_w * (n - 1)
-
     n_max = len(power)
     if mean_w > 0:
         n_max = min(n_max, 1 + max(0, round((cfg.p_max_w - cfg.p_min_w) / mean_w)))
-    n = max(1, min(current, n_max))
-    for _ in range(MAX_ITERATIONS):
-        error = requested_w - expected(n)
-        if error > dead and n < n_max and abs(requested_w - expected(n + 1)) < abs(error):
-            n += 1
-        elif error < -dead and n > 1 and abs(requested_w - expected(n - 1)) < abs(error):
-            n -= 1
-        else:
-            break
-    return n
+    return max(1, n_max)

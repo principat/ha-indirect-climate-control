@@ -1,4 +1,4 @@
-"""FR-LOAD-01/02/03: load control by lanes, power per room learned per indoor unit, handover."""
+"""FR-LOAD-01/02: load control by served rooms, power per room learned per indoor unit."""
 
 from datetime import timedelta
 
@@ -13,7 +13,7 @@ from custom_components.climate_control.core.load import (
     expected_load_w,
     start_power_w,
 )
-from custom_components.climate_control.core.model import Mode, RoomState, Season
+from custom_components.climate_control.core.model import Mode, Season
 
 from .helpers import T0, installation, plan, room, states
 
@@ -35,14 +35,6 @@ def ranked(cfg: InstallationConfig, deviations: dict[str, float] | None = None, 
     )
 
 
-def run(ctl: LoadControl, cfg: InstallationConfig, requested_w: float, minutes: int = 3, start: int = 0):  # noqa: ANN202
-    """Cycles of one minute with the same request; the last steps."""
-    steps: dict[str, int] = {}
-    for minute in range(start, start + minutes):
-        steps = ctl.update(T0 + minute * MIN, cfg, Season.HEAT, requested_w, ranked(cfg))
-    return steps
-
-
 class Plant:
     """Outdoor unit that follows the sum of true power per room with a lag, sampled once per cycle."""
 
@@ -59,6 +51,17 @@ class Plant:
         self.now += MIN
         self.ctl.feed(self.now, self.power, self.cfg)
         return self.ctl.update(self.now, self.cfg, Season.HEAT, requested_w, ranked(self.cfg), disturbed)
+
+    def settle(self, requested_w: float, cycles: int = 12) -> dict[str, int]:
+        steps: dict[str, int] = {}
+        for _ in range(cycles):
+            steps = self.cycle(requested_w)
+        return steps
+
+
+def plant4() -> Plant:
+    cfg = rooms4()
+    return Plant(LoadControl(), cfg, {r.id: 1000.0 for r in cfg.rooms})
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -79,86 +82,44 @@ def test_the_expected_load_is_pmin_with_one_room_and_each_further_room_adds_its_
 
 @pytest.mark.req("FR-LOAD-01")
 def test_one_room_is_served_at_pmin_and_more_power_adds_rooms() -> None:
-    cfg = rooms4()
-    ctl = LoadControl()
-    assert len(run(ctl, cfg, 1300.0)) == 1 and ctl.expected_w == 1300.0
-    assert len(run(ctl, cfg, 2300.0, start=3)) == 2  # a second room (the start value of a room is 1 kW)
-    assert ctl.expected_w == pytest.approx(2300.0)
-    assert len(run(ctl, cfg, 3300.0, start=6)) == 3
-
-
-@pytest.mark.req("FR-LOAD-01")
-def test_the_rooms_are_not_started_at_once_the_second_follows_after_half_a_rotation() -> None:
-    cfg = rooms4()
-    ctl = LoadControl()
-    assert len(ctl.update(T0, cfg, Season.HEAT, 2300.0, ranked(cfg))) == 1
-    assert len(ctl.update(T0 + timedelta(seconds=30), cfg, Season.HEAT, 2300.0, ranked(cfg))) == 1
-    assert len(ctl.update(T0 + timedelta(seconds=60), cfg, Season.HEAT, 2300.0, ranked(cfg))) == 2
+    plant = plant4()
+    assert len(plant.settle(1300.0)) == 1 and plant.ctl.expected_w == 1300.0
+    assert len(plant.settle(2300.0)) == 2  # a second room (the start value of a room is 1 kW)
+    assert plant.ctl.expected_w == pytest.approx(2300.0)
+    assert len(plant.settle(3300.0)) == 3
 
 
 @pytest.mark.req("FR-LOAD-01")
 def test_pmax_bounds_the_number_of_rooms() -> None:
-    cfg = rooms4()
-    ctl = LoadControl()
-    assert len(run(ctl, cfg, 9000.0, minutes=8)) == 3  # 1.3 kW + 2 x 1 kW is Pmax
+    assert len(plant4().settle(9000.0, cycles=40)) == 3  # 1.3 kW + 2 x 1 kW is Pmax
 
 
 @pytest.mark.req("FR-LOAD-01")
 def test_nothing_changes_inside_the_dead_band() -> None:
-    cfg = rooms4()
-    ctl = LoadControl()
-    first = run(ctl, cfg, 2300.0, minutes=3)
-    assert len(first) == 2
-    again = ctl.update(T0 + 3 * MIN, cfg, Season.HEAT, 2300.0 + 100, ranked(cfg))  # 100 W is inside 130 W
-    assert len(again) == 2
-    moved = ctl.update(T0 + 4 * MIN, cfg, Season.HEAT, 2300.0 + 400, ranked(cfg))
-    assert len(moved) == 2  # one more room would not be nearer to the request
-    moved = ctl.update(T0 + 5 * MIN, cfg, Season.HEAT, 3300.0, ranked(cfg))
-    assert len(moved) == 3
+    plant = plant4()
+    assert len(plant.settle(2300.0)) == 2
+    assert len(plant.settle(2300.0 + 100, cycles=14)) == 2  # 100 W is inside 130 W
+    assert len(plant.settle(2300.0 + 400, cycles=14)) == 2  # one more room would not be nearer to the request
+    assert len(plant.settle(3300.0, cycles=14)) == 3
 
 
 @pytest.mark.req("FR-LOAD-01")
 def test_lowering_stops_at_one_room() -> None:
-    cfg = rooms4()
-    ctl = LoadControl()
-    assert len(run(ctl, cfg, 3300.0, minutes=4)) == 3
-    for minute in range(4, 9):
-        steps = ctl.update(T0 + minute * MIN, cfg, Season.HEAT, 0.0, ranked(cfg))  # the plan drops to nothing
-    assert len(steps) == 1  # the floor: one room (Pmin)
+    plant = plant4()
+    assert len(plant.settle(3300.0, cycles=30)) == 3
+    assert len(plant.settle(0.0, cycles=30)) == 1  # the plan drops to nothing: the floor is one room (Pmin)
 
 
 @pytest.mark.req("FR-LOAD-01")
 def test_rooms_that_are_no_longer_eligible_are_replaced() -> None:
     cfg = rooms4()
     ctl = LoadControl()
-    first = run(ctl, cfg, 1300.0, minutes=1)
-    gone = next(iter(first))
+    ctl.update(T0, cfg, Season.HEAT, 1300.0, ranked(cfg))
+    gone = next(iter(ctl.steps))
     remaining = [r for r in cfg.rooms if r.id != gone]
     steps = ctl.update(T0 + MIN, cfg, Season.HEAT, 1300.0, ranked(cfg, rooms=remaining))
     assert gone not in steps and len(steps) == 1
-    assert ctl.replaced == [gone]  # the controller hands over to the new room (FR-LOAD-03)
-
-
-@pytest.mark.req("FR-LOAD-01")
-def test_the_controller_sets_the_limit_of_the_room_as_setpoint_of_the_served_unit() -> None:
-    cfg = rooms4()
-    ctrl = Controller(cfg)
-    result = ctrl.step(T0, plan(1300), states({f"r{i}": 20.0 for i in range(1, 5)}))
-    assert len(result.steps) == 1
-    ((rid, n),) = result.steps.items()
-    served = next(r for r in cfg.rooms if r.id == rid)
-    assert n == 1 and result.commands[rid].mode is Mode.HEAT
-    assert result.commands[rid].target_c == served.setpoint_c + served.limit_up  # once, at the limit
-    assert all(c.mode is Mode.FAN for other, c in result.commands.items() if other != rid)
-    assert result.expected_w == 1300.0
-
-
-@pytest.mark.req("FR-LOAD-01")
-def test_the_setpoint_of_a_served_unit_does_not_follow_the_device_temperature() -> None:
-    for reading in (19.0, 20.0, 22.0):
-        ctrl = Controller(installation(room("a", setpoint=20.0)))
-        result = ctrl.step(T0, plan(1300), states({"a": reading}))
-        assert result.commands["a"].target_c == 23.0  # setpoint 20 plus the limit of 3, whatever the reading
+    assert ctl.released == [gone]
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -168,7 +129,7 @@ def test_the_power_per_room_is_learned_per_unit_from_the_settled_outdoor_power()
     true_w = {"r1": 500.0, "r2": 400.0, "r3": 600.0, "r4": 500.0}
     plant = Plant(ctl, cfg, true_w)
     for requested in (1300, 2300, 1300, 3300, 1300, 2300, 3300, 1300) * 4:
-        for _ in range(10):  # the power settles in a few cycles after each change of the request
+        for _ in range(25):  # the start-up phase of 10 minutes is over before the next change
             plant.cycle(float(requested))
     learned = {rid: item.learned_w for rid, item in ctl.model.units.items() if item.learned_w is not None}
     assert learned, "nothing learned"
@@ -196,13 +157,12 @@ def test_a_second_adjustment_while_waiting_disturbs_the_observation() -> None:
     cfg = rooms4()
     ctl = LoadControl()
     plant = Plant(ctl, cfg, {r.id: 500.0 for r in cfg.rooms})
-    for _ in range(4):
-        plant.cycle(1300.0)  # idle: the means before the adjustment
-    plant.cycle(2300.0)  # adjustment: an observation starts
-    plant.cycle(1300.0)  # the request changes again while it waits: both are dropped
-    for _ in range(12):
-        plant.cycle(1300.0)
-    assert not ctl.model.units  # nothing was learned from the disturbed observation
+    plant.settle(1300.0, cycles=4)  # idle: the means before the adjustment
+    ctl._begin(plant.now, {"r2": 1}, 500.0)  # noqa: SLF001  # an adjustment: an observation starts
+    assert ctl._observation is not None  # noqa: SLF001
+    ctl._begin(plant.now, {"r3": 1}, 500.0)  # noqa: SLF001  # another one while it waits: both are dropped
+    assert ctl._observation is None  # noqa: SLF001
+    assert not ctl.model.units
 
 
 @pytest.mark.req("FR-LOAD-02")
@@ -210,12 +170,12 @@ def test_something_else_moving_the_load_disturbs_the_observation() -> None:
     cfg = rooms4()
     ctl = LoadControl()
     plant = Plant(ctl, cfg, {r.id: 500.0 for r in cfg.rooms})
-    for _ in range(4):
-        plant.cycle(1300.0)
-    plant.cycle(2300.0)
-    plant.cycle(2300.0, disturbed=True)  # e.g. a room under protection started to heat
-    for _ in range(12):
-        plant.cycle(2300.0)
+    plant.settle(1300.0, cycles=4)
+    ctl._begin(plant.now, {"r2": 1}, 1000.0)  # noqa: SLF001  # an adjustment: an observation starts
+    assert ctl._observation is not None  # noqa: SLF001
+    plant.cycle(1300.0, disturbed=True)  # e.g. a room under protection started to heat
+    assert ctl._observation is None  # noqa: SLF001
+    plant.settle(1300.0, cycles=12)
     assert not ctl.model.units
 
 
@@ -224,8 +184,7 @@ def test_a_power_that_never_settles_teaches_nothing_and_gives_up_after_the_maxim
     cfg = rooms4()
     ctl = LoadControl()
     plant = Plant(ctl, cfg, {r.id: 500.0 for r in cfg.rooms})
-    for _ in range(4):
-        plant.cycle(1300.0)
+    plant.settle(1300.0, cycles=4)
     plant.cycle(2300.0)
     for minute in range(30):  # the outdoor unit cycles up and down by far more than the dead band
         plant.power = 2500.0 if minute % 2 else 300.0
@@ -288,7 +247,7 @@ def test_one_served_unit_is_the_minimum_stage() -> None:
     assert list(result.steps.values()) == [1]
     assert result.expected_w == 1300.0  # the minimum stage is Pmin
     for rid in result.steps:
-        assert result.commands[rid].target_c == 23.0  # the limit of the room, not the reading
+        assert result.commands[rid].target_c == 20.0  # the setpoint of the room, not the reading
     assert sum(1 for c in result.commands.values() if c.mode is Mode.HEAT) == 1
 
 
@@ -297,84 +256,8 @@ def test_a_run_from_standby_reaches_the_minimum_stage_and_teaches_nothing() -> N
     cfg = rooms4()
     ctl = LoadControl()
     plant = Plant(ctl, cfg, {r.id: 500.0 for r in cfg.rooms})
-    for _ in range(4):
-        plant.cycle(0.0)  # standby
-    for _ in range(12):
-        plant.cycle(1300.0)  # the plant starts: Pmin is one room, a further room has not been measured
+    plant.settle(0.0, cycles=4)  # standby
+    plant.settle(
+        1300.0, cycles=12
+    )  # the plant starts: Pmin is one room, a further room has not been measured
     assert len(ctl.steps) == 1 and not ctl.model.units
-
-
-def _hold(result, temps: dict[str, float], applied: set[str] | None = None) -> dict[str, RoomState]:  # noqa: ANN001
-    """Room states after the devices carried out the commands of `result` (only those in `applied`)."""
-    rooms = {}
-    for rid, temp in temps.items():
-        cmd = result.commands.get(rid)
-        if cmd is not None and (applied is None or rid in applied):
-            rooms[rid] = RoomState(cmd.mode, temp, False, cmd.target_c)
-        else:
-            rooms[rid] = RoomState(Mode.FAN, temp, False, None)
-    return rooms
-
-
-COLD3 = {"r1": 20.0, "r2": 20.0, "r3": 20.0}
-
-
-def _rotating() -> tuple[Controller, object, object]:
-    """A run with one room (r1); two minutes later r2 takes over and r1 is handed over (FR-LOAD-03/04)."""
-    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
-    ctrl = Controller(cfg)
-    first = ctrl.step(T0, plan(1300), states(COLD3))
-    assert set(first.steps) == {"r1"}
-    ctrl.step(T0 + MIN, plan(1300), _hold(first, COLD3))
-    handover = ctrl.step(T0 + 2 * MIN, plan(1300), _hold(first, COLD3))
-    return ctrl, first, handover
-
-
-@pytest.mark.req("FR-LOAD-03")
-def test_the_room_that_gives_way_keeps_running_until_the_next_room_holds_its_setpoint() -> None:
-    ctrl, first, handover = _rotating()
-    assert handover.commands["r2"].mode is Mode.HEAT  # the next room has started ...
-    assert handover.commands["r1"].mode is Mode.HEAT  # ... while r1 still runs
-    assert set(handover.steps) == {"r1", "r2"}
-    # r2 has not shown its setpoint yet: r1 stays on
-    half = T0 + 2 * MIN + timedelta(seconds=30)
-    waiting = ctrl.step(half, plan(1300, half), _hold(handover, COLD3, applied={"r1"}))
-    assert waiting.commands["r1"].mode is Mode.HEAT and "r1" in waiting.steps
-    # now r2 holds its setpoint: r1 goes to standby
-    done = ctrl.step(T0 + 3 * MIN, plan(1300), _hold(waiting, COLD3))
-    assert done.commands["r1"].mode is Mode.FAN and "r1" not in done.steps
-    assert set(done.steps) == {"r2"}
-
-
-@pytest.mark.req("FR-LOAD-03")
-def test_the_room_that_gives_way_goes_to_standby_after_the_maximum_time_even_if_the_next_never_answers() -> (
-    None
-):
-    ctrl, first, handover = _rotating()
-    late = T0 + 13 * MIN  # more than the maximum time (10 min) after the handover began
-    result = ctrl.step(late, plan(1300, late), _hold(handover, COLD3, applied={"r1"}))
-    assert result.commands["r1"].mode is Mode.FAN and "r1" not in result.steps
-
-
-@pytest.mark.req("FR-LOAD-03")
-def test_a_room_at_its_limit_hands_over_to_the_next_room() -> None:
-    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2, 3)))
-    ctrl = Controller(cfg)
-    warm = {"r1": 22.0, "r2": 22.0, "r3": 22.0}  # all 2 above their setpoint of 20: still eligible
-    first = ctrl.step(T0, plan(1300), states(warm))
-    assert set(first.steps) == {"r1"}
-    hot = {"r1": 23.0, "r2": 22.0, "r3": 22.0}  # r1 is 3 above its setpoint: at its limit
-    result = ctrl.step(T0 + MIN, plan(1300), _hold(first, hot))
-    assert result.commands["r2"].mode is Mode.HEAT and result.commands["r1"].mode is Mode.HEAT
-    done = ctrl.step(T0 + 2 * MIN, plan(1300), _hold(result, hot))
-    assert done.commands["r1"].mode is Mode.FAN and set(done.steps) == {"r2"}
-
-
-@pytest.mark.req("FR-LOAD-03")
-def test_without_a_room_to_take_over_the_room_at_its_limit_stops_at_once() -> None:
-    cfg = installation(*(room(f"r{i}", setpoint=20.0, power=700.0) for i in (1, 2)))
-    ctrl = Controller(cfg)
-    first = ctrl.step(T0, plan(1300), states({"r1": 20.0, "r2": 20.0}))
-    second = ctrl.step(T0 + MIN, plan(1300), _hold(first, {"r1": 21.5, "r2": 21.5}))
-    result = ctrl.step(T0 + 2 * MIN, plan(1300), _hold(second, {"r1": 23.0, "r2": 23.0}))
-    assert all(c.mode is Mode.FAN for c in result.commands.values()) and not result.steps
