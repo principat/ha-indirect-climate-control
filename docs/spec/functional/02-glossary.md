@@ -25,3 +25,11 @@
 | Regelbereich | Abstand zum Sollwert (je Richtung), in dem der Planer den Puffer ohne Kosten nutzen darf |
 | Absolute Grenze | Abstand zum Sollwert (je Richtung), an dem Schluss ist: unten Schutz durch Heizen, oben keine weitere Beheizung (Überlastgrenze) |
 | Mindeststufe | kleinste Last der Lastregelung: ein bedientes Innengerät, die Leistung ist Pmin |
+| Abschaltabstand | Abstand der Gerätetemperatur über dem Sollwert, bei dem sich das Innengerät selbst abregelt und das bediente Gerät abgegeben wird (Startwert 3,5) |
+| Zuschaltabstand | Abstand der Gerätetemperatur über dem Sollwert, ab dem ein weiteres Gerät bedient wird, wenn die Leistung nicht unterschritten ist: 1 unter dem Abschaltabstand (Startwert 2,5) |
+| Aktiv | Ein zugeschaltetes Gerät gilt als aktiv, wenn seine gemeldete Gerätetemperatur (Livewert, nicht der eingefrorene Wert) seit seinem Start um den Aktivierungsanstieg gestiegen ist |
+| Anlaufphase | Zeit nach dem Start der Anlage oder dem Zuschalten eines Geräts, in der die Leistung nicht zum Herunterregeln herangezogen wird (Startwert 10 Minuten) |
+| Einfrieren | Für die Bewertung der Räume gilt der zuletzt eingeschwungene Wert der Gerätetemperatur, solange ein Gerät arbeitet und bis sich die Werte nach dem Wechsel in den neutralen Modus eingeschwungen haben |
+| Einschwingzeit | Zeit, die die Gerätetemperatur nach dem Wechsel in den neutralen Modus braucht, bis sie den Raum wieder abbildet (Startwert 10 Minuten) |
+| Sperrzeit | Zeit nach einem Stopp des Außengeräts, in der es nicht wieder anläuft (beobachtet etwa 4 Minuten) |
+| Anlernmodus | vom Nutzer gestarteter Ablauf, der die Eigenschaften der Innengeräte und des Außengeräts misst (FR-LRN-01) |

@@ -15,6 +15,12 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Mindeststufe Lastregler | 1 bedientes Gerät | Pmin; Untergrenze beim Nachregeln nach unten |
 | Startwert Last je weiterem Gerät | (Pmax − Pmin) / 2 | je Innengerät, gilt bis zur ersten Messung |
 | Totband Lastregler | 10 % von Pmin | Abweichung zwischen geplanter und gemessener Leistung, innerhalb der nichts nachgestellt wird |
+| Abschaltabstand | 3,5 K | Gerätetemperatur über dem Sollwert, bei der sich das Gerät abregelt; Startwert aus Messungen an zwei Geräten, im Anlernmodus je Gerät zu messen (FR-LOAD-05, FR-LRN-01) |
+| Zuschaltabstand | Abschaltabstand − 1 K (2,5 K) | Gerätetemperatur über dem Sollwert, ab der ein weiteres Gerät bedient wird, bevor das erste sich abregelt; der Abzug von 1 berücksichtigt die Auflösung von 0,5 K und den Versatz von bis zu 5 Minuten zwischen den Messungen (FR-LOAD-06) |
+| Aktivierungsanstieg | 1 K | Anstieg der gemeldeten Gerätetemperatur (Livewert, nicht eingefroren) gegenüber dem Wert beim Start, ab dem ein zugeschaltetes Gerät als aktiv gilt (FR-LOAD-06) |
+| Anlaufdauer | 10 min | in dieser Zeit wird die Leistung nicht zum Herunterregeln herangezogen (FR-LOAD-07) |
+| Einschwingzeit | 10 min | nach dem Wechsel in den neutralen Modus, danach endet das Einfrieren (FR-SRC-02) |
+| Sperrzeit Außengerät | 4 min | nach einem Stopp läuft das Außengerät nicht wieder an; nur gemessen, im Anlernmodus zu lernen (FR-LRN-01) |
 | Höchstzeit Übergabe | 10 min | so lange läuft ein Gerät an seiner Grenze höchstens weiter, bis das nächste seinen Sollwert hält (FR-LOAD-03) |
 | Wartezeit bei Planerausfall | 10 min | Geräte bleiben unverändert, bevor der Rückfall beginnt |
 | Schritt des Rückfalls | 2 min | je Schritt wird eine weitere Gerätegruppe auf Heizen gestellt |
