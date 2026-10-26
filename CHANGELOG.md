@@ -1,3 +1,9 @@
+## [0.13.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.12.0...v0.13.0) (2026-10-26)
+
+### Features
+
+* serve rooms continuously until their unit has cut off ([7b250de](https://github.com/principat/ha-indirect-climate-control/commit/7b250deb05716ea62e7a1a34f8b70161e1fac887))
+
 ## [0.12.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.11.0...v0.12.0) (2026-10-26)
 
 ### Features
