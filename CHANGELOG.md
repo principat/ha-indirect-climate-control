@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/principat/ha-indirect-climate-control/compare/v1.0.0...v1.1.0) (2026-10-27)
+
+### Features
+
+* build the SOC from remembered values with an adaptive display offset ([f5915ac](https://github.com/principat/ha-indirect-climate-control/commit/f5915aceb8324721ab18f54d6b08a83aae1faac5))
+
 ## [1.0.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.15.0...v1.0.0) (2026-10-27)
 
 ### ⚠ BREAKING CHANGES
