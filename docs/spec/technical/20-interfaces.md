@@ -84,6 +84,8 @@ Je Innengerät ein eigenes Gerät (Subentry), Diagnose-Sensoren `room_deviation`
 
 Je Innengerät zusätzlich `room_offset` (geplanter Offset = Schritte × Schrittweite, 0 wenn nicht bedient) und `room_step_power` (W): gelernte Leistung je Leistungsschritt, Startwert (Pmax − Pmin) / (2 × Zahl der Geräte) (FR-LOAD-02). Gespeichert im selben `Store` unter `load`.
 
+Anzeigeversatz (FR-SOC-04): Diagnose-Sensoren `display_offset` und `largest_deviation` (Einheit K, nur lesbar; `largest_deviation` ist unbekannt, solange keine Abweichung gemessen ist). Die Parameter `display_offset_k` (3,5), `offset_threshold_pct` (10), `offset_target_pct` (5) und `offset_cap_factor` (1,25) stehen in der Optionengruppe „SOC“.
+
 Gelernte Kapazität (FR-PLNR-02/03): Diagnose-Sensoren `learned_heat_capacity` und `learned_cool_capacity` (kWh/K, nur lesbar),
 Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einzelschätzungen in kWh/K). Speicherung im `Store` (`climate_control.<entry_id>.learned`), siehe `50-capacity-learning.md`.
 
@@ -93,6 +95,10 @@ Attribute `estimates`, `updated`, `last_estimate` und `pending_estimates` (Einze
 
 `climate_control.reset_learned_capacity` – setzt die gelernten Kapazitäten auf den Startwert zurück (FR-PLNR-03); optional
 `config_entry_id`. Nur über die Entwicklerwerkzeuge erreichbar, nirgends in der Oberfläche angeboten.
+
+`climate_control.set_display_offset` – setzt den Anzeigeversatz von Hand (FR-SOC-05); Pflichtfeld `value` (≥ 0, im Dienstformular mit 3,5 vorbelegt), optional `config_entry_id`.
+
+`climate_control.set_largest_deviation` – setzt die größte gemessene Abweichung von Hand (FR-SOC-05); `value` leer = noch nicht gemessen (der Versatz wird dann nicht angepasst), optional `config_entry_id`. Beide Dienste speichern sofort und rechnen einen Zyklus, damit die Diagnosewerte den neuen Wert zeigen.
 
 ## Aufzeichnung (FR-OBS-01)
 

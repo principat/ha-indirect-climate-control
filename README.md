@@ -75,6 +75,13 @@ diagnostic sensors (*Learned capacity heating / cooling*, read-only) and survive
 the plant the service `climate_control.reset_learned_capacity` sets them back to the start value; it is not offered in daily use.
 Concept: `docs/spec/technical/50-capacity-learning.md`.
 
+**Display offset of the SOC.** A working indoor unit shows more than the room temperature (the exchanger heats the sensor). For the SOC, every
+room therefore counts with a remembered value: it follows a falling reading at once and a rising reading only when the reading is above the
+remembered value plus the display offset (start 3.5), then with that distance. After each work period the SOC at the end of the work is compared
+with the SOC after all units have settled; if they differ by more than 10 points, the offset is adapted (at most 1.25 times the largest measured
+deviation of a reading over its setpoint). Offset and largest deviation are diagnostic sensors, survive restarts and can be set by the services
+`climate_control.set_display_offset` and `climate_control.set_largest_deviation` (empty value = not measured yet).
+
 ### Diagnostic sensors per indoor unit
 
 | Sensor | Meaning |
@@ -287,6 +294,13 @@ mindestens 0,35 K, getrennt für Heizen und Kühlen. Sonst nichts, insbesondere 
 Diagnose-Sensoren (*Gelernte Kapazität Heizen / Kühlen*, nur lesbar) und bleiben über Neustarts erhalten. Nur nach grundlegenden
 Änderungen an der Anlage setzt der Dienst `climate_control.reset_learned_capacity` sie auf den Startwert zurück; er wird im
 Alltag nicht angeboten. Konzept: `docs/spec/technical/50-capacity-learning.md`.
+
+**Anzeigeversatz des SOC.** Ein arbeitendes Innengerät zeigt mehr an als die Raumtemperatur (der Wärmetauscher heizt den Fühler mit). Für den SOC zählt
+deshalb je Raum ein gemerkter Wert: Er folgt einer fallenden Anzeige sofort und einer steigenden erst, wenn die Anzeige über dem gemerkten Wert plus
+Anzeigeversatz liegt (Startwert 3,5), dann mit diesem Abstand. Nach jeder Arbeitsperiode wird der SOC am Arbeitsende mit dem SOC verglichen, nachdem alle
+Geräte eingeschwungen sind; weicht er um mehr als 10 Punkte ab, wird der Versatz angepasst (höchstens das 1,25-fache der größten gemessenen Abweichung der
+Anzeige über dem Sollwert). Versatz und größte Abweichung sind Diagnose-Sensoren, bleiben über Neustarts erhalten und können über die Dienste
+`climate_control.set_display_offset` und `climate_control.set_largest_deviation` gesetzt werden (leerer Wert = noch nicht gemessen).
 
 ### Diagnose-Sensoren je Innengerät
 

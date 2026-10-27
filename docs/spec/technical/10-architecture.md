@@ -38,7 +38,18 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
    Entladen heißt dann wärmer als der Sollwert.
 1. Gerätetemperatur je Raum lesen, unverändert (0,5-K-Schritte) übernehmen, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
-3. SOC (FR-SOC-01, `core/soc.py`): je aktivem Raum `room_fill` (Füllstand 0 bis 1 von unterem Randbereich, Wohlfühlbereich und oberem
+3. Anker und Anzeigeversatz (FR-SOC-03/04/05, `core/anchor.py`, `AnchorTracker`): Für den SOC zählt je aktivem Raum der gemerkte Wert statt der
+   gemeldeten Temperatur (Rangfolge und Schutz nutzen weiter die gehaltenen Werte nach FR-SRC-02). Eine Arbeitsperiode beginnt im ersten Zyklus, in dem ein
+   Gerät arbeitet (Modus Heizen/Kühlen oder Befehl), und endet, sobald kein Gerät arbeitet und `settle_s` seit dem letzten Arbeiten vergangen sind (`Controller._all_settled`).
+   `follow()`: Anker = Anzeige zu Beginn; fällt die Anzeige unter den Anker, folgt er; liegt sie über Anker + Versatz, wird er Anzeige − Versatz; beim Kühlen
+   gespiegelt über `Season.sign`. Je Zyklus der Periode werden die Anzeigen je Raum kompakt gemerkt (`array("f")`, höchstens 8 h). Beim ersten Zyklus ohne
+   arbeitendes Gerät wird der SOC am Arbeitsende gemerkt (roh, ungeglättet), beim Einschwingen mit dem SOC aus den Anzeigen verglichen. Weicht er um mehr als
+   `offset_threshold_pct` (10 Punkte) ab, sucht `_solve` den Versatz in [0, `offset_cap_factor` × größte gemessene Abweichung], mit dem der aus den
+   aufgezeichneten Anzeigen neu gerechnete SOC am Arbeitsende dem SOC nach dem Einschwingen am nächsten kommt (Halbierung, bis die Abweichung höchstens
+   `offset_target_pct`/10 beträgt; ein größerer Versatz gibt einen niedrigeren SOC). Nicht ausgewertet wird eine Periode mit geänderten Sollwerten, Raumzahl oder
+   Fensterzustand, im Rückfall (`invalidate()`), über 8 h und ohne gemessene Abweichung. Versatz und größte Abweichung liegen im `Store` unter `anchor`
+   (verzögert 60 s, beim Setzen sofort).
+3a. SOC (FR-SOC-01, `core/soc.py`): je aktivem Raum `room_fill` (Füllstand 0 bis 1 von unterem Randbereich, Wohlfühlbereich und oberem
    Randbereich aus Abstand zum aktuellen Sollwert, Regelbereich und absoluter Grenze; Sollwert genau bei 0,5 des Wohlfühlbereichs, jede
    Seite mit eigener Steigung; Randbereich ohne Breite = Stufe an der Kante), dann `soc_of`: 10 % · Mittel der unteren Füllstände +
    80 % · gewichtetes Mittel der Wohlfühl-Füllstände (Gewicht `exp(−f² / 2σ²)` mit `σ = soc_sigma`, Standard 0,3, relativ zum kältesten

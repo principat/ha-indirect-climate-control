@@ -13,3 +13,36 @@ reset_learned_capacity:
       selector:
         config_entry:
           integration: climate_control
+
+set_display_offset:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: climate_control
+    value:
+      required: true
+      default: 3.5
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 0.05
+          mode: box
+
+set_largest_deviation:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: climate_control
+    value:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 0.05
+          mode: box

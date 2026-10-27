@@ -70,7 +70,15 @@ PARAMETER_GROUPS: dict[str, tuple[str, ...]] = {
         "neutral_mode",
         "cycle_s",
     ),
-    "soc": ("soc_sigma", "soc_smoothing_s", "outlier_k"),
+    "soc": (
+        "soc_sigma",
+        "display_offset_k",
+        "offset_threshold_pct",
+        "offset_target_pct",
+        "offset_cap_factor",
+        "soc_smoothing_s",
+        "outlier_k",
+    ),
     "safety": (
         "overheat_k",
         "overheat_s",

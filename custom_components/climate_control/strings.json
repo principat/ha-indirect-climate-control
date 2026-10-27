@@ -504,6 +504,10 @@
         "title": "State of charge (SOC)",
         "data": {
           "soc_sigma": "SOC weighting width",
+          "display_offset_k": "Display offset",
+          "offset_threshold_pct": "Offset adaptation threshold (points)",
+          "offset_target_pct": "Offset target deviation (points)",
+          "offset_cap_factor": "Offset cap factor",
           "soc_smoothing_s": "SOC smoothing (s)",
           "outlier_k": "Outlier limit per cycle"
         },
@@ -511,6 +515,34 @@
           "help_soc_sigma": {
             "name": "Help: SOC weighting width",
             "description": "Width of the bell curve that weights the rooms in the comfort zone of the SOC (the control range of a room, setpoint at 0.5, measured from 0 to 1). A cold room weighs 1, a warm room weighs little. Smaller: the SOC follows the coldest room more closely, larger: it follows the mean of all rooms. Default 0.3.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_display_offset_k": {
+            "name": "Help: Display offset",
+            "description": "Start value of the display offset for the SOC. The remembered temperature of a room follows a rising device temperature only when the reading exceeds the remembered value by this amount, and then keeps this distance. It hides the self-heating of the display while units work. The value is adapted in operation and shown as a diagnostic value. Default 3.5.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_offset_threshold_pct": {
+            "name": "Help: Offset adaptation threshold (points)",
+            "description": "If the SOC at the end of a work period differs from the SOC after all units have settled by more than this many points, the display offset is adapted. Default 10 points.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_offset_target_pct": {
+            "name": "Help: Offset target deviation (points)",
+            "description": "After an adaptation, the SOC at the end of the work period, recomputed with the new display offset, may deviate from the settled SOC by at most this many points. Default 5 points.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_offset_cap_factor": {
+            "name": "Help: Offset cap factor",
+            "description": "The adapted display offset never exceeds this factor times the largest measured deviation of a device temperature above its setpoint. Default 1.25.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -754,6 +786,12 @@
       },
       "room_storage": {
         "name": "Storage capacity"
+      },
+      "display_offset": {
+        "name": "Display offset"
+      },
+      "largest_deviation": {
+        "name": "Largest measured deviation"
       }
     }
   },
@@ -781,6 +819,34 @@
         "config_entry_id": {
           "name": "Installation",
           "description": "Only this installation. Empty = all installations."
+        }
+      }
+    },
+    "set_display_offset": {
+      "name": "Set display offset",
+      "description": "Sets the display offset of the SOC by hand. It is adapted again after the next work period if the SOC deviates too much.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Only this installation. Empty = all installations."
+        },
+        "value": {
+          "name": "Display offset",
+          "description": "New display offset in the unit of the plant. The field is pre-filled with the start value."
+        }
+      }
+    },
+    "set_largest_deviation": {
+      "name": "Set largest measured deviation",
+      "description": "Sets the largest measured deviation of a device temperature above its setpoint by hand. Empty = not measured yet; the display offset is then not adapted until a deviation is measured.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Installation",
+          "description": "Only this installation. Empty = all installations."
+        },
+        "value": {
+          "name": "Largest deviation",
+          "description": "New value in the unit of the plant. Empty = not measured yet."
         }
       }
     }

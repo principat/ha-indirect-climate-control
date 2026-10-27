@@ -13,12 +13,15 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
+    ATTR_VALUE,
     CONF_OUTDOOR_POWER,
     DOMAIN,
     LOGGER,
     ROOM_WINDOW,
     SERVICE_RESET_LEARNED,
     SERVICE_RUN_CYCLE,
+    SERVICE_SET_DISPLAY_OFFSET,
+    SERVICE_SET_LARGEST_DEVIATION,
     SUBENTRY_ROOM,
 )
 from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator
@@ -28,6 +31,18 @@ from .data import as_list
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 RUN_CYCLE_SCHEMA = vol.Schema({vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
+SET_DISPLAY_OFFSET_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_VALUE): vol.All(vol.Coerce(float), vol.Range(min=0)),
+    }
+)
+SET_LARGEST_DEVIATION_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Optional(ATTR_VALUE): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0))),
+    }
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -47,7 +62,29 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 coordinator: ClimateControlCoordinator = entry.runtime_data
                 await coordinator.async_reset_learned()
 
+    async def set_display_offset(call: ServiceCall) -> None:
+        """FR-SOC-05: the display offset by hand."""
+        wanted = call.data.get(ATTR_CONFIG_ENTRY_ID)
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+            if wanted in (None, entry.entry_id):
+                coordinator: ClimateControlCoordinator = entry.runtime_data
+                await coordinator.async_set_display_offset(call.data[ATTR_VALUE])
+
+    async def set_largest_deviation(call: ServiceCall) -> None:
+        """FR-SOC-05: the largest measured deviation by hand, no value = not measured yet."""
+        wanted = call.data.get(ATTR_CONFIG_ENTRY_ID)
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+            if wanted in (None, entry.entry_id):
+                coordinator: ClimateControlCoordinator = entry.runtime_data
+                await coordinator.async_set_largest_deviation(call.data.get(ATTR_VALUE))
+
     hass.services.async_register(DOMAIN, SERVICE_RUN_CYCLE, run_cycle, RUN_CYCLE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_DISPLAY_OFFSET, set_display_offset, SET_DISPLAY_OFFSET_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_LARGEST_DEVIATION, set_largest_deviation, SET_LARGEST_DEVIATION_SCHEMA
+    )
     hass.services.async_register(DOMAIN, SERVICE_RESET_LEARNED, reset_learned, RUN_CYCLE_SCHEMA)
     return True
 

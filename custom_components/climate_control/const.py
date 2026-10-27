@@ -33,5 +33,8 @@ ROOM_STEP = "step"  # smallest change of the device temperature the unit reports
 
 SERVICE_RUN_CYCLE = "run_cycle"
 SERVICE_RESET_LEARNED = "reset_learned_capacity"
+SERVICE_SET_DISPLAY_OFFSET = "set_display_offset"
+SERVICE_SET_LARGEST_DEVIATION = "set_largest_deviation"
+ATTR_VALUE = "value"
 STORAGE_VERSION = 1
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"

@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .anchor import AnchorTracker
 from .config import InstallationConfig, RoomConfig
 from .distribution import rank
 from .load import LoadControl, LoadModel
@@ -44,6 +45,7 @@ class Controller:
         self._threshold = ThresholdConfig(cfg.p_min_w, p.start_ratio, p.stop_ratio)
         self._filter = OutlierFilter(p.outlier_k)
         self._smoother = SocSmoother(p.soc_smoothing_s)
+        self.anchor = AnchorTracker(p)  # FR-SOC-03: the remembered temperatures of the SOC
         self._overheat_since: dict[str, datetime] = {}
         self._plan_missing_since: datetime | None = None
         self._run_since: datetime | None = None
@@ -58,6 +60,8 @@ class Controller:
         self._stopped_at: dict[str, datetime] = {}
         self._last_busy: datetime | None = None
         self._assessed: dict[str, float] = {}
+        self._busy = False  # a unit works in heating or cooling mode (this cycle)
+        self._all_settled = True  # no unit works and the readings have settled (FR-SRC-02)
 
     def _reset_load(self) -> None:
         self._load.reset()
@@ -74,20 +78,25 @@ class Controller:
         move up in the ranking. When a unit stops, its reported value counts once. After the settling time
         without any working unit the reported values count again.
         """
-        if self.cfg.params.settle_s <= 0:  # a settling time of 0 switches the holding off
-            self._working = set()
-            self._stopped_at = {}
-            self._assessed = dict(live)
-            return dict(live)
         working_now = {
             rid
             for rid in live
             if (rid in self._issued and self._issued[rid].mode in WITH_SETPOINT)
             or rooms[rid].mode in WITH_SETPOINT
         }
+        settle_s = self.cfg.params.settle_s
+        self._busy = bool(working_now)
         if working_now:
             self._last_busy = now
-        elif self._last_busy is None or (now - self._last_busy).total_seconds() >= self.cfg.params.settle_s:
+        self._all_settled = not working_now and (
+            settle_s <= 0 or self._last_busy is None or (now - self._last_busy).total_seconds() >= settle_s
+        )
+        if settle_s <= 0:  # a settling time of 0 switches the holding off
+            self._working = set()
+            self._stopped_at = {}
+            self._assessed = dict(live)
+            return dict(live)
+        if not working_now and self._all_settled:
             self._working = set()
             self._stopped_at = {}
             self._assessed = dict(live)
@@ -155,6 +164,7 @@ class Controller:
             # A new season starts a new state: buffer, run and timers belong to the old one.
             self._season = season
             self._smoother = SocSmoother(p.soc_smoothing_s)
+            self.anchor.abandon()
             self._overheat_since.clear()
             self._run_since = None
             self.running = False
@@ -178,8 +188,12 @@ class Controller:
 
         soc: float | None = None
         worst = worst_room(((r, temps[r.id]) for r in active), season)
+        # FR-SOC-03: the SOC uses the remembered temperatures, ranking and protection the assessed ones
+        anchored = self.anchor.step(
+            season, active, {r.id: live[r.id] for r in active}, self._busy, self._all_settled
+        )
         if worst is not None:
-            fills = [room_fill(r, temps[r.id], season) for r in active]
+            fills = [room_fill(r, anchored[r.id], season) for r in active]
             soc = round(self._smoother.add(now, soc_of(fills, p.soc_sigma)), 2)
 
         for r in active:
@@ -201,6 +215,8 @@ class Controller:
             missing_s = 0.0
         # FR-SAFE-04: the building is slow, so a missing plan is waited out before the fallback starts.
         fallback = plan_missing and missing_s >= p.fallback_delay_s
+        if fallback:
+            self.anchor.invalidate()  # FR-SOC-04: a period in the fallback is not evaluated
         requested_w = 0.0
         served: tuple[RoomConfig, ...] = ()
         if plan_missing and not fallback:

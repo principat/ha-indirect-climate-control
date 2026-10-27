@@ -34,6 +34,9 @@ def test_core_has_no_plant_defaults() -> None:
         {"rooms": (replace(room("a"), limit_up=1.0),)},
         {"rooms": (replace(room("a"), band_up=0.0),)},
         {"params": Parameters(soc_sigma=0)},
+        {"params": Parameters(display_offset_k=-1)},  # FR-SOC-03
+        {"params": Parameters(offset_target_pct=12, offset_threshold_pct=10)},  # FR-SOC-04
+        {"params": Parameters(offset_cap_factor=0.9)},
         {"params": Parameters(neutral_mode=Mode.HEAT)},
     ],
 )

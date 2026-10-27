@@ -140,6 +140,20 @@ SENSORS: tuple[CCSensorDescription, ...] = (
         diagnostic=True,
     ),
     CCSensorDescription(
+        key="display_offset",  # FR-SOC-04: the display offset in use, a diagnostic value
+        value=lambda d: d.display_offset,
+        unit=UnitOfTemperature.KELVIN,
+        state_class=SensorStateClass.MEASUREMENT,
+        diagnostic=True,
+    ),
+    CCSensorDescription(
+        key="largest_deviation",
+        value=lambda d: d.largest_deviation,
+        unit=UnitOfTemperature.KELVIN,
+        state_class=SensorStateClass.MEASUREMENT,
+        diagnostic=True,
+    ),
+    CCSensorDescription(
         key="charge_cost",
         value=lambda d: d.planner.charge_cost,
         unit=COST,

@@ -372,3 +372,68 @@ def test_the_setpoint_is_a_fixed_value_or_an_entity_chosen_in_the_configuration(
     _service(sim, "input_number", "set_value", entity_id="input_number.sim_setpoint", value=28)
     _cycle(sim)
     assert float(_state(sim, deviation)["state"]) == 1.0
+
+
+def _soc(ha: requests.Session) -> float:
+    return float(_state(ha, "sensor.climate_control_state_of_charge")["state"])
+
+
+@pytest.mark.req("FR-SOC-03")
+def test_the_soc_is_built_from_the_remembered_temperatures(
+    sim: requests.Session, entry: dict[str, Any]
+) -> None:
+    entry_id = entry["entry_id"]
+    _set_option(sim, entry_id, "soc", "soc_smoothing_s", 0)  # the raw value: the median would hide the step
+    try:
+        _service(sim, DOMAIN, "set_display_offset", value=3.5)
+        _service(sim, SIM, "set_plan", power_kw=2.0)
+        _cycle(sim)  # a unit starts to heat
+        _cycle(sim)  # the work period begins with the readings of 20
+        heating = next(u for u in UNITS if _state(sim, u)["state"] == "heat")
+        unit = heating.split(".", 1)[1]
+        before = _soc(sim)
+        _service(sim, SIM, "set_reading", unit=unit, temperature=23)  # 3 above the start: within the offset
+        _cycle(sim)
+        assert _soc(sim) == before
+        _service(sim, SIM, "set_reading", unit=unit, temperature=25)  # beyond: the remembered value follows
+        _cycle(sim)
+        assert _soc(sim) > before
+    finally:
+        _set_option(sim, entry_id, "soc", "soc_smoothing_s", 900)
+
+
+@pytest.mark.req("FR-SOC-04")
+def test_the_display_offset_is_a_diagnostic_value_and_its_parameters_are_options(
+    sim: requests.Session, entry: dict[str, Any]
+) -> None:
+    for key in ("display_offset", "largest_measured_deviation"):
+        assert _state(sim, f"sensor.climate_control_{key}")["state"] != "unavailable"
+    flow = _post(sim, "/api/config/config_entries/options/flow", {"handler": entry["entry_id"]})
+    form = _post(sim, f"/api/config/config_entries/options/flow/{flow['flow_id']}", {"next_step_id": "soc"})
+    names = {field["name"] for field in form["data_schema"]}
+    assert {"display_offset_k", "offset_threshold_pct", "offset_target_pct", "offset_cap_factor"} <= names
+    ha_delete = sim.delete(
+        _url(sim, f"/api/config/config_entries/options/flow/{form['flow_id']}"), timeout=30
+    )
+    assert ha_delete.status_code == 200
+
+
+@pytest.mark.req("FR-SOC-05")
+def test_the_values_are_set_by_service_and_survive_a_reload(
+    sim: requests.Session, entry: dict[str, Any]
+) -> None:
+    entry_id = entry["entry_id"]
+    try:
+        _service(sim, DOMAIN, "set_display_offset", value=4.25)
+        _service(sim, DOMAIN, "set_largest_deviation", value=3.5)
+        assert float(_state(sim, "sensor.climate_control_display_offset")["state"]) == 4.25
+        assert float(_state(sim, "sensor.climate_control_largest_measured_deviation")["state"]) == 3.5
+        _post(sim, f"/api/config/config_entries/entry/{entry_id}/reload")
+        _wait_loaded(sim, entry_id)
+        _cycle(sim)
+        assert float(_state(sim, "sensor.climate_control_display_offset")["state"]) == 4.25  # kept
+        assert float(_state(sim, "sensor.climate_control_largest_measured_deviation")["state"]) == 3.5
+        _service(sim, DOMAIN, "set_largest_deviation")  # empty: not measured yet
+        assert _state(sim, "sensor.climate_control_largest_measured_deviation")["state"] == "unknown"
+    finally:
+        _service(sim, DOMAIN, "set_display_offset", value=3.5)

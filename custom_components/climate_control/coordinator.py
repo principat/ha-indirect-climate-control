@@ -66,6 +66,8 @@ class CycleData:
     rooms: dict[str, RoomDiagnostics] = field(default_factory=dict)
     season: Season = Season.HEAT
     learned: dict[Season, Learned] = field(default_factory=dict)
+    display_offset: float | None = None  # FR-SOC-03, diagnostic value (FR-SOC-04)
+    largest_deviation: float | None = None
 
 
 class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
@@ -101,6 +103,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._journal_path = Path(hass.config.path(DOMAIN, f"{entry.entry_id}.jsonl"))
         self._learned_dirty = False  # changed since the last write
         self._load_revision = 0
+        self._anchor_revision = 0
         self._last_power: float | None = None
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
@@ -125,6 +128,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             self.learner.restore(stored)
             if self.controller is not None and isinstance(stored.get("load"), dict):
                 self.controller.load_model.restore(stored["load"])
+            if self.controller is not None and isinstance(stored.get("anchor"), dict):
+                self.controller.anchor.restore(stored["anchor"])
+                self._anchor_revision = self.controller.anchor.revision
 
     async def async_reset_learned(self) -> None:
         """FR-PLNR-03: back to the start values (service, not offered in the daily use)."""
@@ -134,6 +140,25 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._learned_dirty = False
         await self._store.async_save(self._stored())
         await self.async_request_refresh()
+
+    async def async_set_display_offset(self, value: float) -> None:
+        """FR-SOC-05: set by hand (service)."""
+        if self.controller is not None:
+            self.controller.anchor.set_offset(value)
+            await self._save_anchor()
+
+    async def async_set_largest_deviation(self, value: float | None) -> None:
+        """FR-SOC-05: set by hand, None = not measured yet (service)."""
+        if self.controller is not None:
+            self.controller.anchor.set_largest(value)
+            await self._save_anchor()
+
+    async def _save_anchor(self) -> None:
+        assert self.controller is not None
+        self._anchor_revision = self.controller.anchor.revision
+        self._learned_dirty = False
+        await self._store.async_save(self._stored())
+        await self.async_refresh()  # the diagnostic values show the new value at once
 
     async def async_shutdown(self) -> None:
         if self._learned_dirty:  # a reload must not lose what the delayed write has not stored yet
@@ -146,6 +171,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         data = self.learner.snapshot()
         if self.controller is not None:
             data["load"] = self.controller.load_model.snapshot()
+            data["anchor"] = self.controller.anchor.snapshot()
         return data
 
     @property
@@ -193,6 +219,8 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             room_diagnostics(current, result.temperatures, season, step_power, result.steps),
             season,
             learned,
+            self.controller.anchor.offset,
+            self.controller.anchor.largest,
         )
 
     async def _record(self, now: datetime, result: CycleResult, power_w: float | None) -> None:
@@ -249,8 +277,14 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
 
     def _store_load_changes(self) -> None:
         """FR-LOAD-02: the learned power per step survives restarts."""
-        if self.controller is not None and self.controller.load_model.revision != self._load_revision:
+        if self.controller is None:
+            return
+        if (
+            self.controller.load_model.revision != self._load_revision
+            or self.controller.anchor.revision != self._anchor_revision
+        ):
             self._load_revision = self.controller.load_model.revision
+            self._anchor_revision = self.controller.anchor.revision
             self._learned_dirty = True
             self._store.async_delay_save(self._stored, 60)
 

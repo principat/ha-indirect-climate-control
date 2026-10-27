@@ -504,6 +504,10 @@
         "title": "Füllstand (SOC)",
         "data": {
           "soc_sigma": "Breite der SOC-Gewichtung",
+          "display_offset_k": "Anzeigeversatz",
+          "offset_threshold_pct": "Schwelle Anpassung Anzeigeversatz (Punkte)",
+          "offset_target_pct": "Zielabweichung Anpassung (Punkte)",
+          "offset_cap_factor": "Obergrenze Anzeigeversatz (Faktor)",
           "soc_smoothing_s": "SOC-Glättung (s)",
           "outlier_k": "Ausreißergrenze je Zyklus"
         },
@@ -511,6 +515,34 @@
           "help_soc_sigma": {
             "name": "Hilfe: Breite der SOC-Gewichtung",
             "description": "Breite der Glockenkurve, mit der die Räume im Wohlfühlbereich des SOC gewichtet werden (der Regelbereich eines Raums, Sollwert bei 0,5, gemessen von 0 bis 1). Ein kalter Raum zählt mit 1, ein warmer wenig. Kleiner: Der SOC folgt stärker dem kältesten Raum, größer: stärker dem Mittelwert aller Räume. Standard 0,3.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_display_offset_k": {
+            "name": "Hilfe: Anzeigeversatz",
+            "description": "Startwert des Anzeigeversatzes für den SOC. Die gemerkte Temperatur eines Raums folgt einer steigenden Gerätetemperatur erst, wenn die Anzeige den gemerkten Wert um diesen Betrag übersteigt, und behält dann diesen Abstand. Er blendet die Eigenerwärmung der Anzeige bei arbeitenden Geräten aus. Der Wert wird im Betrieb angepasst und als Diagnosewert angezeigt. Standard 3,5.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_offset_threshold_pct": {
+            "name": "Hilfe: Schwelle Anpassung Anzeigeversatz (Punkte)",
+            "description": "Weicht der SOC am Ende einer Arbeitsperiode um mehr als so viele Punkte vom SOC nach dem Einschwingen aller Geräte ab, wird der Anzeigeversatz angepasst. Standard 10 Punkte.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_offset_target_pct": {
+            "name": "Hilfe: Zielabweichung Anpassung (Punkte)",
+            "description": "Nach einer Anpassung darf der mit dem neuen Anzeigeversatz neu gerechnete SOC am Ende der Arbeitsperiode höchstens um so viele Punkte vom SOC nach dem Einschwingen abweichen. Standard 5 Punkte.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_offset_cap_factor": {
+            "name": "Hilfe: Obergrenze Anzeigeversatz (Faktor)",
+            "description": "Der angepasste Anzeigeversatz überschreitet nie dieses Vielfache der größten gemessenen Abweichung einer Gerätetemperatur über dem Sollwert. Standard 1,25.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -754,6 +786,12 @@
       },
       "room_storage": {
         "name": "Speicherkapazität"
+      },
+      "display_offset": {
+        "name": "Anzeigeversatz"
+      },
+      "largest_deviation": {
+        "name": "Größte gemessene Abweichung"
       }
     }
   },
@@ -781,6 +819,34 @@
         "config_entry_id": {
           "name": "Anlage",
           "description": "Nur diese Anlage. Leer = alle Anlagen."
+        }
+      }
+    },
+    "set_display_offset": {
+      "name": "Anzeigeversatz setzen",
+      "description": "Setzt den Anzeigeversatz des SOC von Hand. Er wird nach der nächsten Arbeitsperiode wieder angepasst, wenn der SOC zu stark abweicht.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Anlage",
+          "description": "Nur diese Anlage. Leer = alle Anlagen."
+        },
+        "value": {
+          "name": "Anzeigeversatz",
+          "description": "Neuer Anzeigeversatz in der Temperatureinheit der Anlage. Das Feld ist mit dem Startwert vorbelegt."
+        }
+      }
+    },
+    "set_largest_deviation": {
+      "name": "Größte gemessene Abweichung setzen",
+      "description": "Setzt die größte gemessene Abweichung einer Gerätetemperatur über dem Sollwert von Hand. Leer = noch nicht gemessen; der Anzeigeversatz wird dann nicht angepasst, bis eine Abweichung gemessen ist.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Anlage",
+          "description": "Nur diese Anlage. Leer = alle Anlagen."
+        },
+        "value": {
+          "name": "Größte Abweichung",
+          "description": "Neuer Wert in der Temperatureinheit der Anlage. Leer = noch nicht gemessen."
         }
       }
     }
