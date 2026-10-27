@@ -159,35 +159,27 @@ def _two_active() -> tuple[InstallationConfig, Serving]:
     return cfg, sv
 
 
-def _cut_off_with(others_active: int, power_rose: bool) -> Turn:
-    """r1 at the cut-off distance, `others_active` further rooms served and active."""
-    cfg, sv = cfg3(), Serving()
-    step(sv, cfg, 0, 3300, 1300, live_at())
-    step(sv, cfg, 10, 3300, 1300, live_at())
-    step(sv, cfg, 11, 3300, 1300, live_at(r1=21.0, r2=21.0))
-    if others_active == 2:
-        step(sv, cfg, 21, 3300, 1300, live_at(r1=22.0, r2=21.5))
-        step(sv, cfg, 22, 3300, 1300, live_at(r1=22.0, r2=21.5, r3=21.0))
-    measured = 1700.0 if power_rose else 1300.0
-    return step(sv, cfg, 23, 1300, measured, live_at(r1=23.5, r2=21.5, r3=21.0))
+@pytest.mark.req("FR-LOAD-08")
+def test_with_several_active_rooms_the_unit_does_not_leave_before_its_replacement_is_active() -> None:
+    cfg, sv = _two_active()  # r1 and r2 are active, r3 could still be served
+    assert step(sv, cfg, 12, 1300, 2300, live_at(r1=22.5, r2=21.0)).active == (
+        "r1",
+        "r2",
+        "r3",
+    )  # r3 replaces r1
+    cut = step(sv, cfg, 13, 1300, 2300, live_at(r1=23.5, r2=21.5, r3=20.0))
+    assert not cut.released  # r1 is at the cut-off distance, but r3 has not risen yet
+    waiting = step(sv, cfg, 14, 1300, 2300, live_at(r1=23.5, r2=21.5, r3=20.5))
+    assert not waiting.released
+    done = step(sv, cfg, 15, 1300, 2300, live_at(r1=23.5, r2=21.5, r3=21.0))
+    assert done.released == ("r1",) and set(done.active) == {"r2", "r3"}
 
 
 @pytest.mark.req("FR-LOAD-08")
-def test_with_one_other_active_room_the_unit_leaves_once_the_power_rose_again() -> None:
-    turn = _cut_off_with(1, power_rose=True)
-    assert turn.released == ("r1",) and turn.active == ("r2",)
-
-
-@pytest.mark.req("FR-LOAD-08")
-def test_with_one_other_active_room_the_unit_stays_while_the_power_did_not_rise() -> None:
-    turn = _cut_off_with(1, power_rose=False)
-    assert not turn.released and "r1" in turn.active
-
-
-@pytest.mark.req("FR-LOAD-08")
-def test_with_two_other_active_rooms_the_unit_leaves_directly() -> None:
-    turn = _cut_off_with(2, power_rose=False)
-    assert turn.released == ("r1",) and set(turn.active) == {"r2", "r3"}
+def test_a_unit_at_the_cut_off_distance_leaves_at_once_when_the_maximum_number_of_rooms_is_served() -> None:
+    cfg, sv = _two_active()
+    turn = step(sv, cfg, 12, 1300, 2300, live_at(r1=23.5, r2=21.0), max_rooms=1)
+    assert turn.released == ("r1",) and turn.active == ("r2",)  # no further room may start
 
 
 @pytest.mark.req("FR-LOAD-08")
@@ -237,42 +229,62 @@ def _cycle(
 
 
 @pytest.mark.req("FR-SRC-02")
-def test_the_readings_are_frozen_while_a_unit_works_and_the_cut_off_counts_on_the_live_value() -> None:
+def test_a_working_unit_holds_its_value_and_the_cut_off_counts_on_the_live_value() -> None:
     ctrl = Controller(cfg3())
     result, last = _cycle(ctrl, 0, live_at(), None, 1300.0)
     assert result.served == ("r1",)
-    # r1 warms up, the other units are disturbed by it: their readings rise, but the rooms are rated frozen
-    for minute, (r1, r2) in enumerate(((21.0, 20.5), (22.0, 21.0), (22.5, 21.5)), start=1):
+    # r1 warms up and distorts its own reading, which is held; a neutral unit may fall
+    for minute, (r1, r2) in enumerate(((21.0, 19.5), (22.0, 19.0), (22.5, 19.0)), start=1):
         result, last = _cycle(ctrl, minute, live_at(r1=r1, r2=r2), last, 1300.0)
-        assert result.temperatures["r2"] == SETPOINT  # frozen at the last settled value
+        assert result.temperatures["r1"] == SETPOINT  # held while r1 works
+        assert result.temperatures["r2"] == r2  # a neutral unit counts when its reading falls
     # r1 reached 2.5 above its setpoint (the join distance): the next room starts, measured on the live value
     assert set(result.served) == {"r1", "r2"} or set(result.served) == {"r1", "r3"}
     second = next(rid for rid in result.served if rid != "r1")
+    start = live_at(r1=22.5, r2=19.0)[second]
     # the new room becomes active by its live rise (1 above its reading at the start), the power rises again
-    result, last = _cycle(ctrl, 4, live_at(r1=23.0, **{second: 22.0}), last, 1700.0)
-    assert "r1" in result.served  # r1 has not cut off yet
+    result, last = _cycle(ctrl, 4, live_at(r1=23.0, **{second: start + 0.5}), last, 1700.0)
+    assert "r1" in result.served  # r1 has not cut off yet and its replacement is not active yet
     # the cut-off of r1 is its live reading of 3.5 above the setpoint
-    result, last = _cycle(ctrl, 5, live_at(r1=23.5, **{second: 22.5}), last, 1700.0)
+    result, last = _cycle(ctrl, 5, live_at(r1=23.5, **{second: start + 1.0}), last, 1700.0)
     assert "r1" not in result.served and second in result.served and last["r1"][0] is Mode.FAN
 
 
 @pytest.mark.req("FR-SRC-02")
-def test_the_freeze_ends_after_the_settling_time_once_all_units_are_neutral() -> None:
+def test_neutral_units_can_only_fall_while_another_unit_works_and_follow_the_reading_afterwards() -> None:
     ctrl = Controller(cfg3())
-    cold = live_at()
-    result, last = _cycle(ctrl, 0, cold, None, 1300.0)
+    result, last = _cycle(ctrl, 0, live_at(), None, 1300.0)
+    assert result.served == ("r1",)
+    # r1 works and warms its neighbour r2 through the pipes: the rise of r2 does not count, a fall does
+    for minute, r2, expected in ((1, 21.0, 20.0), (2, 19.5, 19.5), (3, 20.5, 19.5)):
+        result, last = _cycle(ctrl, minute, live_at(r1=20.5, r2=r2), last, 1300.0)
+        assert result.temperatures["r2"] == expected
+    # after the settling time without any working unit the reported value counts again
+    seen = {}
+    for minute in (12, 13, 14, 25):
+        now = T0 + minute * MIN
+        rooms = {rid: RoomState(Mode.FAN, t) for rid, t in live_at(r1=20.5, r2=21.0).items()}
+        seen[minute] = ctrl.step(now, plan(0, now), rooms).temperatures["r2"]
+    assert seen[14] == 19.5 and seen[25] == 21.0
+
+
+@pytest.mark.req("FR-SRC-02")
+def test_after_a_stop_only_the_fall_of_the_reading_counts_until_it_has_settled() -> None:
+    ctrl = Controller(cfg3())
+    result, last = _cycle(ctrl, 0, live_at(), None, 1300.0)
     assert result.running
-    # after the minimum run time the plan is zero: the units go neutral, the next cycle sees them neutral
     result, last = _cycle(ctrl, 11, live_at(r1=19.0), last, 1300.0)
     seen = {}
-    for minute in (12, 13, 16, 24):  # the plan is zero from minute 12, the units are neutral from minute 13
+    # the plan is zero from minute 12, the unit is neutral from minute 13: its reading falls, then rises
+    for minute, reading in ((12, 20.5), (13, 22.0), (14, 21.0), (15, 22.0), (24, 22.0)):
         now = T0 + minute * MIN
-        rooms = {rid: RoomState(Mode.FAN, t) for rid, t in live_at(r1=19.0, r2=19.5).items()}
-        seen[minute] = ctrl.step(now, plan(0, now), rooms)
-    # 3 minutes after the units were neutral: still frozen at the old value (setpoint 20)
-    assert seen[16].temperatures["r1"] == SETPOINT
-    # more than the settling time (10 minutes) after the first neutral cycle the reading counts again
-    assert seen[24].temperatures["r1"] == 19.0
+        rooms = {rid: RoomState(Mode.FAN, t) for rid, t in live_at(r1=reading, r2=19.5).items()}
+        seen[minute] = ctrl.step(now, plan(0, now), rooms).temperatures["r1"]
+    assert seen[12] == 20.0  # the unit still works: held at the value from before the heating
+    assert seen[13] == 22.0  # stopped: the reading is followed from here
+    assert seen[14] == 21.0  # the fall counts
+    assert seen[15] == 21.0  # a rise does not, the reading has not settled
+    assert seen[24] == 22.0  # settled (10 minutes after the stop): the reported value counts again
 
 
 @pytest.mark.req("FR-SRC-02")

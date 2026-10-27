@@ -479,7 +479,7 @@
           },
           "help_settle_s": {
             "name": "Help: Settling time of the device temperatures (s)",
-            "description": "While a unit heats or cools the device temperatures are frozen at their last settled value because the working unit distorts the readings. The freeze ends when all units are neutral again and this time has passed. Only then rooms are checked for undercooling again. 0 switches the freezing off. Default 600 s (10 min).",
+            "description": "A unit that heats or cools distorts its own reading and, through the pipes, the readings of the neutral units. While any unit works and for this time after the last one stopped, a working unit holds its value and every other unit can only fall in the assessment; heated rooms fall back after the stop. Afterwards the reported values count again. 0 switches the holding off. Default 600 s (10 min).",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

@@ -5,17 +5,16 @@ its device temperature is the cut-off distance beyond the setpoint (the unit reg
 More rooms are added in the order of the deviation, never at once:
 
 - when the measured outdoor power falls below the request after the start-up phase,
-- when every served room has reached the join distance (the cut-off distance minus a margin), so that the next
-  room starts before the first one cuts off and has time to draw load,
-- when a served room has cut off.
+- when a served room has reached the join distance (the cut-off distance minus a margin) and has no
+  replacement yet, so that the replacement starts before the room cuts off and has time to draw load; a room
+  that has cut off counts no longer against the maximum number of rooms.
 
 A room that was added counts as active only when its live device temperature rose by the activation rise since
-its start. A room at the cut-off distance is released when others carry the plant: directly with two other
-active rooms, with one other active room only after the measured power rose again, with none it waits for a
-successor. A surplus of the measured power over the request releases the most advanced room once the start-up
-phase is over.
+its start. A room at the cut-off distance is never released before its replacement is active; without a room
+that could replace it, it leaves at once. A surplus of the measured power over the request releases the most
+advanced room once the start-up phase is over.
 
-All distances are measured on the live device temperature of the served room, never on the frozen one.
+All distances are measured on the live device temperature of the served room, never on the held one.
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ class Served:
     since: datetime
     start_c: float | None  # live device temperature when the room became served
     active: bool = False  # FR-LOAD-06: the device temperature rose by the activation rise
-    floor_w: float | None = None  # lowest measured outdoor power since the start (FR-LOAD-08: "rose again")
+    replaces: str | None = None  # FR-LOAD-08: the room this one takes over from when that cuts off
 
 
 @dataclass(frozen=True)
@@ -85,6 +84,9 @@ class Serving:
             reading = live.get(s.room_id)
             return sign * (reading - by_id[s.room_id].setpoint_c) if reading is not None else 0.0
 
+        def room_count() -> int:  # a room that has cut off is no longer a room that works
+            return sum(1 for s in self.rooms.values() if excess(s) < cut - EPS)
+
         for rid in [rid for rid in self.rooms if rid not in present or rid not in by_id]:
             del self.rooms[rid]
             released.append(rid)
@@ -99,33 +101,34 @@ class Serving:
                 )
                 if rose or (now - s.since).total_seconds() >= p.load_settle_max_s:
                     s.active = True
-            if measured_w is not None:
-                s.floor_w = measured_w if s.floor_w is None else min(s.floor_w, measured_w)
-
         candidates = [r for r in ranked if r.id not in self.rooms]
-        # FR-LOAD-08: a room at the cut-off distance leaves when others carry the plant
+        # FR-LOAD-08: a room at the cut-off distance leaves once its replacement is active
         for s in sorted((s for s in self.rooms.values() if excess(s) >= cut - EPS), key=excess, reverse=True):
-            others = [o for o in self.rooms.values() if o.room_id != s.room_id]
-            active_others = [o for o in others if o.active]
-            rose = measured_w is None or any(
-                o.floor_w is None or measured_w > o.floor_w + dead for o in active_others
-            )
-            nobody_next = not others and not candidates
-            if nobody_next or len(active_others) >= 2 or (len(active_others) == 1 and rose):
+            replacement = next((o for o in self.rooms.values() if o.replaces == s.room_id), None)
+            # without a replacement it leaves only when nothing can replace it
+            ready = replacement.active if replacement else not candidates or room_count() >= max_rooms
+            if ready:
                 del self.rooms[s.room_id]
                 released.append(s.room_id)
-
-        # FR-LOAD-06: further rooms
+        # FR-LOAD-06: further rooms, one at a time
         served = list(self.rooms.values())
         pending = any(not s.active for s in served)
-        fresh = any(excess(s) < join - EPS for s in served)
         waited = (now - self._last_change).total_seconds() if self._last_change is not None else float("inf")
         settled = waited >= p.startup_s
         undershot = settled and measured_w is not None and requested_w - measured_w > max(dead, room_w / 2)
-        want = not served or (not pending and (undershot or not fresh))
-        if want and candidates and len(served) < max_rooms:
+        replaced = {s.replaces for s in served if s.replaces is not None}
+        needy = sorted(
+            (s for s in served if excess(s) >= join - EPS and s.room_id not in replaced),
+            key=excess,
+            reverse=True,
+        )
+        counted = room_count()
+        want = not served or (not pending and (undershot or bool(needy)))
+        if want and candidates and counted < max_rooms:
             first = candidates[0]
-            self.rooms[first.id] = Served(first.id, now, live.get(first.id), floor_w=measured_w)
+            self.rooms[first.id] = Served(
+                first.id, now, live.get(first.id), replaces=needy[0].room_id if needy else None
+            )
             self._last_change = now
         elif released:
             self._last_change = now

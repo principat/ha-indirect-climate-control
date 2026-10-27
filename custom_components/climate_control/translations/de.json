@@ -479,7 +479,7 @@
           },
           "help_settle_s": {
             "name": "Hilfe: Einschwingzeit der Gerätetemperaturen (s)",
-            "description": "Solange ein Gerät heizt oder kühlt, sind die Gerätetemperaturen auf ihrem zuletzt eingeschwungenen Wert eingefroren, weil das arbeitende Gerät die Messung verfälscht. Das Einfrieren endet, wenn alle Geräte wieder neutral sind und diese Zeit vergangen ist. Erst dann werden Räume wieder auf Unterkühlung geprüft. 0 schaltet das Einfrieren aus. Standard 600 s (10 min).",
+            "description": "Ein Gerät, das heizt oder kühlt, verfälscht seine eigene Anzeige und über die Leitungen die der neutralen Geräte. Solange irgendein Gerät arbeitet und für diese Zeit nach dem Stopp des letzten, behält ein arbeitendes Gerät seinen Wert und jedes andere kann in der Bewertung nur fallen; beheizte Räume sinken nach dem Stopp wieder ab. Danach zählen die gemeldeten Werte wieder. 0 schaltet das Halten aus. Standard 600 s (10 min).",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

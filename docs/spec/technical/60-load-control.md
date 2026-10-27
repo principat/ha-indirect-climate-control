@@ -25,26 +25,36 @@ löste den Stopp aus. Die Geräte regeln sich außerdem selbst ab (Sollwert plus
    - kein Raum bedient ist,
    - die gemessene Leistung (Mittel der letzten drei Zyklen) nach der Anlaufphase um mehr als `max(Totband, p̄ / 2)` unter der Anforderung liegt
      (`p̄`: erwartete Leistung eines weiteren Raums; so pendelt die Zahl nicht zwischen zwei Stufen), oder
-   - alle bedienten Räume den Zuschaltabstand `cutoff_k − join_margin_k` (2,5) erreicht haben oder abgeregelt sind.
-   Die Zahl ist durch Pmax begrenzt: `1 + round((Pmax − Pmin) / p̄)` (`load.py: _max_rooms`).
+   - ein bedienter Raum den Zuschaltabstand `cutoff_k − join_margin_k` (2,5) erreicht hat und noch keinen Ersatz hat: Der zugeschaltete Raum
+     ist sein Ersatz (`Served.replaces`).
+   Die Zahl ist durch Pmax begrenzt: `1 + round((Pmax − Pmin) / p̄)` (`load.py: _max_rooms`). Ein Raum am Abschaltabstand zählt dabei
+   nicht mit (`serving.py: room_count`), sonst könnte sein Ersatz nie starten.
 4. **Aktiv.** Ein zugeschalteter Raum gilt als aktiv, wenn seine Livewert-Anzeige seit dem Start um `activation_rise_k` (1) gestiegen ist,
    spätestens nach `load_settle_max_s` (10 min) oder wenn kein Messwert vorliegt.
-5. **Abgabe.** Ein Raum am Abschaltabstand geht in den neutralen Modus, wenn mindestens zwei andere aktiv sind, oder wenn genau ein anderer aktiv
-   ist und die Leistung seit dessen Start wieder gestiegen ist (Mittel > niedrigste Leistung seit dessen Start + Totband), oder wenn weder ein
-   anderer Raum bedient noch einer zulässig ist. Ist kein anderer aktiv, wartet der Raum auf den Nachfolger, der nach 3. sofort startet.
+5. **Abgabe.** Ein Raum am Abschaltabstand geht in den neutralen Modus erst, wenn sein Ersatz aktiv ist, auch bei mehreren bedienten Räumen.
+   Hat er keinen Ersatz, wird einer gestartet (3.). Er geht sofort, wenn niemand ihn ersetzen kann: kein weiterer Raum ist zulässig, oder die
+   Höchstzahl der arbeitenden Räume ist erreicht. Die frühere Regel über die steigende Leistung (`floor_w`) entfiel, die Aktivierung des Ersatzes
+   ersetzt sie.
 6. **Überschuss.** Liegt die Leistung nach der Anlaufphase um mehr als `max(Totband, p̄ / 2)` über der Anforderung und sind mindestens zwei Räume
    bedient und aktiv, gibt der Raum mit dem größten Abstand über dem Sollwert ab (FR-LOAD-07).
 7. **Anlaufphase** (`startup_s`, 600 s) zählt ab dem Start der Anlage und ab jeder Änderung (Zuschalten oder Abgabe) und gilt für das Zuschalten nach der
    Leistung und für den Überschuss, nicht für das Zuschalten nach der Temperatur und nicht für die Abgabe am Abschaltabstand.
 8. **Zurücksetzen** beim Stopp der Anlage und beim Wechsel der Betriebsart.
 
-## Einfrieren der Gerätetemperaturen (FR-SRC-02)
+## Halten und Absinken der Gerätetemperaturen (FR-SRC-02)
 
-`Controller._assess`. Sobald ein Gerät auf Heizen oder Kühlen gestellt ist (befohlen im letzten Zyklus oder gemeldet), gelten für Rangfolge, SOC,
-Überhitzungsregel und Schutz die zuletzt eingeschwungenen Werte (`_frozen`, aus `_assessed` des Zyklus davor). Das Einfrieren endet, wenn kein Gerät
-mehr arbeitet und `settle_s` (600 s) seit dem ersten ruhigen Zyklus vergangen sind (`_calm_since`). `settle_s = 0` schaltet das Einfrieren aus
-(die e2e-Tests nutzen das). Die Livewerte (`live`) gehen nur an den Dauerbetrieb: Abschaltabstand, Zuschaltabstand und Aktivierung. Die Prüfung auf
-Unterkühlung (FR-SAFE-02) arbeitet mit den eingefrorenen Werten und kann daher erst nach dem Einschwingen einen neuen Raum finden.
+`Controller._assess`. Arbeitet irgendein Gerät (Heizen oder Kühlen, befohlen im letzten Zyklus oder gemeldet) oder liegt der Stopp des letzten
+weniger als `settle_s` (600 s) zurück (`_last_busy`), gilt für Rangfolge, SOC, Überhitzungsregel und Schutz: Ein arbeitendes Gerät behält seinen
+zuletzt bewerteten Wert (`_assessed`), jedes andere nimmt `min(bewerteter, gemeldeter Wert)`, eine steigende Anzeige zählt nicht (das beheizte Gerät
+schmarotzt über die Leitungen auch auf die neutralen Geräte). Ein Gerät, das gerade gestoppt hat (`_working` im Zyklus davor), übernimmt seinen
+gemeldeten Wert einmal, danach gilt wieder nur das Absinken. Nach `settle_s` ohne arbeitendes Gerät zählen alle gemeldeten Werte. `settle_s = 0`
+schaltet das Halten aus (die e2e-Tests nutzen das). Die Livewerte (`live`) gehen nur an den Dauerbetrieb: Abschaltabstand, Zuschaltabstand und
+Aktivierung. Annahme (ungeprüft): Ein Wert, der nur fallen darf, kann zu niedrig bleiben, wenn ein Raum von außen wärmer wird, solange die Anlage
+läuft; im Dauerbetrieb schützt davor nur der Abschaltabstand und das Ende nach `settle_s`.
+
+Messung vom 27.10.2026 (Anlass der Änderung): Mit dem Einfrieren der ganzen Anlage blieb der SOC seit dem Anlauf bei 20 %, weil im Dauerbetrieb nie
+alle Geräte ruhen, und immer dieselben vier Geräte wurden bedient, weil ihre alten Werte die Rangfolge bestimmten. Nach dem Stopp fiel die Anzeige
+um 3 bis 4 K zurück, ein Offset für arbeitende Geräte bleibt offen.
 
 ## Lernen der Leistung je Gerät (FR-LOAD-02)
 
@@ -65,7 +75,7 @@ verworfen. Durch die Anlaufphase von 10 Minuten zwischen zwei Änderungen ist da
 
 1. **Abschaltabstand 3,5:** an zwei Geräten gemessen (zwischen 3,5 und 4), die Anzeige ändert sich nur alle 5 Minuten in 0,5-K-Schritten. Andere
    Geräte sind nicht gemessen, das soll der Anlernmodus (FR-LRN-01, Vorschlag) leisten.
-2. **Abgabe bei einem anderen aktiven Raum:** nach der Leistung (steigend), an einem Fall gemessen. Ob die Anlage bei der Abgabe weiterläuft, hängt am
+2. **Abgabe nach dem Ersatz:** Der Ersatz ist aktiv, wenn seine Anzeige um 1 K stieg. Ob die Anlage bei der Abgabe weiterläuft, hängt am
    Nachfolger, der nach den Messungen mindestens zehn Minuten lief.
 3. **Zuschalten nach Temperatur:** Zuschaltabstand 2,5 und Aktivierungsanstieg 1 sind Vorgaben des Nutzers, die an einem Lauf mit zwei Geräten (Keller, Marcel)
    erprobt sind.

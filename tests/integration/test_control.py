@@ -389,16 +389,20 @@ async def test_operating_data_is_recorded_when_something_changes(
 
 
 @pytest.mark.req("FR-SRC-02")
-async def test_the_readings_are_frozen_while_a_unit_works(
+async def test_the_reading_of_a_working_unit_is_held_and_a_neutral_unit_counts_at_once(
     hass: HomeAssistant, units: FakeUnits, setup_entry
 ) -> None:  # noqa: ANN001
     set_plan(hass, 2.0)
     await setup_entry()
     assert units.mode(A) == "heat"
-    soc = _state(hass, "sensor.climate_control_state_of_charge")
-    before = float(soc.state)
-    units.set(C, "fan_only", 18.5)  # the reading of a neutral unit moves while A heats: it is not rated
+    before = float(_state(hass, "sensor.climate_control_state_of_charge").state)
+    units.set(A, "heat", 26.0, units.target(A))  # the working unit distorts its own reading: it is held
     await run_cycle(hass)
     await run_cycle(hass)
     soc = _state(hass, "sensor.climate_control_state_of_charge")
-    assert float(soc.state) == pytest.approx(before) and soc.attributes["worst_room"] != C
+    assert float(soc.state) == pytest.approx(before)
+    units.set(C, "fan_only", 15.0)  # a neutral unit counts as reported (a jump needs a second cycle to count)
+    await run_cycle(hass)
+    await run_cycle(hass)
+    soc = _state(hass, "sensor.climate_control_state_of_charge")
+    assert soc.attributes["worst_room"] == C

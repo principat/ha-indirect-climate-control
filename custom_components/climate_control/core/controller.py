@@ -53,9 +53,9 @@ class Controller:
         self._load = LoadControl(self.load_model)
         self._disturbance: tuple[object, ...] = ()
         self._issued: dict[str, Command] = {}  # what the last cycle commanded
-        # FR-SRC-02: while a unit works the device temperatures are frozen at the last settled value
-        self._frozen: dict[str, float] | None = None
-        self._calm_since: datetime | None = None
+        # FR-SRC-02: a working unit holds its value, every other unit may only fall while the plant works
+        self._working: set[str] = set()
+        self._last_busy: datetime | None = None
         self._assessed: dict[str, float] = {}
 
     def _reset_load(self) -> None:
@@ -66,30 +66,38 @@ class Controller:
     ) -> dict[str, float]:
         """FR-SRC-02: the temperatures that rank, protect and fill the SOC.
 
-        As soon as a unit works in heating or cooling mode the values freeze, because the working unit
-        distorts the readings of all units. The freeze ends once every unit is back in the neutral mode and
-        the readings have settled for the settling time.
+        A unit that works in heating or cooling mode distorts its own reading, and it distorts the readings of
+        the neutral units as well. While any unit works (and for the settling time after the last one stopped)
+        a working unit therefore holds its value and every other unit can only fall: a room that was heated
+        falls back to the room temperature plus the surcharge of the unit, cooler units that were not served
+        move up in the ranking. When a unit stops, its reported value counts once. After the settling time
+        without any working unit the reported values count again.
         """
-        if self.cfg.params.settle_s <= 0:  # a settling time of 0 switches the freezing off
-            self._frozen = None
-            self._calm_since = None
+        if self.cfg.params.settle_s <= 0:  # a settling time of 0 switches the holding off
+            self._working = set()
             self._assessed = dict(live)
             return dict(live)
-        working = any(c.mode in WITH_SETPOINT for c in self._issued.values()) or any(
-            s.mode in WITH_SETPOINT for s in rooms.values()
-        )
-        if working:
-            self._calm_since = None
-            if self._frozen is None:
-                self._frozen = dict(self._assessed) if self._assessed else dict(live)
-        elif self._frozen is not None:
-            if self._calm_since is None:
-                self._calm_since = now
-            if (now - self._calm_since).total_seconds() >= self.cfg.params.settle_s:
-                self._frozen = None
-                self._calm_since = None
-        frozen = self._frozen
-        assessed = {rid: frozen.get(rid, t) if frozen is not None else t for rid, t in live.items()}
+        working_now = {
+            rid
+            for rid in live
+            if (rid in self._issued and self._issued[rid].mode in WITH_SETPOINT)
+            or rooms[rid].mode in WITH_SETPOINT
+        }
+        if working_now:
+            self._last_busy = now
+        elif self._last_busy is None or (now - self._last_busy).total_seconds() >= self.cfg.params.settle_s:
+            self._working = set()
+            self._assessed = dict(live)
+            return dict(live)
+        assessed: dict[str, float] = {}
+        for rid, t in live.items():
+            if rid in working_now:
+                assessed[rid] = self._assessed.get(rid, t)
+            elif rid in self._working or rid not in self._assessed:
+                assessed[rid] = t  # just stopped (or new): the reported value counts once
+            else:
+                assessed[rid] = min(self._assessed[rid], t)
+        self._working = working_now
         self._assessed = dict(assessed)
         return assessed
 
@@ -146,7 +154,7 @@ class Controller:
                 continue
             # FR-SRC-01: the indoor unit's own reading, as reported (the devices report in 0.5 K steps).
             live[room.id] = self._filter.accept(room.id, float(state.temperature_c))
-        # FR-SRC-02: ranking, SOC and protection use the frozen values, served rooms the live ones
+        # FR-SRC-02: ranking, SOC and protection use the assessed values, served rooms the live ones
         temps = self._assess(now, rooms, live)
         active = [
             r
