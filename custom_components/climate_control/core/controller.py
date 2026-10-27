@@ -55,6 +55,7 @@ class Controller:
         self._issued: dict[str, Command] = {}  # what the last cycle commanded
         # FR-SRC-02: a working unit holds its value, every other unit may only fall while the plant works
         self._working: set[str] = set()
+        self._stopped_at: dict[str, datetime] = {}
         self._last_busy: datetime | None = None
         self._assessed: dict[str, float] = {}
 
@@ -75,6 +76,7 @@ class Controller:
         """
         if self.cfg.params.settle_s <= 0:  # a settling time of 0 switches the holding off
             self._working = set()
+            self._stopped_at = {}
             self._assessed = dict(live)
             return dict(live)
         working_now = {
@@ -87,6 +89,7 @@ class Controller:
             self._last_busy = now
         elif self._last_busy is None or (now - self._last_busy).total_seconds() >= self.cfg.params.settle_s:
             self._working = set()
+            self._stopped_at = {}
             self._assessed = dict(live)
             return dict(live)
         assessed: dict[str, float] = {}
@@ -97,9 +100,20 @@ class Controller:
                 assessed[rid] = t  # just stopped (or new): the reported value counts once
             else:
                 assessed[rid] = min(self._assessed[rid], t)
+        for rid in self._working - working_now:
+            self._stopped_at[rid] = now
+        for rid in working_now:
+            self._stopped_at.pop(rid, None)
         self._working = working_now
         self._assessed = dict(assessed)
         return assessed
+
+    def _settled(self, now: datetime, rid: str) -> bool:
+        """A neutral unit whose reading has settled: it did not work, or stopped at least `settle_s` ago."""
+        if rid in self._working:
+            return False
+        stopped = self._stopped_at.get(rid)
+        return stopped is None or (now - stopped).total_seconds() >= self.cfg.params.settle_s
 
     def _held(self, now: datetime) -> bool:
         """FR-PLAN-02: a started plant runs for at least `min_run_s`, counted from its start."""
@@ -214,11 +228,24 @@ class Controller:
             # FR-PLAN-02/03/04: the plan alone decides whether the outdoor unit runs.
             # a room at its absolute limit on the charged side is not heated (or cooled) any further
             # (a unit whose device temperature is already at the cut-off distance has done its part)
+            # FR-LOAD-05: a room at or beyond its setpoint is a buffer room, its unit gets the raised setpoint
+            # (setpoint plus control range), the cut-off distance counts from that device setpoint
+            serving = self._load.serving.rooms
+            buffer = {
+                r.id: serving[r.id].buffer_k
+                if r.id in serving
+                else (r.charge_band(season) if sign * (r.setpoint_c - temps[r.id]) <= 0 else 0.0)
+                for r in active
+            }
+            # the overload limit only applies to neutral rooms whose reading has settled (FR-BAND-01)
             eligible = [
                 r
                 for r in active
-                if sign * (temps[r.id] - r.setpoint_c) < r.charge_limit(season)
-                and sign * (live[r.id] - r.setpoint_c) < p.cutoff_k
+                if (
+                    not self._settled(now, r.id)
+                    or sign * (temps[r.id] - r.setpoint_c) < r.charge_limit(season)
+                )
+                and sign * (live[r.id] - r.setpoint_c) - buffer[r.id] < p.cutoff_k
             ]
             decision = decide(planned_w or 0.0, self.running, self._threshold)
             run, requested_w = decision.run, decision.power_w
@@ -251,6 +278,7 @@ class Controller:
                     disturbance != self._disturbance,
                     live,
                     {r.id for r in active},
+                    buffer,
                 )
                 self._disturbance = disturbance
                 served = tuple(r for r in active if unit_steps.get(r.id, 0) > 0)
@@ -258,8 +286,10 @@ class Controller:
                 self._reset_load()
             for r in active:
                 if unit_steps.get(r.id, 0) > 0:
-                    # FR-LOAD-05: a served unit gets the setpoint of its room, without buffer
-                    targets[r.id] = Command(main_mode, r.setpoint_c)
+                    # FR-LOAD-05: a served unit gets the setpoint of its room, a buffer room the raised one
+                    targets[r.id] = Command(
+                        main_mode, r.setpoint_c + sign * self._load.serving.rooms[r.id].buffer_k
+                    )
                 else:
                     targets[r.id] = Command(p.neutral_mode)
 

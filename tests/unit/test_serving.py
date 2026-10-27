@@ -58,11 +58,39 @@ def test_the_room_with_the_largest_deviation_is_served_first_and_stays_served() 
 
 
 @pytest.mark.req("FR-LOAD-05")
-def test_the_controller_gives_the_served_unit_the_setpoint_of_its_room_without_buffer() -> None:
-    for reading in (19.0, 20.0, 22.0):  # whatever the reading, the setpoint is the one of the room
+def test_a_room_below_its_setpoint_gets_the_setpoint_and_a_buffer_room_the_setpoint_plus_the_range() -> None:
+    for reading, target in ((19.0, 20.0), (20.0, 22.0), (22.0, 22.0)):  # the control range is 2
         ctrl = Controller(installation(room("a", setpoint=20.0)))
         result = ctrl.step(T0, plan(1300), states({"a": reading}))
-        assert result.commands["a"].mode is Mode.HEAT and result.commands["a"].target_c == 20.0
+        assert result.commands["a"].mode is Mode.HEAT and result.commands["a"].target_c == target
+
+
+@pytest.mark.req("FR-LOAD-05")
+def test_the_cut_off_of_a_buffer_room_counts_from_its_raised_device_setpoint() -> None:
+    cfg, sv = cfg3(), Serving()
+    live = live_at()
+    sv.step(T0, cfg, Season.HEAT, 1300, 1300, [cfg.room("r1")], set(IDS), live, 3, buffer={"r1": 2.0})
+    for minute, reading in ((1, 23.4), (2, 25.0)):  # device setpoint 22: the cut-off is at 25.5
+        turn = step(sv, cfg, minute, 1300, 1300, live_at(r1=reading), ranked=())
+        assert "r1" in turn.active and not turn.released
+    turn = step(sv, cfg, 3, 1300, 1300, live_at(r1=25.5), ranked=())
+    assert turn.released == ("r1",)
+
+
+@pytest.mark.req("FR-BAND-01")
+def test_the_overload_limit_only_holds_back_neutral_rooms_whose_reading_has_settled() -> None:
+    ctrl = Controller(installation(room("a", setpoint=20.0, power=700.0)))
+    result, last = _cycle(ctrl, 0, {"a": 19.0}, None, 1300.0)
+    assert result.served == ("a",)
+    for minute, reading in ((1, 21.0), (2, 22.5), (3, 23.5)):
+        result, last = _cycle(ctrl, minute, {"a": reading}, last, 1300.0)
+    assert result.served == ()  # at the cut-off distance and nothing else to serve: released
+    # the unit stopped, its reading fell to 23 (3 above the setpoint, the overload limit): not settled yet
+    result, last = _cycle(ctrl, 4, {"a": 23.0}, last, 1300.0)
+    assert result.served == ("a",)
+    # a room that never worked and shows 3 above its setpoint is held back by the limit
+    fresh = Controller(installation(room("a", setpoint=20.0, power=700.0)))
+    assert fresh.step(T0, plan(1300), states({"a": 23.0})).served == ()
 
 
 @pytest.mark.req("FR-LOAD-05")
@@ -231,12 +259,12 @@ def _cycle(
 @pytest.mark.req("FR-SRC-02")
 def test_a_working_unit_holds_its_value_and_the_cut_off_counts_on_the_live_value() -> None:
     ctrl = Controller(cfg3())
-    result, last = _cycle(ctrl, 0, live_at(), None, 1300.0)
+    result, last = _cycle(ctrl, 0, live_at(r1=19.0), None, 1300.0)
     assert result.served == ("r1",)
     # r1 warms up and distorts its own reading, which is held; a neutral unit may fall
     for minute, (r1, r2) in enumerate(((21.0, 19.5), (22.0, 19.0), (22.5, 19.0)), start=1):
         result, last = _cycle(ctrl, minute, live_at(r1=r1, r2=r2), last, 1300.0)
-        assert result.temperatures["r1"] == SETPOINT  # held while r1 works
+        assert result.temperatures["r1"] == 19.0  # held while r1 works
         assert result.temperatures["r2"] == r2  # a neutral unit counts when its reading falls
     # r1 reached 2.5 above its setpoint (the join distance): the next room starts, measured on the live value
     assert set(result.served) == {"r1", "r2"} or set(result.served) == {"r1", "r3"}

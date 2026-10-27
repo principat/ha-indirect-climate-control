@@ -13,12 +13,17 @@ löste den Stopp aus. Die Geräte regeln sich außerdem selbst ab (Sollwert plus
 
 ## Mechanismus
 
-1. **Sollwert.** Ein bedientes Gerät erhält den Sollwert seines Raums, ohne Puffer (`Command(main_mode, r.setpoint_c)`). Die Geräte heizen
-   über den Sollwert hinaus und regeln sich bei etwa 3,5 K darüber selbst ab (zwei Geräte, Keller und Marcel). Der Sollwert beeinflusst den
-   Verlauf der Außenleistung nicht (Wohnzimmer, 19,5 bis 28 °C, gleich).
+1. **Sollwert.** Ein bedientes Gerät erhält den Sollwert seines Raums. Ein Pufferraum (bewerteter Wert am oder über dem Sollwert, im Kühlen
+   gespiegelt) erhält den Sollwert plus den Regelbereich nach oben (`charge_band`, Standard 2; Kühlen: minus), bei Sollwert 24 also 26
+   (`Controller.step`: `buffer`, `Command(main_mode, r.setpoint_c + sign * buffer_k)`). Der Puffer wird beim Zuschalten festgehalten
+   (`Served.buffer_k`), solange der Raum bedient ist. Die Geräte heizen über den Gerätesollwert hinaus und regeln sich bei etwa 3,5 K darüber
+   selbst ab (zwei Geräte, Keller und Marcel, bei Sollwert = Gerätesollwert); bei einem Pufferraum liegt der Abschaltabstand also bei
+   Sollwert + Puffer + 3,5 (Annahme, ungeprüft: der Abschaltabstand hängt am Gerätesollwert, so wie es die Messung an den beiden Geräten zeigt).
+   Der Sollwert beeinflusst den Verlauf der Außenleistung nicht (Wohnzimmer, 19,5 bis 28 °C, gleich).
 2. **Dauerbetrieb** (`core/serving.py`). Ein bedienter Raum (`Served`: Raum, Beginn, Anzeige bei Beginn, aktiv, niedrigste Leistung seit
-   Beginn) bleibt bedient, bis seine Livewert-Anzeige `cutoff_k` (3,5) über dem Sollwert liegt (im Kühlen gespiegelt). Der Abschaltabstand ersetzt
-   für bediente Räume die Überlastgrenze. Räume, deren Livewert den Abschaltabstand schon erreicht hat, sind nicht mehr zulässig
+   Beginn) bleibt bedient, bis seine Livewert-Anzeige `cutoff_k` (3,5) über dem Gerätesollwert liegt (im Kühlen gespiegelt). Der Abschaltabstand ersetzt
+   für bediente Räume die Überlastgrenze. Die Überlastgrenze gilt nur für neutrale Räume, deren Anzeige eingeschwungen ist (`Controller._settled`:
+   nicht arbeitend und der Stopp liegt mindestens `settle_s` zurück); sie hält ein Gerät, das gerade gestoppt hat, nicht von der Auswahl ab. Räume, deren Livewert den Abschaltabstand schon erreicht hat, sind nicht mehr zulässig
    (`controller.py`, `eligible`). Die Rangfolge (`rank`, 1e-9 als Band) bleibt: größte Abweichung zuerst, bei genau gleicher Abweichung die
    Leistungsklasse, Räume über dem Sollwert (Puffer) kommen danach.
 3. **Weitere Räume** (immer nur einer, nie, solange ein bedienter Raum noch nicht aktiv ist). Ein Raum wird zugeschaltet, wenn
@@ -80,8 +85,8 @@ verworfen. Durch die Anlaufphase von 10 Minuten zwischen zwei Änderungen ist da
 3. **Zuschalten nach Temperatur:** Zuschaltabstand 2,5 und Aktivierungsanstieg 1 sind Vorgaben des Nutzers, die an einem Lauf mit zwei Geräten (Keller, Marcel)
    erprobt sind.
 4. **Wiederanlauf nach dem Selbstabschalten:** Hysterese nicht gemessen. Die Sperrzeit von etwa 4 Minuten ist nur beobachtet, die Regelung nutzt sie nicht.
-5. **Überlastgrenze bedienter Räume:** Für bediente Räume gilt der Abschaltabstand statt der Überlastgrenze (Standard 3). Der Nutzer will noch prüfen, ob
-   die Überhitzungs- und Überlastgrenze nur im neutralen Modus berücksichtigt werden sollen (offener Punkt der Fachspec).
+5. **Überlastgrenze:** Für bediente Räume gilt der Abschaltabstand, die Überlastgrenze (Standard 3) nur für neutrale, eingeschwungene Räume. Ob
+   auch die Überhitzungsgrenze nur im neutralen Modus gelten soll, ist ein offener Punkt der Fachspec.
 6. **Kühlbetrieb:** alles gespiegelt angenommen, nicht gemessen.
 7. **Messwert der Leistung fehlt:** Ohne Messwert der Außenleistung startet nur der erste Raum und die Räume werden über den Abschaltabstand und
    die Temperatur zugeschaltet. Die Messung ist Pflicht (FR-GEN-01), der Fall tritt nur beim Ausfall des Sensors auf.

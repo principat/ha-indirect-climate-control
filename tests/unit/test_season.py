@@ -117,7 +117,9 @@ def test_cooling_a_room_at_the_absolute_limit_below_the_setpoint_is_not_served()
     assert "a" not in result.served and result.commands["a"].mode is Mode.FAN  # at the limit: not eligible
     near = _cool(Controller(cfg), {"a": 18.5, "b": 18.5, "c": 18.5}, 1.5)
     assert "a" in near.served
-    assert near.commands["a"].target_c == 21.0  # the setpoint of the room, without buffer
+    assert (
+        near.commands["a"].target_c == 19.0
+    )  # a buffer room (cooler than its setpoint): setpoint minus the range 2
 
 
 @pytest.mark.req("FR-SEAS-02")

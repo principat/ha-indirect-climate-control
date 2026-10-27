@@ -221,6 +221,7 @@ class LoadControl:
         disturbed: bool = False,
         live: Mapping[str, float] | None = None,
         present: set[str] | None = None,
+        buffer: Mapping[str, float] | None = None,
     ) -> dict[str, int]:
         """Served rooms (one step each) for the requested power; `tiers`: eligible units, most urgent first.
 
@@ -247,6 +248,7 @@ class LoadControl:
             live or {},
             _max_rooms(power, cfg),
             sum(power.values()) / len(power) if power else 0.0,
+            buffer,
         )
         after = {rid: 1 for rid in turn.active}
         self.released = list(turn.released)

@@ -27,6 +27,7 @@
 | Zuschaltabstand | Abstand der Gerätetemperatur über dem Sollwert, ab dem ein weiteres Gerät bedient wird, wenn die Leistung nicht unterschritten ist: 1 unter dem Abschaltabstand (Startwert 2,5) |
 | Aktiv | Ein zugeschaltetes Gerät gilt als aktiv, wenn seine gemeldete Gerätetemperatur (Livewert, nicht der gehaltene Wert) seit seinem Start um den Aktivierungsanstieg gestiegen ist |
 | Anlaufphase | Zeit nach dem Start der Anlage oder dem Zuschalten eines Geräts, in der die Leistung nicht zum Herunterregeln herangezogen wird (Startwert 10 Minuten) |
+| Pufferraum | Raum, dessen Gerätetemperatur seinen Sollwert erreicht oder überschritten hat; sein Gerät erhält als Gerätesollwert den Sollwert plus den Regelbereich (Heizen) beziehungsweise minus den Regelbereich (Kühlen) |
 | Halten | Ein arbeitendes Gerät behält für die Bewertung seines Raums den zuletzt bewerteten Wert der Gerätetemperatur, jedes andere Gerät kann seinen Wert nur nach unten korrigieren, solange irgendein Gerät arbeitet und für die Einschwingzeit danach |
 | Einschwingzeit | Zeit, die die Gerätetemperatur nach dem Wechsel in den neutralen Modus braucht, bis sie den Raum wieder abbildet (Startwert 10 Minuten) |
 | Sperrzeit | Zeit nach einem Stopp des Außengeräts, in der es nicht wieder anläuft (beobachtet etwa 4 Minuten) |

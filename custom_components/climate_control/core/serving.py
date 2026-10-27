@@ -14,7 +14,8 @@ its start. A room at the cut-off distance is never released before its replaceme
 that could replace it, it leaves at once. A surplus of the measured power over the request releases the most
 advanced room once the start-up phase is over.
 
-All distances are measured on the live device temperature of the served room, never on the held one.
+All distances are measured on the live device temperature of the served room, never on the held one, and
+counted from the device setpoint of the room (its setpoint, raised by the buffer for a buffer room).
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ class Served:
     since: datetime
     start_c: float | None  # live device temperature when the room became served
     active: bool = False  # FR-LOAD-06: the device temperature rose by the activation rise
+    buffer_k: float = 0.0  # the device setpoint is this far beyond the setpoint of the room (buffer room)
     replaces: str | None = None  # FR-LOAD-08: the room this one takes over from when that cuts off
 
 
@@ -67,11 +69,14 @@ class Serving:
         live: Mapping[str, float],
         max_rooms: int,
         room_w: float = 0.0,
+        buffer: Mapping[str, float] | None = None,
     ) -> Turn:
         """`ranked`: eligible rooms, most urgent first. `present`: rooms that are in the control at all.
         `live`: reported device temperatures, `measured_w`: the outdoor power (None: no measurement),
         `room_w`: the power a further room adds (a room is only added or released when that brings the
-        measured power nearer to the request, otherwise it would swing between two stages)."""
+        measured power nearer to the request, otherwise it would swing between two stages). `buffer`: how far
+        beyond its setpoint the device setpoint of a room is set when the room is served (buffer rooms); all
+        distances of a served room are counted from that device setpoint."""
         p = cfg.params
         sign = season.sign
         dead = p.load_deadband_ratio * cfg.p_min_w
@@ -82,7 +87,9 @@ class Serving:
 
         def excess(s: Served) -> float:
             reading = live.get(s.room_id)
-            return sign * (reading - by_id[s.room_id].setpoint_c) if reading is not None else 0.0
+            if reading is None:
+                return 0.0
+            return sign * (reading - by_id[s.room_id].setpoint_c) - s.buffer_k
 
         def room_count() -> int:  # a room that has cut off is no longer a room that works
             return sum(1 for s in self.rooms.values() if excess(s) < cut - EPS)
@@ -127,7 +134,11 @@ class Serving:
         if want and candidates and counted < max_rooms:
             first = candidates[0]
             self.rooms[first.id] = Served(
-                first.id, now, live.get(first.id), replaces=needy[0].room_id if needy else None
+                first.id,
+                now,
+                live.get(first.id),
+                buffer_k=(buffer or {}).get(first.id, 0.0),
+                replaces=needy[0].room_id if needy else None,
             )
             self._last_change = now
         elif released:

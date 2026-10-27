@@ -247,7 +247,9 @@ def test_one_served_unit_is_the_minimum_stage() -> None:
     assert list(result.steps.values()) == [1]
     assert result.expected_w == 1300.0  # the minimum stage is Pmin
     for rid in result.steps:
-        assert result.commands[rid].target_c == 20.0  # the setpoint of the room, not the reading
+        assert (
+            result.commands[rid].target_c == 22.0
+        )  # above the setpoint: buffer room, setpoint plus the range 2
     assert sum(1 for c in result.commands.values() if c.mode is Mode.HEAT) == 1
 
 
