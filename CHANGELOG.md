@@ -1,3 +1,9 @@
+## [0.15.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.14.0...v0.15.0) (2026-10-27)
+
+### Features
+
+* raise the device setpoint of buffer rooms by the control range and apply the overload limit only to settled neutral rooms ([2600ee5](https://github.com/principat/ha-indirect-climate-control/commit/2600ee5f9e5e26940cc2413db9cda7666cbf068b))
+
 ## [0.14.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.13.0...v0.14.0) (2026-10-27)
 
 ### Features
