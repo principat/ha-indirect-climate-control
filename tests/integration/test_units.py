@@ -46,7 +46,7 @@ async def test_fahrenheit_plant_works_with_the_numbers_as_they_are(
         units.set(entity_id, "fan_only", 68)  # 2 below the setpoint of 70
     set_plan(hass, 2.0)
     await _setup(hass)
-    assert _value(hass, "sensor.climate_control_state_of_charge") == pytest.approx(26.67, abs=0.01)
+    assert _value(hass, "sensor.climate_control_state_of_charge") == pytest.approx(10.0, abs=0.01)
     assert "heat" in {units.mode(e) for e in ROOMS}
     assert units.target(A) == 70.0  # the setpoint of the room, in degF as the device reports
     units.calls.clear()
@@ -87,17 +87,20 @@ async def test_setpoint_entity_values_are_fahrenheit_too(hass: HomeAssistant, un
 
 
 @pytest.mark.req("FR-UNIT-01")
-async def test_the_capacity_follows_the_scale_in_the_unit_of_the_plant(
+async def test_the_capacity_follows_the_control_range_in_the_unit_of_the_plant(
     hass: HomeAssistant, units: FakeUnits
 ) -> None:
     set_plan(hass, 0)
     entry = await _setup(hass)
-    assert _value(hass, "sensor.climate_control_capacity") == 45.0  # 3 kWh per degree x (6 below + 9 above)
+    # 3 kWh per degree x (2 below + 2 above) of control range, which are 80 % of the scale
+    assert _value(hass, "sensor.climate_control_capacity") == 15.0
     await hass.config_entries.async_unload(entry.entry_id)
-    hass.config_entries.async_update_entry(entry, options={"soc_below_k": 10.0, "soc_above_k": 15.0})
+    for subentry in entry.subentries.values():
+        wide = {**subentry.data, "band_down": 4.0, "band_up": 4.0, "limit_down": 5.0, "limit_up": 5.0}
+        hass.config_entries.async_update_subentry(entry, subentry, data=wide)
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert _value(hass, "sensor.climate_control_capacity") == 75.0
+    assert _value(hass, "sensor.climate_control_capacity") == 30.0
 
 
 @pytest.mark.req("FR-UNIT-01")
@@ -168,8 +171,8 @@ async def test_options_show_the_differences_in_the_unit_of_the_plant(
     menu = await hass.config_entries.options.async_init(entry.entry_id)
     form = await hass.config_entries.options.async_configure(menu["flow_id"], {"next_step_id": "soc"})
     schema = {str(m): (m, v) for m, v in form["data_schema"].schema.items()}
-    assert schema["soc_below_k"][0].default() == 6.0 and schema["soc_above_k"][0].default() == 9.0
-    assert schema["soc_below_k"][1].config["unit_of_measurement"] == "°F"
+    assert schema["soc_sigma"][0].default() == 0.3 and "soc_below_k" not in schema
+    assert "unit_of_measurement" not in str(schema["soc_sigma"][1])  # a bell width, not a temperature
     saved = await hass.config_entries.options.async_configure(form["flow_id"], {"soc_smoothing_s": 600})
     assert saved["type"] == FlowResultType.CREATE_ENTRY
-    assert entry.options["soc_below_k"] == 6.0 and entry.options["soc_above_k"] == 9.0
+    assert entry.options["soc_sigma"] == 0.3

@@ -71,8 +71,8 @@ Sensoren je Anlage, Prognosen im Attribut `forecast: [{time, value}]` (stündlic
 | `max_charge_power` | kW | Max Power der einen Verbindung Haus → Klima (Grundvariante, = Pmax) |
 | `charge_cost` | Währung/kWh | Aufschlag Spätladen, mit fallender Prognose |
 
-Alle Prozentwerte liegen relativ zum Sollwert auf der SOC-Skala (Sollwert 40 %, 6,67 % je Grad; Werte außerhalb 0 bis 100 % werden
-begrenzt). Im Kühlbetrieb (FR-SEAS-02) tauschen die Seiten: Regelbereich und absolute Grenze über dem Sollwert sind dann die
+Alle Prozentwerte liegen fest auf der SOC-Skala der Räume (FR-SOC-01): absolute Grenze unten 0 %, Untergrenze des Regelbereichs 10 %,
+Obergrenze 90 %, absolute Grenze oben 100 %; die Nachtabsenkung rückt die unteren Werte um die Absenkung nach unten (begrenzt auf 0 %). Im Kühlbetrieb (FR-SEAS-02) tauschen die Seiten: Regelbereich und absolute Grenze über dem Sollwert sind dann die
 Entladeseite (Min Charge, Undercharge), die unter dem Sollwert die Ladeseite (Max Charge, Overcharge).
 
 ### Status

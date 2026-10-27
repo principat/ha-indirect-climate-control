@@ -36,12 +36,12 @@ async def test_only_the_device_temperature_counts(hass: HomeAssistant, units: Fa
     hass.states.async_set("sensor.room_a_temperature", "10")
     await setup_entry()
     soc = _state(hass, "sensor.climate_control_state_of_charge")
-    assert float(soc.state) == pytest.approx(33.33)  # 20 degC
+    assert float(soc.state) == pytest.approx(30.0)  # 20 degC: 1 below the setpoint
     units.set(A, "fan_only", 19)
     await run_cycle(hass)
     soc = _state(hass, "sensor.climate_control_state_of_charge")
     assert soc.attributes["worst_room"] == A
-    assert float(soc.state) == pytest.approx(30.0)  # median of 33.33 and 26.67
+    assert float(soc.state) == pytest.approx(25.86, abs=0.01)  # median of 30 and 21.71 (a 2 below, b and c 1)
 
 
 @pytest.mark.req("FR-MODE-01")
@@ -226,7 +226,9 @@ async def test_planner_model_values_are_published(hass: HomeAssistant, units: Fa
     }
     values = {key: _state(hass, f"sensor.climate_control_{slug}") for key, slug in names.items()}
     assert values["min_charge"].attributes["friendly_name"] == "Climate Control Min Charge Level"
-    assert float(values["capacity"].state) == 45.0  # default 3 kWh/K x 15 K
+    assert (
+        float(values["capacity"].state) == 15.0
+    )  # default 3 kWh/K x 4 K of control range, which are 80 % of the scale
     assert float(values["efficiency"].state) == 92.0
     assert float(values["max_discharge_power"].state) == 3.5
     assert float(values["min_charge"].state) <= 40.0

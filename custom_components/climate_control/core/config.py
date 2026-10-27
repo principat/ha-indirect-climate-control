@@ -69,8 +69,7 @@ class Parameters:
     outlier_k: float = 2.0
     overheat_k: float = 3.0
     overheat_s: float = 3600.0
-    soc_below_k: float = 6.0  # SOC scale: 0 % at this distance below the setpoint (FR-SOC-01)
-    soc_above_k: float = 9.0  # 100 % at this distance above it
+    soc_sigma: float = 0.3  # FR-SOC-01: width of the bell curve over the comfort zone (fill 0 to 1)
     efficiency_pct: float = 92.0
     discharge_limit_w: float = 3500.0
     night_start_h: int = 21
@@ -113,8 +112,8 @@ class Parameters:
     def validate(self) -> None:
         if not 0 < self.stop_ratio <= self.start_ratio:
             raise ConfigError("0 < stop ratio <= start ratio required")
-        if self.soc_below_k <= 0 or self.soc_above_k <= 0:
-            raise ConfigError("SOC scale below and above the setpoint must be positive")
+        if self.soc_sigma <= 0:
+            raise ConfigError("the width of the SOC weighting curve must be positive")
         if self.neutral_mode not in NEUTRAL:
             raise ConfigError("neutral mode must be fan or off")
         if self.fallback_delay_s < 0 or self.fallback_step_s <= 0:
@@ -129,11 +128,6 @@ class Parameters:
             raise ConfigError("the activation rise must be positive")
         if self.startup_s < 0 or self.settle_s < 0:
             raise ConfigError("start-up and settling time must not be negative")
-
-    @property
-    def scale_k(self) -> float:
-        """Width of the SOC scale in degrees of the plant's unit."""
-        return self.soc_below_k + self.soc_above_k
 
 
 @dataclass(frozen=True)

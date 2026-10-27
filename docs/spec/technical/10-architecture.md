@@ -38,8 +38,12 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
    Entladen heißt dann wärmer als der Sollwert.
 1. Gerätetemperatur je Raum lesen, unverändert (0,5-K-Schritte) übernehmen, Ausreißerfilter (FR-SRC-01, FR-SOC-02).
 2. Aktive Räume = Temperatur und Modus bekannt, Fenster zu.
-3. SOC (FR-SOC-01): Raum mit der größten Abweichung zu seinem aktuellen Sollwert; SOC = 40 % − 6,67 % × Abweichung
-   (`soc_below_k` / (`soc_below_k` + `soc_above_k`), Steigung 100 / Breite), begrenzt auf 0 bis 100 %, Median über 15 min.
+3. SOC (FR-SOC-01, `core/soc.py`): je aktivem Raum `room_fill` (Füllstand 0 bis 1 von unterem Randbereich, Wohlfühlbereich und oberem
+   Randbereich aus Abstand zum aktuellen Sollwert, Regelbereich und absoluter Grenze; Sollwert genau bei 0,5 des Wohlfühlbereichs, jede
+   Seite mit eigener Steigung; Randbereich ohne Breite = Stufe an der Kante), dann `soc_of`: 10 % · Mittel der unteren Füllstände +
+   80 % · gewichtetes Mittel der Wohlfühl-Füllstände (Gewicht `exp(−f² / 2σ²)` mit `σ = soc_sigma`, Standard 0,3, relativ zum kältesten
+   Raum gerechnet, damit eine schmale Glocke nicht auf 0 unterläuft) + 10 % · Mittel der oberen Füllstände; Median über 15 min.
+   Beim Kühlen sind die Seiten über `Season.sign` gespiegelt. Das Attribut `worst_room` bleibt: der Raum mit der größten Abweichung.
 4. Überhitzungs-Zeitgeber je Raum führen.
 5. Plan fehlt oder veraltet → zuerst Warten (`fallback_delay_s`, 600 s): Geräte unverändert, Schutz gilt. Danach Rückfall:
    schrittweise (`fallback_step_s`, 120 s) je eine Gruppe gleicher Nennleistung auf Heizen mit Standard-Sollwert,
@@ -65,7 +69,7 @@ später ab (z. B. verspätet übernommener gemerkter Wert), korrigiert der näch
 
 | Thema | Umsetzung | Parameter |
 | --- | --- | --- |
-| SOC relativ zum Sollwert | Abweichung zum aktuellen Sollwert des schlechtesten Raums, Sollwert = 40 %, feste Steigung für alle Räume | `soc_below_k`, `soc_above_k` |
+| SOC relativ zum Sollwert | je Raum eigene Skala (Randbereiche 10 % / Wohlfühlbereich 80 % / Randbereiche 10 %, Sollwert = 50 %), Anlagen-SOC aus Mittel der Ränder und mit Halbglocke gewichtetem Mittel des Wohlfühlbereichs | `soc_sigma` (0,3) |
 | Gleichstand „innerhalb des Bandes" | Differenz zur größten Abweichung der Stufe < Band | `tie_band_k` |
 | Last (FR-LOAD-01/02/05/06/07/08) | Lastregelung `core/load.py`: erwartete Last = Pmin + gelernte Leistung je weiterem Gerät, Totband, höchstens so viele Räume wie Pmax erlaubt; Dauerbetrieb `core/serving.py` (siehe 60-load-control.md); Sollwert = Sollwert des Raums, ohne Puffer; Einfrieren der Gerätetemperaturen im Controller (FR-SRC-02); Lernen je Innengerät nach Beruhigung der Außenleistung | `step` je Innengerät (nur zur Information), `load_deadband_ratio`, `load_settle_max_s`, `cutoff_k`, `join_margin_k`, `activation_rise_k`, `startup_s`, `settle_s` |
 | Ausreißer | einmal verworfen, bei Bestätigung im nächsten Zyklus übernommen | `outlier_k` |

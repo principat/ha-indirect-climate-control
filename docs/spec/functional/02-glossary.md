@@ -5,7 +5,11 @@
 | Planer | Programm, das aus Preisen, Erzeugung und Puffer einen Leistungsplan berechnet (Referenz: HAEO) |
 | Plan | geplante elektrische Leistung der Klimaanlage über die Zeit |
 | Klima-Puffer | virtueller Speicher im Planer, dessen Füllstand der SOC ist |
-| SOC | Füllstand des Puffers in Prozent, abgeleitet aus der Gerätetemperatur des schlechtesten Raums |
+| SOC | Füllstand des Puffers in Prozent, abgeleitet aus den Gerätetemperaturen aller Räume: 10 % Durchschnitt der unteren Randbereiche, 80 % gewichtetes Mittel der Wohlfühlbereiche (kalte Räume zählen stärker), 10 % Durchschnitt der oberen Randbereiche (FR-SOC-01) |
+| Wohlfühlbereich | mittlere 80 % der SOC-Skala eines Raums: der Regelbereich, mit dem Sollwert bei 50 % |
+| Randbereich | untere und obere 10 % der SOC-Skala eines Raums: unten von der absoluten Grenze bis zur Untergrenze des Regelbereichs, oben von dessen Obergrenze bis zur absoluten Grenze |
+| Füllstand (eines Abschnitts) | Lage der Gerätetemperatur eines Raums in einem Abschnitt seiner SOC-Skala, von 0 (unteres Ende) bis 1 (oberes Ende), außerhalb begrenzt |
+| Gewichtskurve | linke Hälfte einer Gaußschen Glockenkurve über dem Wohlfühlbereich: Gewicht 1 am kalten Ende, stark abfallend zum warmen Ende; ihre Breite ist ein Parameter |
 | Innengerät | Gerät im Raum mit eigenem Sollwert, Modus und Gerätetemperatur |
 | Außengerät | gemeinsames Gerät, dessen Leistung gesteuert wird |
 | Gerätetemperatur | Ist-Temperatur, die das Innengerät meldet (einzige Temperaturquelle) |

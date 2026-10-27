@@ -292,7 +292,7 @@ def test_the_switch_selects_cooling_and_heating_via_the_neutral_mode(sim: reques
         # the served unit gets the setpoint of its room, a room beyond its limit that is not served is
         # cooled to the setpoint as well (protection)
         assert set(targets) == {SETPOINT}
-        # The state of charge runs the other way: warm rooms are a low cold store (heating would show 40 %).
+        # The state of charge runs the other way: warm rooms are a low cold store (heating would show 50 %).
         assert float(_state(sim, "sensor.climate_control_state_of_charge")["state"]) < 60.0
 
         _service(sim, "input_boolean", "turn_off", entity_id=SWITCH)
@@ -326,7 +326,9 @@ def test_learned_capacity_can_be_reset_by_the_service(sim: requests.Session) -> 
     _service(sim, DOMAIN, "reset_learned_capacity")
     _cycle(sim)
     assert float(_state(sim, "sensor.climate_control_learned_capacity_heating")["state"]) == 3.0
-    assert float(_state(sim, "sensor.climate_control_capacity")["state"]) == 45.0
+    assert (
+        float(_state(sim, "sensor.climate_control_capacity")["state"]) == 15.0
+    )  # 3 kWh/K x 4 K of control range / 80 %
 
 
 @pytest.mark.req("FR-CFG-04")

@@ -9,7 +9,6 @@ from custom_components.climate_control.core.controller import Controller
 from custom_components.climate_control.core.diagnostics import room_diagnostics
 from custom_components.climate_control.core.model import Mode, Season
 from custom_components.climate_control.core.planner_model import planner_inputs
-from custom_components.climate_control.core.soc import deviation_to_soc
 
 from .helpers import T0, installation, plan, room, states
 
@@ -72,24 +71,23 @@ def test_heating_and_cooling_never_run_together() -> None:
 @pytest.mark.req("FR-SEAS-02")
 def test_soc_is_the_mirrored_deviation_when_cooling() -> None:
     cfg = installation()
-    # 3 above the setpoint is 3 on the discharged side while cooling: 40 % - 3 x 6.67 %
-    result = _cool(Controller(cfg), {"a": 24.0, "b": 24.0, "c": 24.0}, 0)
-    assert result.soc_pct == pytest.approx(20.0)
-    # the same temperatures heating are 3 above the setpoint, on the charged side
-    heating = Controller(cfg).step(T0, plan(0), states({"a": 24.0, "b": 24.0, "c": 24.0}))
-    assert heating.soc_pct == pytest.approx(60.0)
-    assert (
-        deviation_to_soc(-1.0, cfg.params)
-        > deviation_to_soc(0.0, cfg.params)
-        > deviation_to_soc(1.0, cfg.params)
-    )
+    # 2 above the setpoint is 2 on the discharged side while cooling: the lower end of the range (10 %)
+    result = _cool(Controller(cfg), {"a": 23.0, "b": 23.0, "c": 23.0}, 0)
+    assert result.soc_pct == pytest.approx(10.0)
+    # the same temperatures heating are 2 above the setpoint, on the charged side
+    heating = Controller(cfg).step(T0, plan(0), states({"a": 23.0, "b": 23.0, "c": 23.0}))
+    assert heating.soc_pct == pytest.approx(90.0)
+    # cooling: the colder the rooms, the higher the SOC
+    socs = [_cool(Controller(cfg), dict.fromkeys("abc", t), 0).soc_pct for t in (22.0, 21.0, 20.0)]
+    assert socs[0] < socs[1] < socs[2]
 
 
 @pytest.mark.req("FR-SEAS-02")
 def test_worst_room_is_the_warmest_against_its_setpoint_when_cooling() -> None:
     result = _cool(Controller(installation()), HOT, 0)
     assert result.worst_room == "a"
-    assert result.soc_pct == pytest.approx(13.33, abs=0.01)  # 4 above: 40 % - 4 x 6.67 %
+    # a 4 above its setpoint (beyond the limit), b 1 above, c on it: the warmest room counts most (FR-SOC-01)
+    assert result.soc_pct == pytest.approx(18.99, abs=0.02)
 
 
 @pytest.mark.req("FR-SEAS-02")
@@ -170,22 +168,16 @@ def test_planner_receives_the_bands_with_the_sides_swapped_when_cooling() -> Non
     heat = planner_inputs(cfg, t, Season.HEAT)
     cool = planner_inputs(cfg, t, Season.COOL)
     assert heat.capacity_kwh == cool.capacity_kwh
-    assert heat.min_charge_pct == pytest.approx(
-        33.33, abs=0.01
-    )  # 40 % - 1 x 6.67 % (discharge side is below)
-    assert cool.min_charge_pct == pytest.approx(
-        26.67, abs=0.01
-    )  # 40 % - 2 x 6.67 % (discharge side is above)
-    assert heat.undercharge_pct == pytest.approx(26.67, abs=0.01)
-    assert cool.undercharge_pct == pytest.approx(13.33, abs=0.01)
-    assert heat.max_charge_pct == pytest.approx(53.33, abs=0.01)
-    assert cool.max_charge_pct == pytest.approx(46.67, abs=0.01)
-    assert heat.overcharge_pct == pytest.approx(66.67, abs=0.01)
-    assert cool.overcharge_pct == pytest.approx(53.33, abs=0.01)
+    # the scale is the same on both sides: the limits keep their places on it (FR-SOC-01)
+    for inp in (heat, cool):
+        assert (inp.min_charge_pct, inp.undercharge_pct) == (10.0, 0.0)
+        assert (inp.max_charge_pct, inp.overcharge_pct) == (90.0, 100.0)
+    # the setback relaxes the discharge side by 1: below the setpoint when heating (edge zone 1 wide,
+    # used up), above it when cooling (edge zone 2 wide, half used)
+    heat_night = planner_inputs(cfg, T0.replace(hour=23), Season.HEAT)
     night = planner_inputs(cfg, T0.replace(hour=23), Season.COOL)
-    assert night.min_charge_pct == pytest.approx(
-        20.0, abs=0.01
-    )  # the setback relaxes the discharge side by 1
+    assert heat_night.min_charge_pct == pytest.approx(0.0, abs=0.01)
+    assert night.min_charge_pct == pytest.approx(5.0, abs=0.01)
     assert (night.max_charge_pct, night.overcharge_pct) == (cool.max_charge_pct, cool.overcharge_pct)
 
 

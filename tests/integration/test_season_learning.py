@@ -69,11 +69,13 @@ async def test_the_switch_turns_the_plant_to_cooling_and_back_via_the_neutral_mo
     }  # the room of 2 kW first
     assert units.target(A) == 21.0  # the setpoint of the room, without buffer
     soc = hass.states.get("sensor.climate_control_state_of_charge")
-    assert soc is not None and float(soc.state) == pytest.approx(13.33, abs=0.01)  # 4 above the setpoint
+    assert soc is not None and float(soc.state) == pytest.approx(
+        11.89, abs=0.01
+    )  # a 4 above, b 2, c 1 (FR-SOC-01)
     assert soc.attributes["worst_room"] == A
     assert _value(hass, "sensor.climate_control_overcharge_percentage") == pytest.approx(
-        60.0, abs=0.01
-    )  # charge side is below
+        100.0, abs=0.01
+    )  # the absolute limit on the charge side
 
     hass.states.async_set(SWITCH, "off")  # back to heating
     for entity_id, temperature in ((A, 18), (B, 18), (C, 18)):
@@ -116,7 +118,7 @@ async def test_capacity_is_learned_from_the_power_sensor_and_the_device_temperat
     set_plan(hass, 2.0)
     hass.states.async_set(POWER, "1300", {"unit_of_measurement": "W"})
     await _setup(hass, season=False)
-    assert _value(hass, LEARNED_HEAT) == 3.0 and _value(hass, CAPACITY) == 45.0  # start value
+    assert _value(hass, LEARNED_HEAT) == 3.0 and _value(hass, CAPACITY) == 15.0  # start value
     await _warm_up(hass, units, freezer, 140)
     learned = hass.states.get(LEARNED_HEAT)
     assert learned is not None
@@ -124,7 +126,7 @@ async def test_capacity_is_learned_from_the_power_sensor_and_the_device_temperat
     assert learned.attributes["estimates"] >= 3 and learned.attributes["updated"] is not None
     assert learned.attributes["pending_estimates"] == []  # the first three have replaced the start value
     assert learned.attributes["last_estimate"] == pytest.approx(2.0, rel=0.3)  # the latest single estimate
-    assert _value(hass, CAPACITY) == pytest.approx(30.0, rel=0.1)  # the planner gets the learned capacity
+    assert _value(hass, CAPACITY) == pytest.approx(10.0, rel=0.1)  # the planner gets the learned capacity
     assert _value(hass, LEARNED_COOL) == 3.0  # cooling is learned separately
 
 
@@ -141,7 +143,7 @@ async def test_cooling_capacity_is_learned_separately_and_drives_the_planner_whi
     await _warm_up(hass, units, freezer, 140, sign=-1)
     assert _value(hass, LEARNED_COOL) == pytest.approx(2.0, rel=0.1)
     assert _value(hass, LEARNED_HEAT) == 3.0
-    assert _value(hass, CAPACITY) == pytest.approx(30.0, rel=0.1)
+    assert _value(hass, CAPACITY) == pytest.approx(10.0, rel=0.1)
 
 
 @pytest.mark.req("FR-PLNR-02")
@@ -186,7 +188,7 @@ async def test_reset_service_returns_to_the_start_values(
     assert _value(hass, LEARNED_HEAT) != 3.0
     await hass.services.async_call(DOMAIN, SERVICE_RESET_LEARNED, blocking=True)
     await hass.async_block_till_done()
-    assert _value(hass, LEARNED_HEAT) == 3.0 and _value(hass, CAPACITY) == 45.0
+    assert _value(hass, LEARNED_HEAT) == 3.0 and _value(hass, CAPACITY) == 15.0
     assert hass_storage[f"{DOMAIN}.{entry.entry_id}.learned"]["data"]["heat"]["estimates"] == 0
 
 

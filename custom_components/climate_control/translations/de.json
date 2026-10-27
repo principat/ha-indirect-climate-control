@@ -16,7 +16,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Hilfe: Temperatureinheit",
-            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen und Sollwerte. Standard ist Celsius. Alle Abstände (Regelbereich, absolute Grenze, SOC-Skala, Offsets, Bänder, Schwellen) sind in dieser Einheit angegeben, mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Nach einem Wechsel der Einheit die Sollwerte der Innengeräte prüfen: Sie werden nicht umgerechnet.",
+            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen und Sollwerte. Standard ist Celsius. Alle Abstände (Regelbereich, absolute Grenze, Offsets, Bänder, Schwellen) sind in dieser Einheit angegeben, mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Nach einem Wechsel der Einheit die Sollwerte der Innengeräte prüfen: Sie werden nicht umgerechnet.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -72,7 +72,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Hilfe: Temperatureinheit",
-            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen und Sollwerte. Standard ist Celsius. Alle Abstände (Regelbereich, absolute Grenze, SOC-Skala, Offsets, Bänder, Schwellen) sind in dieser Einheit angegeben, mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Nach einem Wechsel der Einheit die Sollwerte der Innengeräte prüfen: Sie werden nicht umgerechnet.",
+            "description": "Einheit aller Temperaturen der Klimaanlagen: Gerätetemperaturen und Sollwerte. Standard ist Celsius. Alle Abstände (Regelbereich, absolute Grenze, Offsets, Bänder, Schwellen) sind in dieser Einheit angegeben, mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Nach einem Wechsel der Einheit die Sollwerte der Innengeräte prüfen: Sie werden nicht umgerechnet.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -503,22 +503,14 @@
       "soc": {
         "title": "Füllstand (SOC)",
         "data": {
-          "soc_below_k": "SOC-Skala unter dem Sollwert",
-          "soc_above_k": "SOC-Skala über dem Sollwert",
+          "soc_sigma": "Breite der SOC-Gewichtung",
           "soc_smoothing_s": "SOC-Glättung (s)",
           "outlier_k": "Ausreißergrenze je Zyklus"
         },
         "sections": {
-          "help_soc_below_k": {
-            "name": "Hilfe: SOC-Skala unter dem Sollwert",
-            "description": "Abstand unter dem Sollwert des schlechtesten Raums, der 0 % SOC entspricht (Standard 6). Der Sollwert selbst liegt bei 6 / (6 + 9) = 40 %, jedes Grad sind 6,67 %. Die Skala dämpft nur den SOC; sie ist relativ zum Sollwert des Raums.",
-            "data": {
-              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
-            }
-          },
-          "help_soc_above_k": {
-            "name": "Hilfe: SOC-Skala über dem Sollwert",
-            "description": "Abstand über dem Sollwert, der 100 % SOC entspricht (Standard 9). Die Kapazität für den Planer ist die Kapazität je Grad mal Breite der Skala (unten plus oben).",
+          "help_soc_sigma": {
+            "name": "Hilfe: Breite der SOC-Gewichtung",
+            "description": "Breite der Glockenkurve, mit der die Räume im Wohlfühlbereich des SOC gewichtet werden (der Regelbereich eines Raums, Sollwert bei 0,5, gemessen von 0 bis 1). Ein kalter Raum zählt mit 1, ein warmer wenig. Kleiner: Der SOC folgt stärker dem kältesten Raum, größer: stärker dem Mittelwert aller Räume. Standard 0,3.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }

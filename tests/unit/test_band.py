@@ -64,10 +64,9 @@ def test_the_limits_follow_a_changed_setpoint() -> None:
 def test_the_planner_gets_the_bands_not_fixed_temperatures() -> None:
     wide = installation(replace(room("a"), band_down=4.0, limit_down=5.0, band_up=3.0, limit_up=4.0))
     inp = planner_inputs(wide, NOON)
-    assert inp.min_charge_pct == pytest.approx(40 - 4 * 100 / 15, abs=0.01)
-    assert inp.undercharge_pct == pytest.approx(40 - 5 * 100 / 15, abs=0.01)
-    assert inp.max_charge_pct == pytest.approx(40 + 3 * 100 / 15, abs=0.01)
-    assert inp.overcharge_pct == pytest.approx(40 + 4 * 100 / 15, abs=0.01)
+    assert (inp.min_charge_pct, inp.undercharge_pct) == (10.0, 0.0)  # control range and limit below
+    assert (inp.max_charge_pct, inp.overcharge_pct) == (90.0, 100.0)  # control range and limit above
+    assert inp.capacity_kwh == pytest.approx(3.5 * (4 + 3) / 0.8)  # the control range is 80 % of the scale
     moved = installation(
         replace(room("a", setpoint=25.0), band_down=4.0, limit_down=5.0, band_up=3.0, limit_up=4.0)
     )

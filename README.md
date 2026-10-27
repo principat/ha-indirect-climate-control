@@ -59,13 +59,13 @@ Above every non-trivial field there is a collapsible **"Help: …"** section exp
 **"Expand help texts when opening"** inside it decides whether all help texts are expanded the next time the
 settings are opened. Several installations can be set up side by side.
 
-**Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: device temperatures and setpoints are then °F. All distances (control range, absolute limit, SOC scale, offset, band, thresholds) are numbers in the unit of the plant with the same start values: 1 K becomes 1 °C or 1 °F. Setpoints already entered are not converted when the unit is changed.
+**Temperature unit.** Celsius is the default. Choose Fahrenheit in the installation if your air conditioners report °F: device temperatures and setpoints are then °F. All distances (control range, absolute limit, offset, band, thresholds) are numbers in the unit of the plant with the same start values: 1 K becomes 1 °C or 1 °F. Setpoints already entered are not converted when the unit is changed.
 
 **Load control.** The outdoor unit's power follows the requested power by serving single indoor units. One served unit brings the outdoor unit to Pmin; more power adds a second and third unit (start value (Pmax − Pmin) / 2 per further unit, learned later). A served unit gets the setpoint of its room and stays served until its device temperature is 3.5 K above its device setpoint; a room that has reached its setpoint is a buffer room, its unit gets the setpoint plus the control range (setpoint 24, range 2: device setpoint 26, cut-off at 29.5), and the distances count from there. The overload limit only holds back neutral rooms with a settled reading. The units regulate themselves down at the cut-off distance (cooling is mirrored). Further units follow one at a time, in the order of the deviation: when the measured outdoor power falls below the request after the start-up phase (10 minutes), or when a served unit has reached 2.5 K above its setpoint and has no replacement yet, so that the replacement starts before the first cuts off. A started unit counts as active when its live device temperature rose by 1 K. A unit at the cut-off distance only leaves when its replacement is active, also when several units run; without a possible replacement it leaves at once. While a unit heats or cools, its reading is held, because the unit distorts it; the neutral units are distorted through the pipes as well, so while any unit works every other unit can only fall in the assessment. A room that was heated falls back after the stop of its unit, cooler units that were not served move up in the ranking. When the last unit has stopped and 10 minutes have passed, the reported values count again. The number of units does not change within a dead band of 10 % of Pmin, and a unit is only added or released by the power when that brings the power nearer to the request. The power of a further unit is learned per indoor unit from the settled outdoor power (diagnostic sensor *Power per step* on each indoor unit). Concept: `docs/spec/technical/60-load-control.md`.
 
 **Heating or cooling.** The plant heats by default. An optional switch (switch, binary sensor or input boolean) in the
 installation selects cooling: off = heating, on = cooling; without the entity, or while it is unavailable, the plant heats.
-Cooling mirrors everything: the buffer is a cold store (SOC 30 °C = 0 %, 15 °C = 100 %), the units cool, and the limits
+Cooling mirrors everything: the buffer is a cold store (the colder the rooms, the higher the SOC), the units cool, and the limits
 sent to the planner are mirrored around each setpoint. Changing the mode first puts all units in the neutral mode.
 
 **Buffer capacity.** It is not a setting. It starts at 3 kWh_el/K and is learned from operation: the electrical energy of the
@@ -118,7 +118,7 @@ flowchart LR
     control --> units["Indoor units"]
 ```
 
-- The **battery Klima-Puffer** is the virtual heat store; its state of charge is the SOC of the worst room.
+- The **battery Klima-Puffer** is the virtual heat store; its state of charge is the SOC of all rooms: every room has its own scale (setpoint = 50 %, control range = 10 to 90 %, absolute limits = 0 and 100 %), cold rooms count more than warm ones (adjustable width of the weighting, default 0.3).
 - The **load Wärmebedarf** represents the rooms cooling down. Its forecast (electrical equivalent of the heat
   demand from the weather forecast) is the planner's job and not part of this integration. Without this load
   HAEO only sees the measured SOC and keeps it constant for the future; cooling down is then not planned ahead
@@ -157,7 +157,7 @@ are those of HAEO 0.4.1 (HAEO is English only). Lower and upper limits form pair
 | HAEO element | HAEO field | Choose in the picker | Meaning |
 | --- | --- | --- | --- |
 | Battery | Capacity | *&lt;installation&gt;* Capacity | buffer capacity, kWh |
-| Battery | State of Charge | *&lt;installation&gt;* State of Charge | SOC of the worst room |
+| Battery | State of Charge | *&lt;installation&gt;* State of Charge | SOC of all rooms, cold rooms weigh more |
 | Battery | Min Charge Level | *&lt;installation&gt;* Min Charge Level | area-weighted lower end of the control ranges, lowered at night, forecast |
 | Battery | Max Charge Level | *&lt;installation&gt;* Max Charge Level | area-weighted upper end of the control ranges |
 | Battery | Charge efficiency | *&lt;installation&gt;* Charge efficiency | buffer efficiency |
@@ -272,13 +272,13 @@ Deshalb in dieser Reihenfolge einrichten:
 Feldes. Der Schalter **„Hilfetexte beim Öffnen aufgeklappt“** im Abschnitt legt fest, ob alle Hilfetexte
 beim nächsten Öffnen auf- oder zugeklappt sind. Mehrere Anlagen können nebeneinander eingerichtet werden.
 
-**Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen und Sollwerte) sind dann °F. Alle Abstände (Regelbereich, absolute Grenze, SOC-Skala, Offset, Band, Schwellen) sind Zahlen in der Einheit der Anlage mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Bereits eingegebene Sollwerte werden beim Wechsel der Einheit nicht umgerechnet.
+**Temperatureinheit.** Standard ist Celsius. Melden deine Klimageräte °F, wähle in der Anlage Fahrenheit: Alle Temperaturen der Geräte (Gerätetemperaturen und Sollwerte) sind dann °F. Alle Abstände (Regelbereich, absolute Grenze, Offset, Band, Schwellen) sind Zahlen in der Einheit der Anlage mit denselben Startwerten: Aus 1 K wird 1 °C bzw. 1 °F. Bereits eingegebene Sollwerte werden beim Wechsel der Einheit nicht umgerechnet.
 
 **Lastregelung.** Die Leistung des Außengeräts folgt der angeforderten Leistung, indem einzelne Innengeräte bedient werden. Ein bedientes Gerät bringt das Außengerät auf Pmin, mehr Leistung bringt ein zweites und drittes Gerät (Startwert (Pmax − Pmin) / 2 je weiterem Gerät, später gelernt). Ein bedientes Gerät erhält den Sollwert seines Raums und bleibt bedient, bis seine Gerätetemperatur 3,5 K über seinem Gerätesollwert liegt; ein Raum, der seinen Sollwert erreicht hat, ist ein Pufferraum, sein Gerät erhält den Sollwert plus den Regelbereich (Sollwert 24, Bereich 2: Gerätesollwert 26, Abschaltung bei 29,5), und die Abstände zählen ab dort. Die Überlastgrenze hält nur neutrale Räume mit eingeschwungener Anzeige zurück (dort regeln sich die Geräte selbst ab, beim Kühlen gespiegelt). Weitere Geräte folgen einzeln in der Reihenfolge der Abweichung: wenn die gemessene Außenleistung nach der Anlaufphase (10 Minuten) unter der Anforderung liegt oder wenn ein bedientes Gerät 2,5 K über seinem Sollwert liegt und noch keinen Ersatz hat, damit der Ersatz startet, bevor das erste sich abregelt. Ein gestartetes Gerät gilt als aktiv, wenn seine Gerätetemperatur (Livewert) um 1 K gestiegen ist. Ein Gerät am Abschaltabstand geht erst, wenn sein Ersatz aktiv ist, auch bei mehreren bedienten Geräten; ohne möglichen Ersatz geht es sofort. Solange ein Gerät heizt oder kühlt, wird seine eigene Anzeige gehalten, weil das Gerät sie verfälscht; auch die neutralen Geräte werden über die Leitungen verfälscht, deshalb kann jedes andere Gerät, solange irgendein Gerät arbeitet, in der Bewertung nur nach unten korrigiert werden. Ein beheizter Raum sinkt nach dem Stopp seines Geräts wieder ab, kühlere, nicht bediente Geräte rutschen in der Rangfolge nach. Ist das letzte Gerät gestoppt und sind 10 Minuten vergangen, zählen die gemeldeten Werte wieder. Innerhalb eines Totbands von 10 % von Pmin ändert sich die Zahl der Geräte nicht, und ein Gerät wird nach der Leistung nur dazugenommen oder abgegeben, wenn die Leistung dadurch näher an die Anforderung kommt. Die Leistung eines weiteren Geräts wird je Innengerät aus der beruhigten Außenleistung gelernt (Diagnose-Sensor *Leistung je Schritt* am Innengerät). Konzept: `docs/spec/technical/60-load-control.md`.
 
 **Heizen oder Kühlen.** Standard ist Heizen. Ein optionaler Schalter (Schalter, Binärsensor oder Ein/Aus-Helfer) in der
 Anlage wählt das Kühlen: aus = Heizen, ein = Kühlen; ohne Entität oder solange sie nicht verfügbar ist, wird geheizt.
-Das Kühlen spiegelt alles: Der Puffer ist ein Kältespeicher (SOC 30 °C = 0 %, 15 °C = 100 %), die Geräte kühlen, und die
+Das Kühlen spiegelt alles: Der Puffer ist ein Kältespeicher (je kälter die Räume, desto höher der SOC), die Geräte kühlen, und die
 Grenzen für den Planer werden um den jeweiligen Sollwert gespiegelt. Beim Wechsel gehen zuerst alle Geräte in den neutralen Modus.
 
 **Pufferkapazität.** Sie ist keine Einstellung. Sie startet mit 3 kWh_el/K und wird im Betrieb gelernt: elektrische Energie
@@ -331,8 +331,9 @@ flowchart LR
     regelung --> geraete["Innengeräte"]
 ```
 
-- Die **Batterie Klima-Puffer** ist der virtuelle Wärmespeicher; ihr Füllstand ist der SOC aus dem
-  schlechtesten Raum.
+- Die **Batterie Klima-Puffer** ist der virtuelle Wärmespeicher; ihr Füllstand ist der SOC aus allen Räumen: Jeder Raum
+  hat eine eigene Skala (Sollwert = 50 %, Regelbereich = 10 bis 90 %, absolute Grenzen = 0 und 100 %), kalte Räume zählen mehr als
+  warme (einstellbare Breite der Gewichtung, Standard 0,3).
 - Die **Last Wärmebedarf** bildet die Auskühlung der Räume ab. Ihre Prognose (elektrisches Äquivalent der
   Heizlast aus der Wetterprognose) ist Sache des Planers und nicht Teil dieser Integration. Ohne diese Last
   sieht HAEO nur den gemessenen SOC und hält ihn für die Zukunft konstant; die Auskühlung wird dann nicht
@@ -372,7 +373,7 @@ sind die von HAEO 0.4.1 (HAEO gibt es nur auf Englisch). Untere und obere Grenze
 | HAEO-Element | HAEO-Feld | In der Auswahl wählen | Bedeutung |
 | --- | --- | --- | --- |
 | Batterie | Capacity | *&lt;Anlage&gt;* Capacity | Pufferkapazität, kWh |
-| Batterie | State of Charge | *&lt;Anlage&gt;* State of Charge | Füllstand des schlechtesten Raums |
+| Batterie | State of Charge | *&lt;Anlage&gt;* State of Charge | SOC aus allen Räumen, kalte Räume zählen mehr |
 | Batterie | Min Charge Level | *&lt;Anlage&gt;* Min Charge Level | flächengewichtetes unteres Ende der Regelbereiche, nachts abgesenkt, Prognose |
 | Batterie | Max Charge Level | *&lt;Anlage&gt;* Max Charge Level | flächengewichtetes oberes Ende der Regelbereiche |
 | Batterie | Charge efficiency | *&lt;Anlage&gt;* Charge efficiency | Wirkungsgrad des Puffers |

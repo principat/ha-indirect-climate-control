@@ -28,7 +28,8 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Überhitzung | 3 K, mindestens 1 h | Kühlregel |
 | Regelbereich | 2 K nach unten, 2 K nach oben | je Innengerät optional; Abstand zum Sollwert, in dem der Planer den Puffer frei nutzt |
 | Absolute Grenze | 3 K nach unten, 3 K nach oben | je Innengerät optional; unten hartes Minimum (Schutz), oben Überlastgrenze |
-| SOC-Skala | Sollwert = 40 %, 6 K darunter = 0 %, 9 K darüber = 100 % | relativ zum aktuellen Sollwert des Raums; im Kühlbetrieb gespiegelt |
+| SOC-Skala | je Raum: unterer Randbereich 0 bis 10 %, Wohlfühlbereich 10 bis 90 % (Sollwert = 50 %), oberer Randbereich 90 bis 100 % | feste Anteile, die Grenzen sind Regelbereich und absolute Grenze des Raums, relativ zum aktuellen Sollwert; im Kühlbetrieb gespiegelt (FR-SOC-01) |
+| Breite der Gewichtskurve | 0,3 | Breite der Glocke im Wohlfühlbereich, gemessen am Füllstand von 0 bis 1 (Sollwert bei 0,5); kleiner: der SOC folgt stärker dem kältesten Raum, größer: stärker dem Mittelwert; muss größer als 0 sein |
 | Wirkungsgrad Puffer | 92 % | Planer-Modell |
 | Entladegrenze Puffer | 3,5 kW | Planer-Modell |
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |

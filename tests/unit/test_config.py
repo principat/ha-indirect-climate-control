@@ -33,7 +33,7 @@ def test_core_has_no_plant_defaults() -> None:
         {"rooms": (replace(room("a"), band_down=4.0),)},  # control range wider than the absolute limit
         {"rooms": (replace(room("a"), limit_up=1.0),)},
         {"rooms": (replace(room("a"), band_up=0.0),)},
-        {"params": Parameters(soc_below_k=0)},
+        {"params": Parameters(soc_sigma=0)},
         {"params": Parameters(neutral_mode=Mode.HEAT)},
     ],
 )

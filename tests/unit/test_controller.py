@@ -68,8 +68,8 @@ def test_neutral_mode_is_fan_by_default_and_configurable() -> None:
 def test_temperature_is_the_device_reading_as_reported_without_rounding() -> None:
     ctrl = Controller(installation(room("a")))
     result = ctrl.step(T0, plan(0), {"a": RoomState(Mode.FAN, 20.5)})
-    assert result.soc_pct == pytest.approx((20.5 - 15) / 15 * 100, abs=0.01)  # 36.67 %, not 33.3 or 40
-    for reading, soc in ((21.5, 43.33), (22.0, 46.67), (22.5, 50.0)):  # the half steps stay apart
+    assert result.soc_pct == pytest.approx(40.0, abs=0.01)  # between 30 % (20) and 50 % (21), not rounded
+    for reading, soc in ((21.5, 60.0), (22.0, 70.0), (22.5, 80.0)):  # the half steps stay apart
         assert Controller(installation(room("a"))).step(
             T0, plan(0), {"a": RoomState(Mode.FAN, reading)}
         ).soc_pct == (pytest.approx(soc, abs=0.01))
@@ -164,7 +164,8 @@ def test_soc_follows_worst_room_relative_to_own_setpoint() -> None:
     cfg = installation(room("a", setpoint=22.0), room("b", setpoint=18.0))
     result = Controller(cfg).step(T0, plan(0), states({"a": 21.0, "b": 19.0}))
     assert result.worst_room == "a"  # 1 K below its setpoint, b is 1 K above its own
-    assert result.soc_pct == pytest.approx(33.33, abs=0.01)  # 1 below its setpoint: 40 % - 6.67 %
+    # a counts with the weight 1, b (fill 0.75 of the comfort zone) hardly (a alone: 30 %)
+    assert result.soc_pct == pytest.approx(32.34, abs=0.01)
 
 
 @pytest.mark.req("FR-SOC-02")
@@ -172,7 +173,7 @@ def test_soc_outlier_is_ignored() -> None:
     ctrl = Controller(installation(room("a")))
     ctrl.step(T0, plan(0), states({"a": 21.0}))
     result = ctrl.step(T0 + MIN, plan(0), states({"a": 14.0}))
-    assert result.soc_pct == pytest.approx(40.0)  # the outlier is ignored: still on the setpoint
+    assert result.soc_pct == pytest.approx(50.0)  # the outlier is ignored: still on the setpoint
 
 
 @pytest.mark.req("FR-GEN-01")

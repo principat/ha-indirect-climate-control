@@ -44,7 +44,7 @@ def test_the_control_uses_differences_so_the_numbers_work_in_any_unit() -> None:
     fahrenheit = installation(room("a", setpoint=70.0))
     for cfg, reading in ((celsius, 19.0), (fahrenheit, 68.0)):  # both 2 below the setpoint
         result = Controller(cfg).step(T0, plan(2000), states({"a": reading}))
-        assert result.soc_pct == pytest.approx(26.67, abs=0.01)
+        assert result.soc_pct == pytest.approx(10.0, abs=0.01)  # the lower end of the control range
         assert result.commands["a"].mode is Mode.HEAT
         # the setpoint is a number in the unit of the plant
         assert result.commands["a"].target_c == cfg.room("a").setpoint_c

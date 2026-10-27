@@ -12,7 +12,7 @@ from .load import LoadControl, LoadModel
 from .model import WITH_SETPOINT, Command, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
-from .soc import OutlierFilter, SocSmoother, deviation_to_soc, worst_room
+from .soc import OutlierFilter, SocSmoother, room_fill, soc_of, worst_room
 from .threshold import ThresholdConfig, decide
 
 EQUAL_K = 1e-9  # deviations closer than this are equal
@@ -179,8 +179,8 @@ class Controller:
         soc: float | None = None
         worst = worst_room(((r, temps[r.id]) for r in active), season)
         if worst is not None:
-            deviation = sign * (worst[0].setpoint_c - worst[1])
-            soc = round(self._smoother.add(now, deviation_to_soc(deviation, p)), 2)
+            fills = [room_fill(r, temps[r.id], season) for r in active]
+            soc = round(self._smoother.add(now, soc_of(fills, p.soc_sigma)), 2)
 
         for r in active:
             if sign * (temps[r.id] - r.setpoint_c) >= p.overheat_k:

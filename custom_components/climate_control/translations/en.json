@@ -16,7 +16,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Help: Temperature unit",
-            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, SOC scale, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -72,7 +72,7 @@
         "sections": {
           "help_temperature_unit": {
             "name": "Help: Temperature unit",
-            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, SOC scale, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
+            "description": "Unit of all temperatures of the air conditioners: device temperatures and setpoints. Celsius is the default. All distances (control range, absolute limit, offsets, bands, thresholds) are given in this unit, with the same start values: 1 K becomes 1 °C or 1 °F. After changing the unit check the setpoints of the indoor units: they are not converted.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -503,22 +503,14 @@
       "soc": {
         "title": "State of charge (SOC)",
         "data": {
-          "soc_below_k": "SOC scale below the setpoint",
-          "soc_above_k": "SOC scale above the setpoint",
+          "soc_sigma": "SOC weighting width",
           "soc_smoothing_s": "SOC smoothing (s)",
           "outlier_k": "Outlier limit per cycle"
         },
         "sections": {
-          "help_soc_below_k": {
-            "name": "Help: SOC scale below the setpoint",
-            "description": "Distance below the setpoint of the worst room that corresponds to 0 % SOC (default 6). The setpoint itself is at 6 / (6 + 9) = 40 %, every degree is 6.67 %. The scale only damps the SOC; it is relative to each room's own setpoint.",
-            "data": {
-              "help_expanded": "Expand help texts when opening"
-            }
-          },
-          "help_soc_above_k": {
-            "name": "Help: SOC scale above the setpoint",
-            "description": "Distance above the setpoint that corresponds to 100 % SOC (default 9). The capacity sent to the planner is the capacity per degree times the width of the scale (below plus above).",
+          "help_soc_sigma": {
+            "name": "Help: SOC weighting width",
+            "description": "Width of the bell curve that weights the rooms in the comfort zone of the SOC (the control range of a room, setpoint at 0.5, measured from 0 to 1). A cold room weighs 1, a warm room weighs little. Smaller: the SOC follows the coldest room more closely, larger: it follows the mean of all rooms. Default 0.3.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }

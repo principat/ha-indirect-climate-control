@@ -267,7 +267,7 @@ async def test_without_planner_output_nothing_is_controlled(hass: HomeAssistant,
     await run_cycle(hass)
     assert units.calls == []
     assert hass.states.get("sensor.klima_state_of_charge").state != "unavailable"  # type: ignore[union-attr]
-    assert hass.states.get("sensor.klima_capacity").state == "45.0"  # type: ignore[union-attr]
+    assert hass.states.get("sensor.klima_capacity").state == "15.0"  # type: ignore[union-attr]
     assert hass.states.get("binary_sensor.klima_fallback").state == "off"  # type: ignore[union-attr]
 
     set_plan(hass, 0)
@@ -301,7 +301,7 @@ async def test_limits_are_set_per_indoor_unit(hass: HomeAssistant, units: FakeUn
         for k in (await _open_group(hass, entry, g))["data_schema"].schema
     ]
     assert not {"overload_max_c", "comfort_max_c", "hard_min_below_k", "soc_min_c", "soc_max_c"} & set(keys)
-    assert {"soc_below_k", "soc_above_k"} <= set(keys)
+    assert "soc_sigma" in set(keys) and not {"soc_below_k", "soc_above_k"} & set(keys)
 
 
 @pytest.mark.req("FR-BAND-01")

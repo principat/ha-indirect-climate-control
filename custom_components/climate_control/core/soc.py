@@ -1,28 +1,85 @@
-"""FR-SOC-01 / FR-SOC-02: buffer state of charge from the worst room, filtered and smoothed."""
+"""FR-SOC-01 / FR-SOC-02: buffer state of charge from all rooms, filtered and smoothed."""
 
 from __future__ import annotations
 
+import math
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from statistics import median
 
-from .config import Parameters, RoomConfig
+from .config import RoomConfig
 from .model import Season
 
+EDGE = 0.10  # share of the SOC scale of each of the two edge zones; the comfort zone gets the rest
 
-def soc_position(offset: float, p: Parameters) -> float:
-    """SOC (clamped) of a point `offset` degrees towards the charged side of the setpoint (FR-SOC-01).
 
-    The setpoint is `soc_below_k / scale` of the way up (40 % by default); every degree is the same share.
+@dataclass(frozen=True)
+class Fill:
+    """Fill of the three sections of the SOC scale of a room, each from 0 (lower end) to 1 (upper end)."""
+
+    low: float  # lower edge zone: from the absolute limit to the lower end of the control range
+    comfort: float  # control range, the setpoint is exactly in the middle (0.5)
+    high: float  # upper edge zone: from the upper end of the control range to the absolute limit
+
+
+def fill(d: float, lo_band: float, lo_limit: float, up_band: float, up_limit: float) -> Fill:
+    """Fill for the distance `d` to the setpoint, positive towards the charged side (FR-SOC-01).
+
+    An edge zone without width (control range equal to the absolute limit) is a step at its edge.
     """
-    soc = (p.soc_below_k + offset) / p.scale_k * 100.0
-    return min(100.0, max(0.0, soc))
+    if d >= -lo_band:
+        low = 1.0
+    elif d <= -lo_limit:
+        low = 0.0
+    else:
+        low = (d + lo_limit) / (lo_limit - lo_band)
+    if d <= -lo_band:
+        comfort = 0.0
+    elif d >= up_band:
+        comfort = 1.0
+    elif d < 0:
+        comfort = 0.5 * (d + lo_band) / lo_band
+    else:
+        comfort = 0.5 + 0.5 * d / up_band
+    if d <= up_band:
+        high = 0.0
+    elif d >= up_limit:
+        high = 1.0
+    else:
+        high = (d - up_band) / (up_limit - up_band)
+    return Fill(low, comfort, high)
 
 
-def deviation_to_soc(deviation: float, p: Parameters) -> float:
-    """SOC of a room whose temperature is `deviation` degrees on the discharged side of its setpoint."""
-    return soc_position(-deviation, p)
+def position_pct(d: float, lo_band: float, lo_limit: float, up_band: float, up_limit: float) -> float:
+    """SOC (0 to 100) of one room whose temperature is `d` away from its setpoint."""
+    f = fill(d, lo_band, lo_limit, up_band, up_limit)
+    return 100.0 * (EDGE * f.low + (1 - 2 * EDGE) * f.comfort + EDGE * f.high)
+
+
+def room_fill(room: RoomConfig, temperature_c: float, season: Season = Season.HEAT) -> Fill:
+    """Fill of a room whose device shows `temperature_c`, against its current setpoint."""
+    return fill(
+        season.sign * (temperature_c - room.setpoint_c),
+        room.discharge_band(season),
+        room.discharge_limit(season),
+        room.charge_band(season),
+        room.charge_limit(season),
+    )
+
+
+def soc_of(fills: Sequence[Fill], sigma: float) -> float:
+    """SOC of the plant: 10 % mean of the lower edge zones, 80 % weighted mean of the comfort zones and
+    10 % mean of the upper edge zones. The weight is the cold half of a bell curve over the comfort zone."""
+    n = len(fills)
+    low = sum(f.low for f in fills) / n
+    high = sum(f.high for f in fills) / n
+    # relative to the coldest room, so that a narrow bell cannot underflow to a sum of zero
+    coldest = min(f.comfort for f in fills)
+    weights = [math.exp(-(f.comfort**2 - coldest**2) / (2 * sigma**2)) for f in fills]
+    comfort = sum(w * f.comfort for w, f in zip(weights, fills, strict=True)) / sum(weights)
+    return 100.0 * (EDGE * low + (1 - 2 * EDGE) * comfort + EDGE * high)
 
 
 def worst_room(

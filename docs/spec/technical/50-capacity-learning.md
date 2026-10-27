@@ -17,7 +17,8 @@ Sommer**. Gemessen wird nur im Heiz- bzw. Kühlbetrieb. Eine Ruhephase als Gegen
 zu ändern.** Daraus folgt alles Weitere:
 
 - Kapazität je Kelvin: `C = 10 × E₀,₁` (kWh_el/K)
-- Kapazität für den Planer: `C × Breite der SOC-Skala` (wie bisher, derzeit 15 K)
+- Kapazität für den Planer: `C × (Regelbereich unten + oben) / 0,8` (flächengewichtet; der Regelbereich ist der Wohlfühlbereich mit
+  80 % der SOC-Skala, dort rechnet der Planer genau, in den Randbereichen näherungsweise; Standard 4 K → 5 K Skala, 15 kWh bei 3 kWh/K)
 - Startwert: E₀,₁ = 0,3 kWh_el (entspricht 3 kWh_el/K)
 
 ## Auflösung der Messung und Messfenster

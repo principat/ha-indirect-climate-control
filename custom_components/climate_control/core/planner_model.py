@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from .config import InstallationConfig, RoomConfig
 from .model import Season
-from .soc import soc_position
+from .soc import EDGE, position_pct
 
 Series = tuple[tuple[datetime, float], ...]
 
@@ -47,19 +47,22 @@ def planner_inputs(cfg: InstallationConfig, now: datetime, season: Season = Seas
 
     The limits follow the setpoints (FR-BAND-01): the control range around the setpoint is the part of the
     buffer the planner may use freely, the absolute limits end the penalty zones. Cooling (FR-SEAS-02) swaps
-    the sides, the SOC scale stays the same.
+    the sides, the places of the limits on the SOC scale stay the same (FR-SOC-01).
     """
     p = cfg.params
-
-    def pct(offset: float) -> float:
-        return round(soc_position(offset, p), 2)
-
-    def extra(t: datetime) -> float:
-        return p.night_setback_k if is_night(t, p.night_start_h, p.night_end_h) else 0.0
 
     # SOC positions of the area-weighted distances, towards the discharged side where they are negative.
     lower_band = weighted(cfg, lambda r: r.discharge_band(season))
     lower_limit = weighted(cfg, lambda r: r.discharge_limit(season))
+    upper_band = weighted(cfg, lambda r: r.charge_band(season))
+    upper_limit = weighted(cfg, lambda r: r.charge_limit(season))
+
+    def pct(offset: float) -> float:
+        return round(position_pct(offset, lower_band, lower_limit, upper_band, upper_limit), 2)
+
+    def extra(t: datetime) -> float:
+        return p.night_setback_k if is_night(t, p.night_start_h, p.night_end_h) else 0.0
+
     start = now.replace(minute=0, second=0, microsecond=0)
     hours = [start + timedelta(hours=i) for i in range(p.planner_horizon_h)]
     span = max(1, p.planner_horizon_h - 1)
@@ -69,11 +72,12 @@ def planner_inputs(cfg: InstallationConfig, now: datetime, season: Season = Seas
         return round(p.late_charge_surcharge * (1 - i / span), 6)
 
     return PlannerInputs(
-        capacity_kwh=round(cfg.capacity_kwh_per_k * p.scale_k, 3),
+        # the planner counts linearly: exact in the comfort zone (80 % of the scale), approximate at the edges
+        capacity_kwh=round(cfg.capacity_kwh_per_k * (lower_band + upper_band) / (1 - 2 * EDGE), 3),
         min_charge_pct=pct(-(lower_band + extra(now))),
         undercharge_pct=pct(-(lower_limit + extra(now))),
-        max_charge_pct=pct(weighted(cfg, lambda r: r.charge_band(season))),
-        overcharge_pct=pct(weighted(cfg, lambda r: r.charge_limit(season))),
+        max_charge_pct=pct(upper_band),
+        overcharge_pct=pct(upper_limit),
         undercharge_cost=p.undercharge_cost,
         overcharge_cost=p.overcharge_cost,
         efficiency_pct=p.efficiency_pct,
