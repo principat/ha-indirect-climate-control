@@ -1,3 +1,15 @@
+## [1.0.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.15.0...v1.0.0) (2026-10-27)
+
+### ⚠ BREAKING CHANGES
+
+* soc_below_k and soc_above_k are replaced by soc_sigma; planner capacity and levels change.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+### Features
+
+* build the state of charge from a per-room scale with a bell-weighted comfort range ([e87ce7a](https://github.com/principat/ha-indirect-climate-control/commit/e87ce7afdb33583eaad678b25b88674e0390b44e))
+
 ## [0.15.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.14.0...v0.15.0) (2026-10-27)
 
 ### Features
