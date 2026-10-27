@@ -311,8 +311,8 @@ def test_cooling_mirrors_the_values_sent_to_the_planner(sim: requests.Session) -
     try:
         _service(sim, "input_boolean", "turn_on", entity_id=SWITCH)
         _cycle(sim)
-        # cooling charges downwards: the absolute limit below the setpoint is the overload limit (60 %)
-        assert float(_state(sim, "sensor.climate_control_overcharge_percentage")["state"]) == 60.0
+        # cooling charges downwards: the absolute limit below the setpoint is the overload limit (100 %)
+        assert float(_state(sim, "sensor.climate_control_overcharge_percentage")["state"]) == 100.0
         # the learned capacities are diagnostic sensors with their start value
         for key in ("heating", "cooling"):
             assert float(_state(sim, f"sensor.climate_control_learned_capacity_{key}")["state"]) > 0
