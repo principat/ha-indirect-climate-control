@@ -5,7 +5,7 @@
 | Planer | Programm, das aus Preisen, Erzeugung und Puffer einen Leistungsplan berechnet (Referenz: HAEO) |
 | Plan | geplante elektrische Leistung der Klimaanlage über die Zeit |
 | Klima-Puffer | virtueller Speicher im Planer, dessen Füllstand der SOC ist |
-| SOC | Füllstand des Puffers in Prozent, abgeleitet aus den Gerätetemperaturen aller Räume: 10 % Durchschnitt der unteren Randbereiche, 80 % gewichtetes Mittel der Wohlfühlbereiche (kalte Räume zählen stärker), 10 % Durchschnitt der oberen Randbereiche (FR-SOC-01) |
+| SOC | Füllstand des Puffers in Prozent, abgeleitet aus den gemerkten Werten der Gerätetemperaturen aller Räume (FR-SOC-03): 10 % Durchschnitt der unteren Randbereiche, 80 % gewichtetes Mittel der Wohlfühlbereiche (kalte Räume zählen stärker), 10 % Durchschnitt der oberen Randbereiche (FR-SOC-01) |
 | Wohlfühlbereich | mittlere 80 % der SOC-Skala eines Raums: der Regelbereich, mit dem Sollwert bei 50 % |
 | Randbereich | untere und obere 10 % der SOC-Skala eines Raums: unten von der absoluten Grenze bis zur Untergrenze des Regelbereichs, oben von dessen Obergrenze bis zur absoluten Grenze |
 | Füllstand (eines Abschnitts) | Lage der Gerätetemperatur eines Raums in einem Abschnitt seiner SOC-Skala, von 0 (unteres Ende) bis 1 (oberes Ende), außerhalb begrenzt |
@@ -32,7 +32,10 @@
 | Aktiv | Ein zugeschaltetes Gerät gilt als aktiv, wenn seine gemeldete Gerätetemperatur (Livewert, nicht der gehaltene Wert) seit seinem Start um den Aktivierungsanstieg gestiegen ist |
 | Anlaufphase | Zeit nach dem Start der Anlage oder dem Zuschalten eines Geräts, in der die Leistung nicht zum Herunterregeln herangezogen wird (Startwert 10 Minuten) |
 | Pufferraum | Raum, dessen Gerätetemperatur seinen Sollwert erreicht oder überschritten hat; sein Gerät erhält als Gerätesollwert den Sollwert plus den Regelbereich (Heizen) beziehungsweise minus den Regelbereich (Kühlen) |
-| Halten | Ein arbeitendes Gerät behält für die Bewertung seines Raums den zuletzt bewerteten Wert der Gerätetemperatur, jedes andere Gerät kann seinen Wert nur nach unten korrigieren, solange irgendein Gerät arbeitet und für die Einschwingzeit danach |
-| Einschwingzeit | Zeit, die die Gerätetemperatur nach dem Wechsel in den neutralen Modus braucht, bis sie den Raum wieder abbildet (Startwert 10 Minuten) |
+| Halten | Ein arbeitendes Gerät behält für die Bewertung seines Raums den zuletzt bewerteten Wert der Gerätetemperatur, jedes andere Gerät kann seinen Wert nur nach unten korrigieren, solange irgendein Gerät arbeitet und danach, bis das Gerät eingeschwungen ist |
+| Einschwingen | Die Gerätetemperatur ist nach dem Wechsel in den neutralen Modus eingeschwungen, sobald der gleitende Mittelwert ihrer gemeldeten Werte über das Einschwingfenster (Startwert 10 Minuten) höchstens um die halbe Schrittweite des Geräts (Startwert 0,25 K) vom aktuell gemeldeten Wert abweicht; sie bildet dann den Raum wieder ab. Sobald sie eingeschwungen ist, wird nicht mehr weiter geprüft |
+| Arbeitsperiode | Zeit vom Beginn des Heizens oder Kühlens des ersten Innengeräts bis zum Einschwingen aller Geräte nach dem Stopp des letzten arbeitenden Geräts (FR-SOC-03); der Stopp des letzten arbeitenden Geräts ist das Arbeitsende |
+| Gemerkter Wert (Anker) | Gerätetemperatur eines Raums, die für den SOC zählt: Sie folgt der gemeldeten Temperatur nach unten sofort, nach oben erst, wenn diese um mehr als den Anzeigeversatz darüber liegt, und dann mit diesem Abstand (FR-SOC-03) |
+| Anzeigeversatz | Abstand zwischen gemeldeter Gerätetemperatur und gemerktem Wert beim Nachziehen; gleicht die Eigenerwärmung der Anzeige arbeitender Geräte aus (Startwert 3,5); nicht zu verwechseln mit dem zeitlichen Versatz zwischen den Messungen |
 | Sperrzeit | Zeit nach einem Stopp des Außengeräts, in der es nicht wieder anläuft (beobachtet etwa 4 Minuten) |
 | Anlernmodus | vom Nutzer gestarteter Ablauf, der die Eigenschaften der Innengeräte und des Außengeräts misst (FR-LRN-01) |
