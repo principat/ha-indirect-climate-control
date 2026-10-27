@@ -1,3 +1,9 @@
+## [0.14.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.13.0...v0.14.0) (2026-10-27)
+
+### Features
+
+* assess units that do not work only downwards and release a room only after its replacement is active ([01864d5](https://github.com/principat/ha-indirect-climate-control/commit/01864d54e544c261ca9004827d06d1c17bbf35c4))
+
 ## [0.13.0](https://github.com/principat/ha-indirect-climate-control/compare/v0.12.0...v0.13.0) (2026-10-26)
 
 ### Features
