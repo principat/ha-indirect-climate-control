@@ -14,4 +14,6 @@
 - [ ] Kühlbetrieb im Sommer in der Praxis prüfen: Entfeuchtung, Wärmeeintrag durch Sonne, Verhalten der Schutzregeln. Überhitzungsregel (3 K, 1 h) und absolute Grenze nach oben (3) überlappen sich: prüfen, ob beide nötig sind.
 - [ ] Lernen der Kapazität prüfen: Genauigkeit des 0,35-K-Fensters, Einfluss des Wärmeverlusts (derzeit nicht korrigiert, Wert eher zu groß). Bisher nur an einer Simulation geprüft.
 - [ ] Aufgezeichnete Betriebsdaten (FR-OBS-01) auswerten.
+- [ ] Betriebsmodi (FR-OPM-01 bis FR-OPM-06) sind Annahmen des Entwurfs, nicht gemessen: Standby-Erkennung über die Leistung des Außengeräts, Höhe der Standby-Absenkung, gemeldete Kapazität 0 in der Herstellersteuerung (ob der Planer das akzeptiert, ist zu prüfen), Verhalten der Anlage bei angehobenem Sollwert in der Puffersteuerung.
+- [ ] Heizoffset (FR-OFS-01): Startwert 2 K aus der Beobachtung des Nutzers, im Betrieb zu messen. Die Wirkung auf den Anzeigeversatz (FR-SOC-04, Obergrenze aus der größten gemessenen Abweichung der gemeldeten Temperatur) ist zu beobachten.
 - [ ] Lastregelung (FR-LOAD-01/02): Beruhigungskriterium (Totband über drei Regelzyklen, Höchstzeit) und Lernrate an Messwerten prüfen, Reaktionszeit der Außenleistung messen.

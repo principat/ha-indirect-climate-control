@@ -37,5 +37,12 @@
 | Arbeitsperiode | Zeit vom Beginn des Heizens oder Kühlens des ersten Innengeräts bis zum Einschwingen aller Geräte nach dem Stopp des letzten arbeitenden Geräts (FR-SOC-03); der Stopp des letzten arbeitenden Geräts ist das Arbeitsende |
 | Gemerkter Wert (Anker) | Gerätetemperatur eines Raums, die für den SOC zählt: Sie folgt der gemeldeten Temperatur nach unten sofort, nach oben erst, wenn diese um mehr als den Anzeigeversatz darüber liegt, und dann mit diesem Abstand (FR-SOC-03) |
 | Anzeigeversatz | Abstand zwischen gemeldeter Gerätetemperatur und gemerktem Wert beim Nachziehen; gleicht die Eigenerwärmung der Anzeige arbeitender Geräte aus (Startwert 3,5); nicht zu verwechseln mit dem zeitlichen Versatz zwischen den Messungen |
+| Betriebsmodus | Wer die Innengeräte steuert und wie die Anlage dem Planer dient: HEMS-Optimiert, HEMS-Puffersteuerung, Herstellersteuerung, Herstellersteuerung mit Taktoptimierung (FR-OPM-01) |
+| Herstellersteuerung | Die eigene Regelung der Anlage hält die Temperatur, die Komponente reicht nur Sollwerte (mit Nachtabsenkung) durch (FR-OPM-02) |
+| Standby | Zustand des Außengeräts, dessen Leistung für die Standby-Verzögerung unter der Abschaltschwelle liegt; im Modus HEMS-Optimiert: der Lauf ist beendet (FR-OPM-03, FR-OPM-04) |
+| Pufferbereich | In der Puffersteuerung der Regelbereich über dem Sollwert eines Raums (beim Kühlen darunter), in dem der Raum überheizt werden darf (FR-OPM-05) |
+| Pufferschritt | Eine Anhebung des Sollwerts um die Schrittweite des Geräts innerhalb des Pufferbereichs; Pmax verteilt sich gleichmäßig auf alle Pufferschritte (FR-OPM-06) |
+| Heizoffset | Abstand, um den ein heizendes Innengerät seine Gerätetemperatur über der Solltemperatur hält (Startwert 2); wird von der gemeldeten Temperatur abgezogen (FR-OFS-01) |
+| Thermischer Kurzschluss | Beim Heizen steigt die erwärmte Luft zum Innengerät, das die Erwärmung früher wahrnimmt, als der Raum geheizt ist (FR-FAN-01) |
 | Sperrzeit | Zeit nach einem Stopp des Außengeräts, in der es nicht wieder anläuft (beobachtet etwa 4 Minuten) |
 | Anlernmodus | vom Nutzer gestarteter Ablauf, der die Eigenschaften der Innengeräte und des Außengeräts misst (FR-LRN-01) |

@@ -10,3 +10,4 @@ Dateien:
 - `20-interfaces.md`: Entitäten, Dienste, Konfigurationsablauf, Schnittstelle zum Planer.
 - `30-testing.md`: Teststrategie je Ebene, Simulator für die Innengeräte, Aufbau der e2e-Instanz.
 - `40-release.md`: Ablauf der Veröffentlichung.
+- `70-operating-modes.md`: Betriebsmodi, Heizoffset, Taktoptimierung, Puffersteuerung, Lüfterstufe.

@@ -23,8 +23,9 @@ Abgeleitet aus `docs/spec/functional/` und den Rahmenbedingungen. Nicht Quelle d
 | `serving.py` | FR-LOAD-05 bis FR-LOAD-08 | bediente Räume im Dauerbetrieb: Abschaltabstand am Livewert, Zuschalten nach Leistung und Temperatur, Aktivierung, Abgabe, Überschuss |
 | `diagnostics.py` | FR-OBS-02 | Abweichung, Wärmebedarf und Speicherkapazität je Raum aus den im Zyklus verwendeten Temperaturen |
 | `modes.py` | FR-MODE-01 | nächster zulässiger Moduszustand (Heizen/Kühlen nur über neutral) |
-| `planner_model.py` | FR-PLNR-01 | Vorgaben für den Planer inkl. Stundenprognosen |
-| `controller.py` | alle obigen, FR-PLAN-04, FR-SAFE-01..04, FR-MODE-03, FR-SRC-01 | ein Regelzyklus |
+| `planner_model.py` | FR-PLNR-01, FR-OPM-02, FR-OPM-04, FR-OPM-05 | Vorgaben für den Planer inkl. Stundenprognosen, je Betriebsmodus und mit Abkühlaufschlag |
+| `buffer.py` | FR-OPM-05, FR-OPM-06 | SOC der Puffersteuerung, Pufferschritte, Verteilung reihum (siehe `70-operating-modes.md`) |
+| `controller.py` | alle obigen, FR-PLAN-04, FR-SAFE-01..04, FR-MODE-03, FR-SRC-01, FR-OFS-01, FR-OPM-01..06 | ein Regelzyklus, verzweigt nach Betriebsmodus |
 
 ## Datenfluss je Zyklus (`Controller.step`)
 

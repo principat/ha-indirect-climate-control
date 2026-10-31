@@ -34,6 +34,13 @@ Startwerte, im Betrieb anzupassen. Alle Werte sind je Anlage konfigurierbar. Tem
 | Obergrenze Anzeigeversatz | 1,25 mal die größte gemessene Abweichung | größte im Betrieb gemessene Abweichung der gemeldeten Gerätetemperatur über dem Sollwert ihres Raums (beim Kühlen darunter), über alle Räume; der angepasste Anzeigeversatz überschreitet sie nicht (FR-SOC-04) |
 | Schwelle Anpassung Anzeigeversatz | 10 Prozentpunkte | Abweichung des SOC am Arbeitsende vom SOC nach dem Einschwingen, ab der der Anzeigeversatz angepasst wird (FR-SOC-04) |
 | Zielabweichung Anpassung | 5 Prozentpunkte | Abweichung, die nach der Anpassung höchstens bleiben darf; direkte Berechnung oder Näherung (FR-SOC-04) |
+| Heizoffset | 2 K | Abstand, um den ein heizendes Gerät seine Gerätetemperatur über der Solltemperatur hält; wird von der gemeldeten Temperatur abgezogen, der Sollwert wird nicht angehoben; nur beim Heizen (FR-OFS-01) |
+| Lüfterstufe beim Heizen / danach | keine | je Innengerät optional; nur beim Heizen unter der Steuerung der Anlage, danach zurückgesetzt (FR-FAN-01) |
+| Betriebsmodus | HEMS-Optimiert | HEMS-Optimiert, HEMS-Puffersteuerung, Herstellersteuerung, Herstellersteuerung mit Taktoptimierung (FR-OPM-01) |
+| Standby-Verzögerung | 5 min | so lange liegt die Leistung des Außengeräts unter der Abschaltschwelle, bevor Standby gilt (FR-OPM-03) |
+| Standby-Absenkung | 1 K | Änderung des Sollwerts im Standby, beim Heizen nach unten, beim Kühlen nach oben (FR-OPM-03) |
+| Abkühlzeit | 1 h | Dauer des Preisaufschlags nach Ende eines Laufs im Modus HEMS-Optimiert (FR-OPM-04) |
+| Aufschlag Abkühlzeit | 0,001 €/kWh | gibt nur bei gleichen Preisen den Ausschlag (FR-OPM-04) |
 | Wirkungsgrad Puffer | 92 % | Planer-Modell |
 | Entladegrenze Puffer | 3,5 kW | Planer-Modell |
 | Nachtabsenkung | 21 bis 06 Uhr | senkt nur die Untergrenzen |
