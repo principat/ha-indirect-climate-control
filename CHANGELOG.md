@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/principat/ha-indirect-climate-control/compare/v1.1.0...v1.2.0) (2026-10-31)
+
+### Features
+
+* add operating modes, heating offset and fan level ([a73bad8](https://github.com/principat/ha-indirect-climate-control/commit/a73bad89e6675a06a16a3bd0fc56719b4c5eff8a))
+
 ## [1.1.0](https://github.com/principat/ha-indirect-climate-control/compare/v1.0.0...v1.1.0) (2026-10-27)
 
 ### Features
