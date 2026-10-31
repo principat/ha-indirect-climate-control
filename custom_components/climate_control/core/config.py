@@ -38,6 +38,8 @@ class RoomConfig:
     limit_down: float = 3.0  # absolute limit below the setpoint: protection heats even without plan
     limit_up: float = 3.0  # absolute limit above the setpoint: no further heating (overload limit)
     step: float = 0.5  # smallest change of the device temperature the unit reports (informational)
+    fan_heat: str | None = None  # FR-FAN-01: fan level while the unit heats under the control of the plant
+    fan_neutral: str | None = None  # FR-FAN-01: fan level to return to (none: the level from before heating)
 
     # The buffer is charged towards "up" when heating and towards "down" when cooling (FR-SEAS-02).
     def discharge_band(self, season: Season) -> float:
@@ -98,6 +100,11 @@ class Parameters:
     settle_s: float = 600.0  # FR-SRC-02: settling time of the readings after the units went neutral
     fallback_delay_s: float = 600.0
     fallback_step_s: float = 120.0
+    heat_offset_k: float = 2.0  # FR-OFS-01: the device holds this far above the setpoint while heating
+    cooldown_s: float = 3600.0  # FR-OPM-04: charge cost surcharge after the plant went to standby
+    cooldown_surcharge: float = 0.001  # FR-OPM-04: only tips the balance between equal prices
+    standby_delay_s: float = 300.0  # FR-OPM-03: low outdoor power for this long = standby
+    cycle_setback_k: float = 1.0  # FR-OPM-03: setpoint change in standby (heating: lower, cooling: higher)
 
     @classmethod
     def from_mapping(cls, values: dict[str, object]) -> Parameters:
@@ -136,6 +143,10 @@ class Parameters:
             raise ConfigError("the activation rise must be positive")
         if self.startup_s < 0 or self.settle_s < 0:
             raise ConfigError("start-up and settling time must not be negative")
+        if self.heat_offset_k < 0 or self.cycle_setback_k < 0:
+            raise ConfigError("heating offset and standby setback must not be negative")
+        if self.cooldown_s < 0 or self.cooldown_surcharge < 0 or self.standby_delay_s < 0:
+            raise ConfigError("cooldown, cooldown surcharge and standby delay must not be negative")
 
 
 @dataclass(frozen=True)

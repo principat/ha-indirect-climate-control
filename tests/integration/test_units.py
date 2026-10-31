@@ -23,7 +23,7 @@ async def _setup(
         domain=DOMAIN,
         title="Climate Control",
         data={**INSTALLATION, "temperature_unit": "fahrenheit"},
-        options=options or {},
+        options={"heat_offset_k": 0.0, **(options or {})},  # FR-OFS-01 off unless looked at
         subentries_data=room_subentries(**(rooms or ALL_ROOMS)),
     )
     entry.add_to_hass(hass)

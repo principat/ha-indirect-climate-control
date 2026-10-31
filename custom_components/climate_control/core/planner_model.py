@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from .config import InstallationConfig, RoomConfig
-from .model import Season
+from .model import OperatingMode, Season
 from .soc import EDGE, position_pct
 
 Series = tuple[tuple[datetime, float], ...]
@@ -42,12 +42,22 @@ def is_night(t: datetime, start_h: int, end_h: int) -> bool:
     return h >= start_h or h < end_h if start_h > end_h else start_h <= h < end_h
 
 
-def planner_inputs(cfg: InstallationConfig, now: datetime, season: Season = Season.HEAT) -> PlannerInputs:
+def planner_inputs(
+    cfg: InstallationConfig,
+    now: datetime,
+    season: Season = Season.HEAT,
+    operating: OperatingMode = OperatingMode.HEMS_OPTIMIZED,
+    cooldown_left_s: float = 0.0,
+) -> PlannerInputs:
     """Values for now plus hourly forecasts over the planner horizon (`now` in local time).
 
     The limits follow the setpoints (FR-BAND-01): the control range around the setpoint is the part of the
     buffer the planner may use freely, the absolute limits end the penalty zones. Cooling (FR-SEAS-02) swaps
     the sides, the places of the limits on the SOC scale stay the same (FR-SOC-01).
+
+    The operating mode (FR-OPM-01) changes what the planner may use: the manufacturer control leaves it no
+    buffer (capacity 0, FR-OPM-02), the buffer control only the range above the setpoint (FR-OPM-05). After
+    the plant went to standby the charge cost carries a surcharge while the cooldown lasts (FR-OPM-04).
     """
     p = cfg.params
 
@@ -67,13 +77,50 @@ def planner_inputs(cfg: InstallationConfig, now: datetime, season: Season = Seas
     hours = [start + timedelta(hours=i) for i in range(p.planner_horizon_h)]
     span = max(1, p.planner_horizon_h - 1)
 
+    cooling_until = now + timedelta(seconds=cooldown_left_s)
+
     def surcharge(i: int) -> float:
         # Falls linearly to zero over the horizon: among equally priced windows the later one wins.
-        return round(p.late_charge_surcharge * (1 - i / span), 6)
+        value = p.late_charge_surcharge * (1 - i / span)
+        # FR-OPM-04: windows that overlap the cooldown cost a little more, a tie breaker and no more
+        slot = start + timedelta(hours=i)
+        if cooldown_left_s > 0 and slot < cooling_until and slot + timedelta(hours=1) > now:
+            value += p.cooldown_surcharge
+        return round(value, 6)
+
+    if operating is OperatingMode.HEMS_BUFFER:
+        # FR-OPM-05: the scale runs from the setpoint lowered by the night setback (0 %) to the end of the
+        # range above the setpoint (100 %). By day the lowest point in use is the setpoint itself, at night it
+        # is the lowered setpoint (0 %): the planner may leave the night setback unused.
+        scale = p.night_setback_k + upper_band
+        day_pct = round(100.0 * p.night_setback_k / scale, 2) if scale > 0 else 0.0
+
+        def floor_pct(t: datetime) -> float:
+            return 0.0 if is_night(t, p.night_start_h, p.night_end_h) else day_pct
+
+        lowest = tuple((t, floor_pct(t)) for t in hours)
+        return PlannerInputs(
+            capacity_kwh=round(cfg.capacity_kwh_per_k * scale, 3),
+            min_charge_pct=floor_pct(now),
+            undercharge_pct=floor_pct(now),
+            max_charge_pct=100.0,
+            overcharge_pct=100.0,
+            undercharge_cost=p.undercharge_cost,
+            overcharge_cost=p.overcharge_cost,
+            efficiency_pct=p.efficiency_pct,
+            max_discharge_kw=p.discharge_limit_w / 1000,
+            max_charge_kw=cfg.p_max_w / 1000,
+            charge_cost=surcharge(0),
+            min_charge_forecast=lowest,
+            undercharge_forecast=lowest,
+            charge_cost_forecast=tuple((t, surcharge(i)) for i, t in enumerate(hours)),
+        )
 
     return PlannerInputs(
         # the planner counts linearly: exact in the comfort zone (80 % of the scale), approximate at the edges
-        capacity_kwh=round(cfg.capacity_kwh_per_k * (lower_band + upper_band) / (1 - 2 * EDGE), 3),
+        capacity_kwh=0.0
+        if operating.manufacturer
+        else round(cfg.capacity_kwh_per_k * (lower_band + upper_band) / (1 - 2 * EDGE), 3),
         min_charge_pct=pct(-(lower_band + extra(now))),
         undercharge_pct=pct(-(lower_limit + extra(now))),
         max_charge_pct=pct(upper_band),

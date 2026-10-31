@@ -28,7 +28,7 @@ from .coordinator import ClimateControlConfigEntry, ClimateControlCoordinator
 from .core.config import Parameters
 from .data import as_list
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.SELECT, Platform.SENSOR]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 RUN_CYCLE_SCHEMA = vol.Schema({vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
 SET_DISPLAY_OFFSET_SCHEMA = vol.Schema(

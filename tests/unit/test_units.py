@@ -54,5 +54,5 @@ def test_the_control_uses_differences_so_the_numbers_work_in_any_unit() -> None:
 def test_distances_are_numbers_in_the_unit_of_the_plant() -> None:
     cfg = installation(replace(room("a", setpoint=70.0), band_down=4.0, limit_down=6.0))
     params = cfg.params
-    assert params == Parameters()  # same start values, 1 K became 1 degree of the unit
+    assert params == Parameters(heat_offset_k=0.0)  # same start values, 1 K became 1 degree of the unit
     assert cfg.room("a").limit_down == 6.0

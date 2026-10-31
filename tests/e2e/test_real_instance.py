@@ -77,6 +77,8 @@ def entry(ha: requests.Session) -> dict[str, Any]:
     _set_option(ha, result["entry_id"], "control", "min_run_s", 0)
     # Likewise the frozen device temperatures: a running unit would freeze the readings the next test sets.
     _set_option(ha, result["entry_id"], "control", "settle_s", 0)
+    # The heating offset (FR-OFS-01) is covered below; the other tests read the simulated units as they are.
+    _set_option(ha, result["entry_id"], "soc", "heat_offset_k", 0)
     return result
 
 
@@ -437,3 +439,27 @@ def test_the_values_are_set_by_service_and_survive_a_reload(
         assert _state(sim, "sensor.climate_control_largest_measured_deviation")["state"] == "unknown"
     finally:
         _service(sim, DOMAIN, "set_display_offset", value=3.5)
+
+
+@pytest.mark.req("FR-OPM-01")
+def test_the_operating_mode_is_a_choice_that_survives_a_reload(
+    sim: requests.Session, entry: dict[str, Any]
+) -> None:
+    entry_id = entry["entry_id"]
+    select = "select.climate_control_operating_mode"
+    state = _state(sim, select)
+    assert state["state"] == "hems_optimized"  # the default
+    assert state["attributes"]["options"] == [
+        "hems_optimized",
+        "hems_buffer",
+        "manufacturer",
+        "manufacturer_cycle",
+    ]
+    try:
+        _service(sim, "select", "select_option", entity_id=select, option="hems_buffer")
+        assert _state(sim, select)["state"] == "hems_buffer"
+        _post(sim, f"/api/config/config_entries/entry/{entry_id}/reload")
+        _wait_loaded(sim, entry_id)
+        assert _state(sim, select)["state"] == "hems_buffer"  # kept
+    finally:
+        _service(sim, "select", "select_option", entity_id=select, option="hems_optimized")

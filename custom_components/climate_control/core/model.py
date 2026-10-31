@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 
@@ -33,10 +33,28 @@ class RoomState:
 
 @dataclass(frozen=True)
 class Command:
-    """Desired mode (and setpoint for heat/cool) for one indoor unit."""
+    """Desired mode (and setpoint for heat/cool) for one indoor unit.
+
+    `boost`: the unit heats under the control of this integration and gets the raised fan level (FR-FAN-01).
+    """
 
     mode: Mode
     target_c: float | None = None
+    boost: bool = field(default=False, compare=False)  # an addition to the command, not part of its identity
+
+
+class OperatingMode(StrEnum):
+    """FR-OPM-01: who controls the indoor units and how the plant serves the planner."""
+
+    HEMS_OPTIMIZED = "hems_optimized"
+    HEMS_BUFFER = "hems_buffer"
+    MANUFACTURER = "manufacturer"
+    MANUFACTURER_CYCLE = "manufacturer_cycle"
+
+    @property
+    def manufacturer(self) -> bool:
+        """The manufacturer's control keeps the temperature, the plant is no buffer for the planner."""
+        return self in (OperatingMode.MANUFACTURER, OperatingMode.MANUFACTURER_CYCLE)
 
 
 class Season(StrEnum):

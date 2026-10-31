@@ -36,6 +36,8 @@ from .const import (
     ROOM_BAND_DOWN,
     ROOM_BAND_UP,
     ROOM_ENTITY,
+    ROOM_FAN_HEAT,
+    ROOM_FAN_NEUTRAL,
     ROOM_LIMIT_DOWN,
     ROOM_LIMIT_UP,
     ROOM_NAME,
@@ -157,6 +159,9 @@ def _room_fields(with_entity: bool, unit: TemperatureUnit) -> dict[Any, Any]:
             vol.Optional(ROOM_STEP, default=RoomConfig.step): _number(
                 symbol, step=0.1, minimum=0.1, maximum=5
             ),
+            # FR-FAN-01: optional fan levels (names as the unit reports them, e.g. "high")
+            vol.Optional(ROOM_FAN_HEAT): selector.TextSelector(),
+            vol.Optional(ROOM_FAN_NEUTRAL): selector.TextSelector(),
             vol.Required(ROOM_POWER): _number("W"),
             vol.Required(ROOM_AREA, default=10): _number("m²", step=0.5),
             vol.Optional(ROOM_WINDOW): selector.EntitySelector(

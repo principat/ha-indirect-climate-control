@@ -142,6 +142,8 @@
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "step": "Meldeschritt des Geräts (optional)",
+            "fan_heat": "Lüfterstufe beim Heizen (optional)",
+            "fan_neutral": "Lüfterstufe nach dem Heizen (optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -208,6 +210,20 @@
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
             },
+            "help_fan_heat": {
+              "name": "Hilfe: Lüfterstufe beim Heizen (optional)",
+              "description": "Lüfterstufe, die das Gerät bekommt, solange es unter der Steuerung dieser Integration heizt (Betriebsmodi HEMS-Optimiert und HEMS-Puffersteuerung), z. B. \"high\". Genau so eintragen, wie das Gerät seine Lüfterstufen meldet. Grund: Warme Luft steigt nach oben, das Gerät spürt die Erwärmung früher, als der Raum geheizt ist (thermischer Kurzschluss); eine höhere Stufe durchmischt die Luft besser. Leer = die Lüfterstufe wird nicht angefasst.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_fan_neutral": {
+              "name": "Hilfe: Lüfterstufe nach dem Heizen (optional)",
+              "description": "Lüfterstufe, auf die das Gerät gesetzt wird, wenn es nicht mehr heizt, z. B. \"auto\". Leer = das Gerät kehrt zu der Stufe zurück, die es vor der Erhöhung hatte. Wird nur benutzt, wenn eine Lüfterstufe beim Heizen eingetragen ist. Die Lüfterstufe wird nur beim Heizen erhöht, nie beim Lüften oder Kühlen.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
             "help_window_entity": {
               "name": "Hilfe: Fensterkontakte",
               "description": "Optional ein oder mehrere Fenster- oder Türkontakte des Raums (an = offen). Sobald einer davon offen ist, wird der Raum aus der Regelung genommen: Das Gerät geht in den neutralen Modus und zählt weder für den SOC noch für die Verteilung.",
@@ -259,6 +275,8 @@
             "nominal_power_w": "Nennleistung",
             "area_m2": "Fläche",
             "step": "Meldeschritt des Geräts (optional)",
+            "fan_heat": "Lüfterstufe beim Heizen (optional)",
+            "fan_neutral": "Lüfterstufe nach dem Heizen (optional)",
             "window_entity": "Fensterkontakte"
           },
           "sections": {
@@ -314,6 +332,20 @@
             "help_step": {
               "name": "Hilfe: Meldeschritt des Geräts (optional)",
               "description": "Kleinste Änderung der Gerätetemperatur, die das Gerät meldet (Abstand in der Einheit der Anlage, Standard 0,5). Zur Information: Zuschaltabstand und Aktivierungsanstieg sollten nicht kleiner als ein Schritt sein.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_fan_heat": {
+              "name": "Hilfe: Lüfterstufe beim Heizen (optional)",
+              "description": "Lüfterstufe, die das Gerät bekommt, solange es unter der Steuerung dieser Integration heizt (Betriebsmodi HEMS-Optimiert und HEMS-Puffersteuerung), z. B. \"high\". Genau so eintragen, wie das Gerät seine Lüfterstufen meldet. Grund: Warme Luft steigt nach oben, das Gerät spürt die Erwärmung früher, als der Raum geheizt ist (thermischer Kurzschluss); eine höhere Stufe durchmischt die Luft besser. Leer = die Lüfterstufe wird nicht angefasst.",
+              "data": {
+                "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+              }
+            },
+            "help_fan_neutral": {
+              "name": "Hilfe: Lüfterstufe nach dem Heizen (optional)",
+              "description": "Lüfterstufe, auf die das Gerät gesetzt wird, wenn es nicht mehr heizt, z. B. \"auto\". Leer = das Gerät kehrt zu der Stufe zurück, die es vor der Erhöhung hatte. Wird nur benutzt, wenn eine Lüfterstufe beim Heizen eingetragen ist. Die Lüfterstufe wird nur beim Heizen erhöht, nie beim Lüften oder Kühlen.",
               "data": {
                 "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
               }
@@ -404,6 +436,8 @@
           "startup_s": "Anlaufphase (s)",
           "settle_s": "Einschwingzeit der Gerätetemperaturen (s)",
           "neutral_mode": "Neutraler Modus",
+          "standby_delay_s": "Verzögerung der Standby-Erkennung (s)",
+          "cycle_setback_k": "Standby-Absenkung",
           "cycle_s": "Regelzyklus (s)"
         },
         "sections": {
@@ -491,6 +525,20 @@
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
           },
+          "help_standby_delay_s": {
+            "name": "Hilfe: Verzögerung der Standby-Erkennung (s)",
+            "description": "Taktoptimierung der Herstellersteuerung: Das Außengerät gilt als im Standby, wenn seine gemessene Leistung so lange unter der Abschaltschwelle (Anteil von Pmin) bleibt. Dann werden die Sollwerte um die Standby-Absenkung von der Raumtemperatur weggeschoben. Standard 300 s.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_cycle_setback_k": {
+            "name": "Hilfe: Standby-Absenkung",
+            "description": "Taktoptimierung der Herstellersteuerung: Solange das Außengerät im Standby ist, wird der Sollwert der Geräte um diesen Betrag gesenkt (beim Kühlen erhöht), damit die Geräte länger ruhen und seltener anlaufen. Arbeitet das Außengerät wieder, kehren die Sollwerte zurück. Standard 1.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
           "help_cycle_s": {
             "name": "Hilfe: Regelzyklus (s)",
             "description": "Abstand zwischen zwei Regelzyklen. Jeder Zyklus liest Plan und Gerätetemperaturen, entscheidet und schickt nur geänderte Befehle an die Innengeräte. Kürzere Abstände reagieren schneller, senden aber mehr Befehle. Standard 60 s.",
@@ -505,6 +553,7 @@
         "data": {
           "soc_sigma": "Breite der SOC-Gewichtung",
           "display_offset_k": "Anzeigeversatz",
+          "heat_offset_k": "Heizoffset",
           "offset_threshold_pct": "Schwelle Anpassung Anzeigeversatz (Punkte)",
           "offset_target_pct": "Zielabweichung Anpassung (Punkte)",
           "offset_cap_factor": "Obergrenze Anzeigeversatz (Faktor)",
@@ -522,6 +571,13 @@
           "help_display_offset_k": {
             "name": "Hilfe: Anzeigeversatz",
             "description": "Startwert des Anzeigeversatzes für den SOC. Die gemerkte Temperatur eines Raums folgt einer steigenden Gerätetemperatur erst, wenn die Anzeige den gemerkten Wert um diesen Betrag übersteigt, und behält dann diesen Abstand. Er blendet die Eigenerwärmung der Anzeige bei arbeitenden Geräten aus. Der Wert wird im Betrieb angepasst und als Diagnosewert angezeigt. Standard 3,5.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_heat_offset_k": {
+            "name": "Hilfe: Heizoffset",
+            "description": "Beim Heizen hält das Gerät seine Gerätetemperatur um diesen Betrag über dem Sollwert. Der Offset wird von der gemeldeten Gerätetemperatur abgezogen, bevor SOC, Rangfolge und Schutzregeln sie verwenden; der Sollwert am Gerät wird nicht angehoben (ein höherer Sollwert erhöht den Energiebedarf). Wirkt nur beim Heizen. Standard 2.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -621,6 +677,8 @@
           "undercharge_cost": "Strafwert unter dem Regelbereich → Undercharge cost (je kWh)",
           "overcharge_cost": "Aufschlag Überlast → Overcharge cost (je kWh)",
           "late_charge_surcharge": "Aufschlag Spätladen → Charge cost (je kWh)",
+          "cooldown_s": "Abkühlzeit nach Standby (s)",
+          "cooldown_surcharge": "Aufschlag Abkühlzeit",
           "planner_horizon_h": "Prognosehorizont für den Planer (h)"
         },
         "sections": {
@@ -676,6 +734,20 @@
           "help_late_charge_surcharge": {
             "name": "Hilfe: Aufschlag Spätladen → Charge cost (je kWh)",
             "description": "Kleiner Betrag je kWh, der über den Prognosehorizont linear auf 0 fällt. Er entscheidet nur zwischen gleich teuren Zeitfenstern: Dann lädt der Planer später (weniger Speicherverlust). Standard 0,001.",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_cooldown_s": {
+            "name": "Hilfe: Abkühlzeit nach Standby (s)",
+            "description": "Betriebsmodus HEMS-Optimiert: Nachdem die Anlage in den Standby gegangen ist, trägt der Preis für das Laden so lange einen kleinen Aufschlag. Er entscheidet nur zwischen gleich teuren Zeitfenstern und steuert nicht direkt. Standard 3600 s (1 h).",
+            "data": {
+              "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
+            }
+          },
+          "help_cooldown_surcharge": {
+            "name": "Hilfe: Aufschlag Abkühlzeit",
+            "description": "Aufschlag auf den Preis für das Laden während der Abkühlzeit, in der Währung je kWh. Klein halten (ähnlich dem Aufschlag für spätes Laden): Er soll nur zwischen gleich teuren Zeitfenstern den Ausschlag geben. Standard 0,001.",
             "data": {
               "help_expanded": "Hilfetexte beim Öffnen aufgeklappt"
             }
@@ -792,6 +864,17 @@
       },
       "largest_deviation": {
         "name": "Größte gemessene Abweichung"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Betriebsmodus",
+        "state": {
+          "hems_optimized": "HEMS-Optimiert",
+          "hems_buffer": "HEMS-Puffersteuerung",
+          "manufacturer": "Herstellersteuerung",
+          "manufacturer_cycle": "Herstellersteuerung mit Taktoptimierung"
+        }
       }
     }
   },

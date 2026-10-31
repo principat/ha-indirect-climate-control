@@ -39,7 +39,7 @@ def setup_entry(hass: HomeAssistant) -> Callable[..., Any]:
             domain=DOMAIN,
             title=title,
             data=dict(INSTALLATION),
-            options=options or {},
+            options={"heat_offset_k": 0.0, **(options or {})},  # FR-OFS-01 off unless a test looks at it
             subentries_data=room_subentries(**room_overrides),
         )
         entry.add_to_hass(hass)

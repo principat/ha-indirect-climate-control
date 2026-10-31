@@ -142,6 +142,8 @@
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "step": "Reading step of the unit (optional)",
+            "fan_heat": "Fan level while heating (optional)",
+            "fan_neutral": "Fan level after heating (optional)",
             "window_entity": "Window contacts"
           },
           "sections": {
@@ -208,6 +210,20 @@
                 "help_expanded": "Expand help texts when opening"
               }
             },
+            "help_fan_heat": {
+              "name": "Help: Fan level while heating (optional)",
+              "description": "Fan level the unit gets while it heats under the control of this integration (operating modes HEMS optimized and HEMS buffer control), e.g. \"high\". Enter it exactly as the unit reports its fan levels. Reason: the warm air rises and the unit senses the warming earlier than the room is heated (thermal short circuit); a higher fan level mixes the air better. Empty = the fan level is not touched.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_fan_neutral": {
+              "name": "Help: Fan level after heating (optional)",
+              "description": "Fan level the unit is set to when it stops heating, e.g. \"auto\". Empty = the unit returns to the level it had before the fan level was raised. Only used if a fan level while heating is set. The fan level is raised only while heating, never while ventilating or cooling.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
             "help_window_entity": {
               "name": "Help: Window contacts",
               "description": "Optional, one or more window or door contacts of the room (on = open). As soon as one of them is open, the room is taken out of the control: the unit goes to the neutral mode and counts neither for the SOC nor for the distribution.",
@@ -259,6 +275,8 @@
             "nominal_power_w": "Nominal power",
             "area_m2": "Area",
             "step": "Reading step of the unit (optional)",
+            "fan_heat": "Fan level while heating (optional)",
+            "fan_neutral": "Fan level after heating (optional)",
             "window_entity": "Window contacts"
           },
           "sections": {
@@ -314,6 +332,20 @@
             "help_step": {
               "name": "Help: Reading step of the unit (optional)",
               "description": "Smallest change of the device temperature the unit reports (distance in the unit of the installation, default 0.5). Informational: the join margin and the activation rise should not be smaller than one step.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_fan_heat": {
+              "name": "Help: Fan level while heating (optional)",
+              "description": "Fan level the unit gets while it heats under the control of this integration (operating modes HEMS optimized and HEMS buffer control), e.g. \"high\". Enter it exactly as the unit reports its fan levels. Reason: the warm air rises and the unit senses the warming earlier than the room is heated (thermal short circuit); a higher fan level mixes the air better. Empty = the fan level is not touched.",
+              "data": {
+                "help_expanded": "Expand help texts when opening"
+              }
+            },
+            "help_fan_neutral": {
+              "name": "Help: Fan level after heating (optional)",
+              "description": "Fan level the unit is set to when it stops heating, e.g. \"auto\". Empty = the unit returns to the level it had before the fan level was raised. Only used if a fan level while heating is set. The fan level is raised only while heating, never while ventilating or cooling.",
               "data": {
                 "help_expanded": "Expand help texts when opening"
               }
@@ -404,6 +436,8 @@
           "startup_s": "Start-up phase (s)",
           "settle_s": "Settling time of the device temperatures (s)",
           "neutral_mode": "Neutral mode",
+          "standby_delay_s": "Standby detection delay (s)",
+          "cycle_setback_k": "Standby setback",
           "cycle_s": "Control cycle (s)"
         },
         "sections": {
@@ -491,6 +525,20 @@
               "help_expanded": "Expand help texts when opening"
             }
           },
+          "help_standby_delay_s": {
+            "name": "Help: Standby detection delay (s)",
+            "description": "Cycle optimization of the manufacturer control: the outdoor unit counts as in standby when its measured power stays below the stop threshold (share of Pmin) for this long. Then the setpoints are moved away from the room temperature by the standby setback. Default 300 s.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_cycle_setback_k": {
+            "name": "Help: Standby setback",
+            "description": "Cycle optimization of the manufacturer control: while the outdoor unit is in standby the setpoint of the units is lowered by this amount when heating (raised when cooling), so that the units stay idle longer and start less often. Once the outdoor unit works again the setpoints return. Default 1.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
           "help_cycle_s": {
             "name": "Help: Control cycle (s)",
             "description": "Interval between control cycles. Each cycle reads plan and device temperatures, decides and sends only changed commands to the indoor units. Shorter intervals react faster but send more commands. Default 60 s.",
@@ -505,6 +553,7 @@
         "data": {
           "soc_sigma": "SOC weighting width",
           "display_offset_k": "Display offset",
+          "heat_offset_k": "Heating offset",
           "offset_threshold_pct": "Offset adaptation threshold (points)",
           "offset_target_pct": "Offset target deviation (points)",
           "offset_cap_factor": "Offset cap factor",
@@ -522,6 +571,13 @@
           "help_display_offset_k": {
             "name": "Help: Display offset",
             "description": "Start value of the display offset for the SOC. The remembered temperature of a room follows a rising device temperature only when the reading exceeds the remembered value by this amount, and then keeps this distance. It hides the self-heating of the display while units work. The value is adapted in operation and shown as a diagnostic value. Default 3.5.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_heat_offset_k": {
+            "name": "Help: Heating offset",
+            "description": "While heating the unit holds its device temperature this far above the setpoint. The offset is subtracted from the reported device temperature before the SOC, the ranking and the protection rules use it; the setpoint sent to the unit is not raised (a higher setpoint would raise the energy demand). It acts only while heating. Default 2.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -621,6 +677,8 @@
           "undercharge_cost": "Penalty between the control range and the absolute limit → Undercharge cost (per kWh)",
           "overcharge_cost": "Overload surcharge → Overcharge cost (per kWh)",
           "late_charge_surcharge": "Late charge surcharge → Charge cost (per kWh)",
+          "cooldown_s": "Cooldown after standby (s)",
+          "cooldown_surcharge": "Cooldown surcharge",
           "planner_horizon_h": "Planner forecast horizon (h)"
         },
         "sections": {
@@ -676,6 +734,20 @@
           "help_late_charge_surcharge": {
             "name": "Help: Late charge surcharge → Charge cost (per kWh)",
             "description": "Small amount per kWh that falls linearly to 0 over the forecast horizon. It only decides between equally priced time windows: then the planner charges later (less storage loss). Default 0.001.",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_cooldown_s": {
+            "name": "Help: Cooldown after standby (s)",
+            "description": "Operating mode HEMS optimized: after the plant has gone to standby, the charge cost carries a small surcharge for this long. It only decides between equally priced time windows and does not steer directly. Default 3600 s (1 h).",
+            "data": {
+              "help_expanded": "Expand help texts when opening"
+            }
+          },
+          "help_cooldown_surcharge": {
+            "name": "Help: Cooldown surcharge",
+            "description": "Surcharge on the charge cost during the cooldown, in the currency per kWh. Keep it small (similar to the surcharge for late charging): it must only tip the balance between equally priced time windows. Default 0.001.",
             "data": {
               "help_expanded": "Expand help texts when opening"
             }
@@ -792,6 +864,17 @@
       },
       "largest_deviation": {
         "name": "Largest measured deviation"
+      }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": {
+          "hems_optimized": "HEMS optimized",
+          "hems_buffer": "HEMS buffer control",
+          "manufacturer": "Manufacturer control",
+          "manufacturer_cycle": "Manufacturer control with cycle optimization"
+        }
       }
     }
   },

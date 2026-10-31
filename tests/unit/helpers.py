@@ -16,6 +16,8 @@ def room(rid: str, setpoint: float = 21.0, power: float = 700.0, area: float = 1
 
 
 def installation(*rooms: RoomConfig, **params: object) -> InstallationConfig:
+    # the heating offset (FR-OFS-01) is off unless a test looks at it, the other tests read the device as is
+    params.setdefault("heat_offset_k", 0.0)
     return InstallationConfig(
         p_min_w=1300,
         p_max_w=3300,

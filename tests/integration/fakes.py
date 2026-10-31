@@ -25,10 +25,23 @@ class FakeUnits:
         self.calls: list[tuple[str, str, Any]] = []
         hass.services.async_register("climate", "set_hvac_mode", self._set_mode)
         hass.services.async_register("climate", "set_temperature", self._set_temp)
+        hass.services.async_register("climate", "set_fan_mode", self._set_fan)
 
-    def set(self, entity_id: str, mode: str, temperature: float, target: float | None = None) -> None:
+    def set(
+        self,
+        entity_id: str,
+        mode: str,
+        temperature: float,
+        target: float | None = None,
+        fan: str | None = None,
+    ) -> None:
         attrs = {"current_temperature": temperature, "temperature": target, "friendly_name": entity_id}
+        if fan is not None:
+            attrs["fan_mode"] = fan
         self.hass.states.async_set(entity_id, mode, attrs)
+
+    def fan(self, entity_id: str) -> str | None:
+        return self.hass.states.get(entity_id).attributes.get("fan_mode")  # type: ignore[union-attr]
 
     def mode(self, entity_id: str) -> str:
         return self.hass.states.get(entity_id).state  # type: ignore[union-attr]
@@ -42,7 +55,10 @@ class FakeUnits:
             self.calls.append((entity_id, "set_hvac_mode", mode))
             old = self.hass.states.get(entity_id)
             assert old is not None
-            self.set(entity_id, mode, old.attributes["current_temperature"], REMEMBERED.get(mode))
+            attrs = old.attributes
+            self.set(
+                entity_id, mode, attrs["current_temperature"], REMEMBERED.get(mode), attrs.get("fan_mode")
+            )
 
     async def _set_temp(self, call: ServiceCall) -> None:
         for entity_id in _ids(call):
@@ -52,6 +68,14 @@ class FakeUnits:
             self.hass.states.async_set(
                 entity_id, old.state, {**old.attributes, "temperature": call.data["temperature"]}
             )
+
+    async def _set_fan(self, call: ServiceCall) -> None:
+        for entity_id in _ids(call):
+            self.calls.append((entity_id, "set_fan_mode", call.data["fan_mode"]))
+            old = self.hass.states.get(entity_id)
+            assert old is not None
+            attrs = {**old.attributes, "fan_mode": call.data["fan_mode"]}
+            self.hass.states.async_set(entity_id, old.state, attrs)
 
 
 def _ids(call: ServiceCall) -> list[str]:

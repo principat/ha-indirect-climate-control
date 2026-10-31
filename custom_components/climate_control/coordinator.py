@@ -9,7 +9,9 @@ from typing import Any
 
 from homeassistant.components.climate.const import (
     ATTR_CURRENT_TEMPERATURE,
+    ATTR_FAN_MODE,
     ATTR_HVAC_MODE,
+    SERVICE_SET_FAN_MODE,
     SERVICE_SET_HVAC_MODE,
     SERVICE_SET_TEMPERATURE,
 )
@@ -48,7 +50,7 @@ from .core.diagnostics import RoomDiagnostics, room_diagnostics
 from .core.journal import CommandRecord, Journal, UnitRecord
 from .core.learning import CapacityLearner, Learned
 from .core.load import start_power_w
-from .core.model import WITH_SETPOINT, Command, Mode, RoomState, Season
+from .core.model import WITH_SETPOINT, Command, Mode, OperatingMode, RoomState, Season
 from .core.plan import Plan, combine, plan_from_forecast
 from .core.planner_model import PlannerInputs, planner_inputs
 from .core.units import from_celsius
@@ -68,6 +70,7 @@ class CycleData:
     learned: dict[Season, Learned] = field(default_factory=dict)
     display_offset: float | None = None  # FR-SOC-03, diagnostic value (FR-SOC-04)
     largest_deviation: float | None = None
+    operating_mode: OperatingMode = OperatingMode.HEMS_OPTIMIZED  # FR-OPM-01
 
 
 class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
@@ -105,6 +108,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         self._load_revision = 0
         self._anchor_revision = 0
         self._last_power: float | None = None
+        self.operating_mode = OperatingMode.HEMS_OPTIMIZED  # FR-OPM-01, restored from the store
+        # FR-FAN-01: the fan level of a unit from before the boost, to return to it when it stops heating
+        self._fan_before: dict[str, str | None] = {}
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.learned"
         )
@@ -128,6 +134,10 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             self.learner.restore(stored)
             if self.controller is not None and isinstance(stored.get("load"), dict):
                 self.controller.load_model.restore(stored["load"])
+            try:
+                self.operating_mode = OperatingMode(stored.get("operating_mode", self.operating_mode))
+            except ValueError:
+                LOGGER.warning("Unknown stored operating mode %r ignored", stored.get("operating_mode"))
             if self.controller is not None and isinstance(stored.get("anchor"), dict):
                 self.controller.anchor.restore(stored["anchor"])
                 self._anchor_revision = self.controller.anchor.revision
@@ -153,6 +163,15 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             self.controller.anchor.set_largest(value)
             await self._save_anchor()
 
+    async def async_set_operating_mode(self, mode: OperatingMode) -> None:
+        """FR-OPM-01: the choice survives restarts and takes effect in the next cycle (run at once)."""
+        if mode is self.operating_mode:
+            return
+        self.operating_mode = mode
+        self._learned_dirty = False
+        await self._store.async_save(self._stored())
+        await self.async_refresh()
+
     async def _save_anchor(self) -> None:
         assert self.controller is not None
         self._anchor_revision = self.controller.anchor.revision
@@ -169,6 +188,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
     def _stored(self) -> dict[str, Any]:
         """What was learned: capacity per season and power per step of each unit (FR-PLNR-02, FR-LOAD-02)."""
         data = self.learner.snapshot()
+        data["operating_mode"] = str(self.operating_mode)
         if self.controller is not None:
             data["load"] = self.controller.load_model.snapshot()
             data["anchor"] = self.controller.anchor.snapshot()
@@ -194,7 +214,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         # the mean of this and the last reading stands for the cycle (no extra sampling between the cycles)
         mean_power = power if power is None or self._last_power is None else (power + self._last_power) / 2
         self._last_power = power
-        result = self.controller.step(now, plan, rooms, setpoints, season, mean_power)
+        result = self.controller.step(
+            now, plan, rooms, setpoints, season, mean_power, self.operating_mode, dt_util.as_local(now)
+        )
         if self.commissioning:
             # No planner output configured yet: publish SOC and planner values, never touch the units.
             result = replace(result, commands={}, running=False, fallback=False, requested_w=0.0, served=())
@@ -206,7 +228,9 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
         current = replace(
             self.cfg.with_setpoints(setpoints), capacity_kwh_per_k=self.learner.capacity_kwh_per_k(season)
         )
-        planner = planner_inputs(current, dt_util.as_local(now), season)
+        planner = planner_inputs(
+            current, dt_util.as_local(now), season, self.operating_mode, result.cooldown_left_s
+        )
         learned = {
             s: replace(item, bootstrap=list(item.bootstrap)) for s, item in self.learner.learned.items()
         }
@@ -221,6 +245,7 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
             learned,
             self.controller.anchor.offset,
             self.controller.anchor.largest,
+            self.operating_mode,
         )
 
     async def _record(self, now: datetime, result: CycleResult, power_w: float | None) -> None:
@@ -387,5 +412,29 @@ class ClimateControlCoordinator(DataUpdateCoordinator[CycleData | None]):
                         {ATTR_ENTITY_ID: entity_id, ATTR_TEMPERATURE: target},
                         blocking=True,
                     )
+            fresh = self.hass.states.get(entity_id)
+            await self._apply_fan(entity_id, command, fresh.attributes.get(ATTR_FAN_MODE) if fresh else None)
         except HomeAssistantError as err:
             LOGGER.warning("Could not apply %s to %s: %s", command, entity_id, err)
+
+    async def _apply_fan(self, entity_id: str, command: Command, current: str | None) -> None:
+        """FR-FAN-01: a unit that heats under our control gets the raised fan level (the heated air rises
+        to the unit and makes it feel warm before the room is). When it stops heating the level is reset."""
+        assert self.cfg is not None
+        room = self.cfg.room(entity_id)
+        if command.boost and room.fan_heat:
+            if entity_id not in self._fan_before:
+                self._fan_before[entity_id] = current
+            wanted: str | None = room.fan_heat
+        elif entity_id in self._fan_before:
+            before = self._fan_before.pop(entity_id)
+            wanted = room.fan_neutral or before
+        else:
+            return
+        if wanted is not None and wanted != current:
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_FAN_MODE,
+                {ATTR_ENTITY_ID: entity_id, ATTR_FAN_MODE: wanted},
+                blocking=True,
+            )

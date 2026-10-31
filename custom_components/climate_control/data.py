@@ -15,6 +15,8 @@ from .const import (
     ROOM_BAND_DOWN,
     ROOM_BAND_UP,
     ROOM_ENTITY,
+    ROOM_FAN_HEAT,
+    ROOM_FAN_NEUTRAL,
     ROOM_LIMIT_DOWN,
     ROOM_LIMIT_UP,
     ROOM_NAME,
@@ -77,6 +79,8 @@ def build_config(entry: ConfigEntry, options: Mapping[str, Any]) -> Installation
             limit_down=float(r.get(ROOM_LIMIT_DOWN, RoomConfig.limit_down)),
             limit_up=float(r.get(ROOM_LIMIT_UP, RoomConfig.limit_up)),
             step=float(r.get(ROOM_STEP, RoomConfig.step)),
+            fan_heat=str(r[ROOM_FAN_HEAT]) if r.get(ROOM_FAN_HEAT) else None,
+            fan_neutral=str(r[ROOM_FAN_NEUTRAL]) if r.get(ROOM_FAN_NEUTRAL) else None,
         )
         for r in room_data(entry)
     )

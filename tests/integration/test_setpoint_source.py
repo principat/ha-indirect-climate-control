@@ -140,6 +140,7 @@ async def test_a_room_with_an_entity_is_not_controlled_before_the_first_value_an
         title="Klima",
         version=4,
         data=dict(INSTALLATION),
+        options={"heat_offset_k": 0.0},  # FR-OFS-01 off: the test reads the device as it is
         subentries_data=[
             {
                 "data": {
@@ -190,6 +191,7 @@ async def test_entries_from_before_the_choice_derive_the_source(
         title="Klima",
         version=4,
         data=dict(INSTALLATION),
+        options={"heat_offset_k": 0.0},  # FR-OFS-01 off: the test reads the device as it is
         subentries_data=[
             {
                 "data": room_data(A, setpoint_c=19.0, setpoint_entity=SETPOINT),

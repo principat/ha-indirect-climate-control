@@ -7,12 +7,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .anchor import AnchorTracker
-from .config import InstallationConfig, RoomConfig
+from .buffer import allocate, buffer_soc, is_full, power_steps, room_steps
+from .config import InstallationConfig, Parameters, RoomConfig
 from .distribution import rank
 from .load import LoadControl, LoadModel
-from .model import WITH_SETPOINT, Command, RoomState, Season
+from .model import WITH_SETPOINT, Command, Mode, OperatingMode, RoomState, Season
 from .modes import next_modes
 from .plan import Plan
+from .planner_model import is_night
 from .soc import OutlierFilter, SocSmoother, room_fill, soc_of, worst_room
 from .threshold import ThresholdConfig, decide
 
@@ -34,6 +36,9 @@ class CycleResult:
     season: Season = Season.HEAT
     steps: dict[str, int] = field(default_factory=dict)  # power steps per served unit (FR-LOAD-01)
     expected_w: float = 0.0  # load expected from the learned power per step
+    operating: OperatingMode = OperatingMode.HEMS_OPTIMIZED  # FR-OPM-01
+    standby: bool = False  # FR-OPM-03: the outdoor unit has been idle for the standby delay
+    cooldown_left_s: float = 0.0  # FR-OPM-04: remaining time of the charge cost surcharge
 
 
 class Controller:
@@ -62,9 +67,73 @@ class Controller:
         self._assessed: dict[str, float] = {}
         self._busy = False  # a unit works in heating or cooling mode (this cycle)
         self._all_settled = True  # no unit works and the readings have settled (FR-SRC-02)
+        self._operating = OperatingMode.HEMS_OPTIMIZED
+        self._low_since: datetime | None = None  # outdoor power below the stop threshold since (FR-OPM-03)
+        self._was_running = False
+        self._plant_stopped: datetime | None = None  # FR-OPM-04: when the plant went to standby
+        self._charge_steps = 0  # FR-OPM-06: setpoint steps requested in the last cycle
+        self._rotation = 0  # FR-OPM-06: room the round robin starts with, moves with every charging period
 
     def _reset_load(self) -> None:
         self._load.reset()
+
+    def _change_operating(self, operating: OperatingMode, p: Parameters) -> None:
+        """FR-OPM-01: a new operating mode starts a new state, like a new season."""
+        self._operating = operating
+        self._smoother = SocSmoother(p.soc_smoothing_s)
+        self.anchor.abandon()
+        self._overheat_since.clear()
+        self._run_since = None
+        self.running = False
+        self._was_running = False
+        self._plant_stopped = None
+        self._charge_steps = 0
+        self._issued = {}
+        self._working = set()
+        self._stopped_at = {}
+        self._assessed = {}
+        self._last_busy = None
+        self._reset_load()
+
+    def _standby(self, now: datetime, power_w: float | None) -> bool:
+        """FR-OPM-03: the outdoor power is below the stop threshold for the standby delay."""
+        p = self.cfg.params
+        if power_w is None or power_w >= p.stop_ratio * self.cfg.p_min_w:
+            self._low_since = None
+            return False
+        if self._low_since is None:
+            self._low_since = now
+        return (now - self._low_since).total_seconds() >= p.standby_delay_s
+
+    def _comfort_setpoint(self, room: RoomConfig, local: datetime, season: Season, p: Parameters) -> float:
+        """The setpoint of a room as the manufacturer control gets it: with the night setback (FR-PLNR-01)."""
+        if is_night(local, p.night_start_h, p.night_end_h):
+            return room.setpoint_c - season.sign * p.night_setback_k
+        return room.setpoint_c
+
+    @staticmethod
+    def _free_steps(room: RoomConfig, temperature: float, season: Season) -> int:
+        """FR-OPM-06: setpoint steps a room can still take; none once its buffer is full."""
+        if is_full(room, temperature, season):
+            return 0
+        return room_steps(room, season)
+
+    def _resolve(
+        self, rooms: Mapping[str, RoomState], targets: Mapping[str, Command], p: Parameters, boost: bool
+    ) -> dict[str, Command]:
+        """FR-MODE-01: the modes to apply now. FR-FAN-01: a unit that heats under our control is boosted."""
+        current_modes = {rid: s.mode for rid, s in rooms.items() if s.mode is not None and rid in targets}
+        modes = next_modes(current_modes, {rid: c.mode for rid, c in targets.items()}, p.neutral_mode)
+        commands = {
+            rid: Command(
+                m,
+                targets[rid].target_c if m in WITH_SETPOINT and m == targets[rid].mode else None,
+                boost and m is Mode.HEAT and m == targets[rid].mode,
+            )
+            for rid, m in modes.items()
+        }
+        self._issued = dict(commands)
+        return commands
 
     def _assess(
         self, now: datetime, rooms: Mapping[str, RoomState], live: Mapping[str, float]
@@ -152,11 +221,16 @@ class Controller:
         setpoints: Mapping[str, float] | None = None,
         season: Season = Season.HEAT,
         outdoor_power_w: float | None = None,
+        operating: OperatingMode = OperatingMode.HEMS_OPTIMIZED,
+        local_now: datetime | None = None,
     ) -> CycleResult:
         """`setpoints` overrides the configured setpoint of a room for this cycle (variable source).
 
         `season` (FR-SEAS-01) mirrors the whole control for cooling: the deviation, the SOC, the limits and
         the protection rules all use `sign` to point in the direction of the season.
+
+        `operating` (FR-OPM-01) selects who controls the units; `local_now` is the time of day for the night
+        setback (default `now`).
         """
         cfg = self.cfg.with_setpoints(setpoints or {})
         p = cfg.params
@@ -178,8 +252,20 @@ class Controller:
                 continue
             # FR-SRC-01: the indoor unit's own reading, as reported (the devices report in 0.5 K steps).
             live[room.id] = self._filter.accept(room.id, float(state.temperature_c))
+        # FR-OFS-01: while heating the unit holds its reading above the room temperature; ranking, SOC and
+        # protection use the reading without that offset, the load control the live reading of the unit.
+        offset = p.heat_offset_k if season is Season.HEAT else 0.0
+        shifted = {rid: t - offset for rid, t in live.items()}
+        standby = self._standby(now, outdoor_power_w)
+        if operating is not self._operating:
+            self._change_operating(operating, p)
+        local = local_now or now
+        if operating.manufacturer:
+            return self._manufacturer(now, local, cfg, rooms, shifted, season, standby)
+        if operating is OperatingMode.HEMS_BUFFER:
+            return self._buffer(now, local, cfg, rooms, shifted, season, plan)
         # FR-SRC-02: ranking, SOC and protection use the assessed values, served rooms the live ones
-        temps = self._assess(now, rooms, live)
+        temps = self._assess(now, rooms, shifted)
         active = [
             r
             for r in cfg.rooms
@@ -190,7 +276,7 @@ class Controller:
         worst = worst_room(((r, temps[r.id]) for r in active), season)
         # FR-SOC-03: the SOC uses the remembered temperatures, ranking and protection the assessed ones
         anchored = self.anchor.step(
-            season, active, {r.id: live[r.id] for r in active}, self._busy, self._all_settled
+            season, active, {r.id: shifted[r.id] for r in active}, self._busy, self._all_settled
         )
         if worst is not None:
             fills = [room_fill(r, anchored[r.id], season) for r in active]
@@ -331,13 +417,16 @@ class Controller:
             if state is not None and state.window_open and state.mode is not None:
                 targets[r.id] = Command(p.neutral_mode)
 
-        current_modes = {rid: s.mode for rid, s in rooms.items() if s.mode is not None and rid in targets}
-        modes = next_modes(current_modes, {rid: c.mode for rid, c in targets.items()}, p.neutral_mode)
-        commands = {
-            rid: Command(m, targets[rid].target_c if m in WITH_SETPOINT and m == targets[rid].mode else None)
-            for rid, m in modes.items()
-        }
-        self._issued = dict(commands)
+        commands = self._resolve(rooms, targets, p, boost=True)
+        # FR-OPM-04: a plant that stopped is in standby, the charge cost rises for a while (tie breaker)
+        if self._was_running and not self.running:
+            self._plant_stopped = now
+        if self.running:
+            self._plant_stopped = None
+        self._was_running = self.running
+        cooldown_left = 0.0
+        if self._plant_stopped is not None:
+            cooldown_left = max(0.0, p.cooldown_s - (now - self._plant_stopped).total_seconds())
         return CycleResult(
             commands=commands,
             soc_pct=soc,
@@ -352,4 +441,141 @@ class Controller:
             season=season,
             steps=dict(self._load.steps),
             expected_w=self._load.expected_w,
+            operating=operating,
+            standby=standby,
+            cooldown_left_s=cooldown_left,
+        )
+
+    def _manufacturer(
+        self,
+        now: datetime,
+        local: datetime,
+        cfg: InstallationConfig,
+        rooms: Mapping[str, RoomState],
+        shifted: Mapping[str, float],
+        season: Season,
+        standby: bool,
+    ) -> CycleResult:
+        """FR-OPM-02 / FR-OPM-03: the manufacturer control keeps the temperature. The units get the
+        setpoint of the room (with the night setback) in the mode of the season. With the cycle
+        optimization the setpoint moves away from the room while the outdoor unit is in standby."""
+        p = cfg.params
+        idle = self._operating is OperatingMode.MANUFACTURER_CYCLE and standby
+        targets: dict[str, Command] = {}
+        for r in cfg.rooms:
+            state = rooms.get(r.id)
+            if state is None or state.mode is None:
+                continue
+            if state.window_open:  # FR-SAFE-01
+                targets[r.id] = Command(p.neutral_mode)
+                continue
+            setpoint = self._comfort_setpoint(r, local, season, p)
+            if idle:
+                setpoint -= season.sign * p.cycle_setback_k
+            targets[r.id] = Command(season.mode, round(setpoint, 3))
+        active = [
+            r
+            for r in cfg.rooms
+            if r.id in shifted and targets.get(r.id, Command(Mode.OFF)).mode == season.mode
+        ]
+        soc: float | None = None
+        worst = worst_room(((r, shifted[r.id]) for r in active), season)
+        if active:
+            fills = [room_fill(r, shifted[r.id], season) for r in active]
+            soc = round(self._smoother.add(now, soc_of(fills, p.soc_sigma)), 2)
+        commands = self._resolve(rooms, targets, p, boost=False)
+        return CycleResult(
+            commands=commands,
+            soc_pct=soc,
+            worst_room=worst[0].id if worst else None,
+            planned_w=None,
+            requested_w=0.0,
+            running=False,
+            fallback=False,
+            served=(),
+            temperatures=dict(shifted),
+            season=season,
+            operating=self._operating,
+            standby=standby,
+        )
+
+    def _buffer(
+        self,
+        now: datetime,
+        local: datetime,
+        cfg: InstallationConfig,
+        rooms: Mapping[str, RoomState],
+        shifted: Mapping[str, float],
+        season: Season,
+        plan: Plan | None,
+    ) -> CycleResult:
+        """FR-OPM-05 / FR-OPM-06: the units keep the comfort temperature themselves. The buffer is the
+        range above the setpoint of each room; the plan charges it by raising the setpoints of some
+        units in fixed steps, distributed round robin. Without a plan nothing is charged."""
+        p = cfg.params
+        sign = season.sign
+        active = [
+            r
+            for r in cfg.rooms
+            if r.id in shifted and rooms[r.id].mode is not None and not rooms[r.id].window_open
+        ]
+        soc: float | None = None
+        if active:
+            soc = round(
+                self._smoother.add(
+                    now, buffer_soc([(r, shifted[r.id]) for r in active], season, p.night_setback_k)
+                ),
+                2,
+            )
+        planned_w = plan.power_at(now) if plan is not None else None
+        plan_missing = plan is None or plan.is_stale(now, p.plan_max_age_s)
+        if plan_missing:
+            if self._plan_missing_since is None:
+                self._plan_missing_since = now
+            missing_s = (now - self._plan_missing_since).total_seconds()
+        else:
+            self._plan_missing_since = None
+            missing_s = 0.0
+        run, requested_w = False, 0.0
+        if not plan_missing:
+            decision = decide(planned_w or 0.0, self.running, self._threshold)
+            run, requested_w = decision.run, decision.power_w
+        self.running = run
+        total = sum(room_steps(r, season) for r in active)
+        wanted = power_steps(requested_w, cfg.p_max_w, total) if run else 0
+        # a room whose buffer is full takes no further step
+        capacity = [(r.id, self._free_steps(r, shifted[r.id], season)) for r in active]
+        if wanted > 0 and self._charge_steps == 0 and capacity:
+            self._rotation = (self._rotation + 1) % len(capacity)  # a new charging period starts elsewhere
+        self._charge_steps = wanted
+        steps = allocate(capacity, wanted, self._rotation % len(capacity)) if capacity else {}
+        targets: dict[str, Command] = {}
+        for r in cfg.rooms:
+            state = rooms.get(r.id)
+            if state is None or state.mode is None:
+                continue
+            if state.window_open:  # FR-SAFE-01
+                targets[r.id] = Command(p.neutral_mode)
+                continue
+            top = r.setpoint_c + sign * r.charge_band(season)
+            target = self._comfort_setpoint(r, local, season, p) + sign * steps.get(r.id, 0) * r.step
+            targets[r.id] = Command(season.mode, round(sign * min(sign * target, sign * top), 3))
+        commands = self._resolve(rooms, targets, p, boost=True)
+        worst = worst_room(((r, shifted[r.id]) for r in active), season)
+        step_w = cfg.p_max_w / total if total else 0.0
+        return CycleResult(
+            commands=commands,
+            soc_pct=soc,
+            worst_room=worst[0].id if worst else None,
+            planned_w=planned_w,
+            requested_w=requested_w,
+            running=run,
+            fallback=False,
+            served=tuple(rid for rid, n in steps.items() if n > 0),
+            plan_missing_s=missing_s,
+            temperatures=dict(shifted),
+            season=season,
+            steps={rid: n for rid, n in steps.items() if n > 0},
+            expected_w=wanted * step_w,
+            operating=self._operating,
         )
